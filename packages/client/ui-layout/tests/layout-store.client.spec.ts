@@ -10,6 +10,7 @@ import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/
 import {
   DETAILS_DEFAULT, DETAILS_MAX, DETAILS_MIN,
   SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
+  SHELF_DEFAULT, SHELF_MAX, SHELF_MIN,
 } from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
 
 const PERSIST_KEY = 'dsh.layout.panels'
@@ -17,9 +18,9 @@ const PERSIST_KEY = 'dsh.layout.panels'
 beforeEach(() => { localStorage.clear() })
 
 describe('createLayoutStore', () => {
-  it('initializes the sidebar at its default width, details closed, wide viewport assumed', () => {
+  it('initializes the sidebar at its default width, shelf and details closed, wide viewport assumed', () => {
     const { store } = createLayoutStore().create()
-    expect(store.getSnapshot()).toEqual({ sidebar: SIDEBAR_DEFAULT, details: 0, narrow: false, narrowExpanded: false })
+    expect(store.getSnapshot()).toEqual({ sidebar: SIDEBAR_DEFAULT, shelf: 0, details: 0, narrow: false, narrowExpanded: false })
   })
 
   it('each create() is an independent instance (factory is not a singleton)', () => {
@@ -29,12 +30,16 @@ describe('createLayoutStore', () => {
     expect(b.store.getSnapshot().sidebar).toBe(SIDEBAR_DEFAULT)
   })
 
-  it('setSidebar/setDetails clamp into the contract ranges', () => {
+  it('setSidebar/setShelf/setDetails clamp into the contract ranges', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setSidebar(1)
     expect(store.getSnapshot().sidebar).toBe(SIDEBAR_MIN)
     actions.setSidebar(9999)
     expect(store.getSnapshot().sidebar).toBe(SIDEBAR_MAX)
+    actions.setShelf(1)
+    expect(store.getSnapshot().shelf).toBe(SHELF_MIN)
+    actions.setShelf(9999)
+    expect(store.getSnapshot().shelf).toBe(SHELF_MAX)
     actions.setDetails(1)
     expect(store.getSnapshot().details).toBe(DETAILS_MIN)
     actions.setDetails(9999)
@@ -55,7 +60,7 @@ describe('createLayoutStore', () => {
     actions.setSidebar(400)
     actions.setNarrow(true)
     actions.toggleSidebar()
-    expect(store.getSnapshot()).toEqual({ sidebar: 400, details: 0, narrow: true, narrowExpanded: true })
+    expect(store.getSnapshot()).toEqual({ sidebar: 400, shelf: 0, details: 0, narrow: true, narrowExpanded: true })
     actions.toggleSidebar()
     expect(store.getSnapshot().narrowExpanded).toBe(false)
     expect(store.getSnapshot().sidebar).toBe(400)
@@ -74,8 +79,15 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot().narrowExpanded).toBe(false)
   })
 
-  it('openDetails uses the contract default, preserves an open width, and closeDetails zeroes', () => {
+  it('openShelf/openDetails use the contract default, preserve an open width, and close* zeroes', () => {
     const { store, actions } = createLayoutStore().create()
+    actions.openShelf()
+    expect(store.getSnapshot().shelf).toBe(SHELF_DEFAULT)
+    actions.setShelf(500)
+    actions.openShelf()
+    expect(store.getSnapshot().shelf).toBe(500)
+    actions.closeShelf()
+    expect(store.getSnapshot().shelf).toBe(0)
     actions.openDetails()
     expect(store.getSnapshot().details).toBe(DETAILS_DEFAULT)
     actions.setDetails(500)
@@ -95,6 +107,7 @@ describe('createLayoutStore', () => {
     const second = createLayoutStore().create()
     expect(second.store.getSnapshot()).toEqual({
       sidebar: SIDEBAR_DEFAULT,
+      shelf: 0,
       details: 0,
       narrow: false,
       narrowExpanded: false,

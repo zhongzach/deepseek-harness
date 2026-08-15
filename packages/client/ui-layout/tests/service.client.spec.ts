@@ -11,34 +11,44 @@ import type { PanelActions } from '@deepseek-ai/dsh-client-ui-layout/src/client/
 function fakePanels(): PanelActions {
   return {
     setSidebar: vi.fn(),
+    setShelf: vi.fn(),
     setDetails: vi.fn(),
     toggleSidebar: vi.fn(),
     setNarrow: vi.fn(),
+    openShelf: vi.fn(),
+    closeShelf: vi.fn(),
     openDetails: vi.fn(),
     closeDetails: vi.fn(),
   }
 }
 
 describe('LayoutController', () => {
-  it('forwards the three panel actions to the attached set', () => {
+  it('forwards the panel actions to the attached set', () => {
     const service = new LayoutController()
     const panels = fakePanels()
     service.attachPanels(panels)
 
     service.toggleSidebar()
+    service.openShelf()
+    service.closeShelf()
     service.openDetails()
     service.closeDetails()
 
     expect(panels.toggleSidebar).toHaveBeenCalledTimes(1)
+    expect(panels.openShelf).toHaveBeenCalledTimes(1)
+    expect(panels.closeShelf).toHaveBeenCalledTimes(1)
     expect(panels.openDetails).toHaveBeenCalledTimes(1)
     expect(panels.closeDetails).toHaveBeenCalledTimes(1)
     expect(panels.setSidebar).not.toHaveBeenCalled()
+    expect(panels.setShelf).not.toHaveBeenCalled()
     expect(panels.setDetails).not.toHaveBeenCalled()
   })
 
   it('fails loud before the root entry wired its actions', () => {
     const service = new LayoutController()
     expect(() => { service.toggleSidebar() }).toThrow(/panel actions not wired/)
+    expect(() => { service.openShelf() }).toThrow(/panel actions not wired/)
+    expect(() => { service.closeShelf() }).toThrow(/panel actions not wired/)
     expect(() => { service.openDetails() }).toThrow(/panel actions not wired/)
     expect(() => { service.closeDetails() }).toThrow(/panel actions not wired/)
   })

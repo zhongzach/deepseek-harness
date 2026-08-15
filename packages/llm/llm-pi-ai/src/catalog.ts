@@ -196,6 +196,12 @@ export interface PiAiCompatProfile {
   thinkingFormat?: PiAiThinkingFormat
   /** Whether the endpoint accepts `reasoning_effort`; absent keeps the catalog entry's, then pi-ai's baseURL-derived guess. */
   supportsReasoningEffort?: boolean
+  /**
+   * Whether the endpoint accepts `stream_options: { include_usage: true }`.
+   * Default true in pi-ai; a gateway whose field whitelist rejects the
+   * standard field declares `false` and pi-ai omits it.
+   */
+  supportsUsageInStreaming?: boolean
 }
 
 /** One configured model entry: an id plus the catalog fields it overrides. */
@@ -394,11 +400,13 @@ function resolveModelCompat(
 ): { compat: OpenAICompletionsCompat } | Record<string, never> {
   const thinkingFormat = entry.compat?.thinkingFormat ?? route?.thinkingFormat
   const supportsReasoningEffort = entry.compat?.supportsReasoningEffort ?? route?.supportsReasoningEffort
-  if (thinkingFormat === undefined && supportsReasoningEffort === undefined) return {}
+  const supportsUsageInStreaming = entry.compat?.supportsUsageInStreaming ?? route?.supportsUsageInStreaming
+  if (thinkingFormat === undefined && supportsReasoningEffort === undefined && supportsUsageInStreaming === undefined) return {}
   if (api !== 'openai-completions') {
-    if (entry.compat?.thinkingFormat !== undefined || entry.compat?.supportsReasoningEffort !== undefined) {
+    if (entry.compat?.thinkingFormat !== undefined || entry.compat?.supportsReasoningEffort !== undefined
+      || entry.compat?.supportsUsageInStreaming !== undefined) {
       invalid(provider, `model "${entry.id}" sets compat reasoning switches, but its api is "${api}";`
-        + ' thinkingFormat and supportsReasoningEffort exist only on openai-completions')
+        + ' thinkingFormat, supportsReasoningEffort, and supportsUsageInStreaming exist only on openai-completions')
     }
     return {}
   }
@@ -414,6 +422,7 @@ function resolveModelCompat(
       ...inherited,
       ...thinkingFormat === undefined ? {} : { thinkingFormat },
       ...supportsReasoningEffort === undefined ? {} : { supportsReasoningEffort },
+      ...supportsUsageInStreaming === undefined ? {} : { supportsUsageInStreaming },
     },
   }
 }
@@ -487,6 +496,7 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
   const routeApi = sharedCatalogApi(defaults)
   const routeCompatDefined = request.compat?.thinkingFormat !== undefined
     || request.compat?.supportsReasoningEffort !== undefined
+    || request.compat?.supportsUsageInStreaming !== undefined
   const seen = new Set<string>()
   const configuredMaxTokens = new Map<string, number>()
   const models = entries.map((entry) => {
@@ -540,7 +550,7 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
   })
   if (routeCompatDefined && !models.some(model => model.api === 'openai-completions')) {
     invalid(provider, 'sets compat reasoning switches, but no model on the route speaks openai-completions;'
-      + ' thinkingFormat and supportsReasoningEffort exist only on that protocol')
+      + ' thinkingFormat, supportsReasoningEffort, and supportsUsageInStreaming exist only on that protocol')
   }
   return { models, configuredMaxTokens }
 }

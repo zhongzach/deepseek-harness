@@ -61,6 +61,16 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'conversation': { kind: 'single'; scope: 'session-maybe'; owner: ConvOwnerProps }
     /**
+     * The product shelf column, between center and details, shown when the
+     * layout opens it. OCCUPIED by a product plugin (the novel-project
+     * shelf); registering here replaces the column. Absent an occupant the
+     * column renders nothing.
+     *
+     * No owner props: the framework injects the session id and hooks for the
+     * `session` scope, and `ctx.layout` owns whether the column is open.
+     */
+    'shelf': { kind: 'single'; scope: 'session'; owner: ShelfOwnerProps }
+    /**
      * The right details column, shown when the layout opens it. OCCUPIED by
      * ui-conversation's DetailsPanel, which declares the tool-details seat
      * inside it — registering here replaces the column and takes that seat
@@ -104,6 +114,9 @@ export interface ConvOwnerProps {}
 /** Details owner share: empty — sessionId arrives as a framework-standard prop. */
 export interface DetailsOwnerProps {}
 
+/** Shelf owner share: empty — sessionId arrives as a framework-standard prop. */
+export interface ShelfOwnerProps {}
+
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
 export const inject = ['slots', 'theme']
 
@@ -122,6 +135,7 @@ export function apply(ctx: ClientContext): void {
       children: {
         'sidebar': { kind: 'single', scope: 'root' },
         'conversation': { kind: 'single', scope: 'session-maybe' },
+        'shelf': { kind: 'single', scope: 'session' },
         'details': { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
