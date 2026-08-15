@@ -23,6 +23,10 @@ export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 export interface ILayout {
   /** Toggle the sidebar panel (closed ⟷ contract default width). */
   toggleSidebar(): void
+  /** Open the shelf panel (no-op when already open). */
+  openShelf(): void
+  /** Close the shelf panel. */
+  closeShelf(): void
   /** Open the details panel (no-op when already open). */
   openDetails(): void
   /** Close the details panel. */
@@ -47,6 +51,16 @@ export class LayoutController implements ILayout {
   /** Toggle the sidebar panel (closed ⟷ contract default width). */
   toggleSidebar(): void {
     this.#require().toggleSidebar()
+  }
+
+  /** Open the shelf panel (no-op when already open). */
+  openShelf(): void {
+    this.#require().openShelf()
+  }
+
+  /** Close the shelf panel. */
+  closeShelf(): void {
+    this.#require().closeShelf()
   }
 
   /** Open the details panel (no-op when already open). */
