@@ -5,7 +5,9 @@
  * everything between the section header and the list bottom is the
  * `sidebar.workspaces` registrant's (ui-workspace), and the foot is the
  * `sidebar.settings` registrant's (ui-settings), followed by optional footer
- * actions in `sidebar.footer.action`.
+ * actions in `sidebar.footer.action`. The brand mark itself is the
+ * `sidebar.brand` hole: a downstream composition registers its own mark
+ * there, and the shell's own DeepSeek Harness mark is the fallback.
  */
 import type { PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls ui-layout's SlotMap merge (the 'sidebar' entry) into every
@@ -33,7 +35,26 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * package's 'sidebar' entry; each action receives only the column state.
      */
     'sidebar.footer.action': { kind: 'list'; scope: 'root'; owner: SidebarFooterActionOwnerProps }
+    /**
+     * The brand mark at the top of the column: the wordmark on the expanded
+     * shell (it doubles as the New Session shortcut, the shell owns the
+     * button), the glyph on the 56px rail (inside the expand toggle, hidden
+     * on hover behind the panel icon). Declared by this package's 'sidebar'
+     * entry; a downstream composition registers its own mark, and receives
+     * only the column state so it can pick the wordmark or the glyph. Left
+     * unregistered, the shell renders its own DeepSeek Harness mark.
+     */
+    'sidebar.brand': { kind: 'single'; scope: 'root'; owner: SidebarBrandOwnerProps }
   }
+}
+
+/**
+ * Owner share of the brand hole: the column display state the occupant's
+ * mark must render against (wide → wordmark, rail → glyph, at most 24px).
+ */
+export interface SidebarBrandOwnerProps {
+  /** Whether the sidebar renders wide content (false = 56px rail). */
+  wide: boolean
 }
 
 /**
@@ -85,5 +106,5 @@ export type SidebarRootInjected = {
  */
 export type SidebarRootComponentProps =
   PropsRuntime<'sidebar'>
-  & PropsRenderSlots<'sidebar.workspaces' | 'sidebar.settings' | 'sidebar.footer.action'>
+  & PropsRenderSlots<'sidebar.workspaces' | 'sidebar.settings' | 'sidebar.footer.action' | 'sidebar.brand'>
   & SidebarRootInjected & PropsLocale<'sidebar'>
