@@ -66,10 +66,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * shelf); registering here replaces the column. Absent an occupant the
      * column renders nothing.
      *
-     * No owner props: the framework injects the session id and hooks for the
-     * `session` scope, and `ctx.layout` owns whether the column is open.
+     * No owner props: the framework injects the session-maybe kit (the
+     * session id when one is current, absent on the new-session screen — a
+     * shelf shows the current or recent workspace either way), and
+     * `ctx.layout` owns whether the column is open.
      */
-    'shelf': { kind: 'single'; scope: 'session'; owner: ShelfOwnerProps }
+    'shelf': { kind: 'single'; scope: 'session-maybe'; owner: ShelfOwnerProps }
     /**
      * The right details column, shown when the layout opens it. OCCUPIED by
      * ui-conversation's DetailsPanel, which declares the tool-details seat
@@ -135,7 +137,7 @@ export function apply(ctx: ClientContext): void {
       children: {
         'sidebar': { kind: 'single', scope: 'root' },
         'conversation': { kind: 'single', scope: 'session-maybe' },
-        'shelf': { kind: 'single', scope: 'session' },
+        'shelf': { kind: 'single', scope: 'session-maybe' },
         'details': { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
