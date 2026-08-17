@@ -32,6 +32,8 @@ type LayoutActions = {
   setShelf: (draft: LayoutState, px: number) => void
   setDetails: (draft: LayoutState, px: number) => void
   toggleSidebar: (draft: LayoutState) => void
+  collapseSidebar: (draft: LayoutState) => void
+  expandSidebar: (draft: LayoutState) => void
   setNarrow: (draft: LayoutState, narrow: boolean) => void
   openShelf: (draft: LayoutState) => void
   closeShelf: (draft: LayoutState) => void
@@ -63,6 +65,16 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       toggleSidebar: (d) => {
         if (d.narrow) d.narrowExpanded = !d.narrowExpanded
         else d.sidebar = d.sidebar === 0 ? SIDEBAR_DEFAULT : 0
+      },
+      // Explicit forms of the toggle for a caller that cannot read the state
+      // (a reading mode that folds the sidebar to make room, then restores it).
+      collapseSidebar: (d) => {
+        if (d.narrow) d.narrowExpanded = false
+        else d.sidebar = 0
+      },
+      expandSidebar: (d) => {
+        if (d.narrow) d.narrowExpanded = true
+        else if (d.sidebar === 0) d.sidebar = SIDEBAR_DEFAULT
       },
       // Crossing the breakpoint in either direction drops the override: the
       // narrow default is auto-collapsed, the wide state is the preference.
