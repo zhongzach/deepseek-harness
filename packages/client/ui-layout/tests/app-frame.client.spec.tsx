@@ -264,12 +264,14 @@ describe('AppFrame', () => {
     expect(tracks(frame)).toEqual([280, 0, 0])
   })
 
-  it('shelf drag widens rightward (positive dx grows the panel)', () => {
+  it('shelf drag widens leftward (negative dx grows the panel; its handle is on its left edge)', () => {
     const { frame, instance } = mountFrame()
     act(() => { instance.actions.openShelf() })
     const handles = frame.querySelectorAll('[class*="handle"]')
-    drag(handles[1]!, 1520, 1600)
+    drag(handles[1]!, 1520, 1440)
     expect(instance.getSnapshot().shelf).toBe(480)
+    drag(handles[1]!, 1440, 1520)
+    expect(instance.getSnapshot().shelf).toBe(SHELF_DEFAULT)
   })
 
   it('shelf and details can be open together, each with its own handle', () => {
