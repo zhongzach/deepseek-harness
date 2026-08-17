@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { RpcResponse } from '@deepseek-ai/dsh-api-remotes/client'
 import { refreshWelcomeIfLoaded, WelcomeNoticeStore } from '../src/client/welcome-store.ts'
 import {
-  WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_SETTINGS_NAMESPACE, WELCOME_NOTICE_VERSION,
+  WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_ENABLED_FIELD, WELCOME_NOTICE_SETTINGS_NAMESPACE, WELCOME_NOTICE_VERSION,
 } from '../src/onboarding-copy.ts'
 
 let rpc = 0
@@ -10,11 +10,11 @@ function ok<T>(value: T): RpcResponse<T> {
   return { rpcId: `welcome-${rpc++}` as never, result: { ok: true, value } }
 }
 
-function namespace(version?: string) {
+function namespace(version?: string, extra: Record<string, unknown> = {}) {
   return {
     ns: WELCOME_NOTICE_SETTINGS_NAMESPACE,
     schema: {},
-    value: version === undefined ? {} : { [WELCOME_NOTICE_ACK_FIELD]: version },
+    value: { ...version === undefined ? {} : { [WELCOME_NOTICE_ACK_FIELD]: version }, ...extra },
     base: {},
     user: {},
     applies: 'live' as const,
@@ -56,6 +56,22 @@ describe('WelcomeNoticeStore', () => {
         settings: {
           describe: vi.fn(() => Promise.resolve(ok({
             writable: true, hasDocument: false, namespaces: [namespace(version)],
+          }))),
+        },
+      }
+      const controller = new WelcomeNoticeStore(api as never)
+      await controller.load()
+      expect(controller.store.getSnapshot()).toMatchObject({ status: 'ready', acknowledged })
+    }
+  })
+
+  it('treats a notice the composition switched off as acknowledged, without a version', async () => {
+    for (const [enabled, acknowledged] of [[false, true], [true, false], [undefined, false]] as const) {
+      const api = {
+        settings: {
+          describe: vi.fn(() => Promise.resolve(ok({
+            writable: true, hasDocument: false,
+            namespaces: [namespace(undefined, enabled === undefined ? {} : { [WELCOME_NOTICE_ENABLED_FIELD]: enabled })],
           }))),
         },
       }
