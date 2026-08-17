@@ -93,6 +93,12 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot().shelf).toBe(SHELF_DEFAULT)
     actions.toggleShelf()
     expect(store.getSnapshot().shelf).toBe(0)
+    // resizeShelf opens at the requested width, clamped to the contract range.
+    actions.resizeShelf(720)
+    expect(store.getSnapshot().shelf).toBe(720)
+    actions.resizeShelf(5000)
+    expect(store.getSnapshot().shelf).toBe(SHELF_MAX)
+    actions.closeShelf()
     actions.openDetails()
     expect(store.getSnapshot().details).toBe(DETAILS_DEFAULT)
     actions.setDetails(500)

@@ -164,8 +164,10 @@ export function AppFrame({
   const onSidebarDrag = useCallback((dx: number) => {
     actions.setSidebar(sidebarBase.current + dx)
   }, [actions])
+  // The shelf's handle sits on its LEFT edge: dragging it leftward (negative
+  // dx) grows the column, like details.
   const onShelfDrag = useCallback((dx: number) => {
-    actions.setShelf(shelfBase.current + dx)
+    actions.setShelf(shelfBase.current - dx)
   }, [actions])
   const onDetailsDrag = useCallback((dx: number) => {
     actions.setDetails(detailsBase.current - dx)

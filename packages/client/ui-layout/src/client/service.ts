@@ -29,6 +29,8 @@ export interface ILayout {
   closeShelf(): void
   /** Toggle the shelf panel (closed ⟷ contract default width). */
   toggleShelf(): void
+  /** Open the shelf panel at a requested width in px (clamped to the contract range). */
+  resizeShelf(px: number): void
   /** Open the details panel (no-op when already open). */
   openDetails(): void
   /** Close the details panel. */
@@ -68,6 +70,11 @@ export class LayoutController implements ILayout {
   /** Toggle the shelf panel (closed ⟷ contract default width). */
   toggleShelf(): void {
     this.#require().toggleShelf()
+  }
+
+  /** Open the shelf panel at a requested width in px (clamped to the contract range). */
+  resizeShelf(px: number): void {
+    this.#require().resizeShelf(px)
   }
 
   /** Open the details panel (no-op when already open). */
