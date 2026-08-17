@@ -25,10 +25,11 @@
 
 /* figma 34:10411: fish + title, gap 10, centered; 26/32 wt500. The preview
    badge is a product addition outside that source: a mono superscript pill
-   riding the title's top-right. */
+   riding the title's top-right. A flex row, not a fixed grid: the row is the
+   `conversation.hero.headline` hole, and a registered headline brings its own
+   items — they must center as a group rather than land in the fish's track. */
 .headline {
-  display: grid;
-  grid-template-columns: 34px auto auto;
+  display: flex;
   column-gap: 10px;
   align-items: center;
   justify-content: center;
@@ -39,13 +40,10 @@
 }
 
 .headlineText {
-  grid-row: 1;
-  grid-column: 2;
+  min-width: 0;
 }
 
 .previewBadge {
-  grid-row: 1;
-  grid-column: 3;
   align-self: start;
   margin-top: 2px;
   margin-left: -3px;
@@ -61,10 +59,10 @@
   white-space: nowrap;
 }
 
-/* Keep hover detection on a stationary box while the mark moves within it. */
+/* Keep hover detection on a stationary box while the mark moves within it
+   (34px: the mark's own width, formerly the first grid track). */
 .fishHitbox {
-  grid-row: 1;
-  grid-column: 1;
+  width: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
