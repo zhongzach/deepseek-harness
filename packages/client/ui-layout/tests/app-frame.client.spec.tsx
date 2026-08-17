@@ -15,7 +15,10 @@ import { act, cleanup, render } from '@testing-library/react'
 import { useSyncExternalStore } from 'react'
 import { AppFrame } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
 import type { AppFrameProps } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
-import { SIDEBAR_COLLAPSED, SHELF_DEFAULT } from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
+import { CENTER_MIN, SIDEBAR_COLLAPSED, SHELF_DEFAULT } from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
+
+/** A step-2 squeeze: 280 + 360 + CENTER_MIN exceeds this viewport by 30, so details renders 330 while its preference stays 360. */
+const SQUEEZED = 280 + 360 + CENTER_MIN - 30
 import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/stores.ts'
 import type {
   SessionId, SessionListState, WorkspaceListState,
@@ -236,7 +239,7 @@ describe('AppFrame', () => {
   })
 
   it('drag base is the rendered (concession-clamped) width, not the preference', () => {
-    frameWidth = 1250 // step-2 squeeze: details renders 330 while preference is 360
+    frameWidth = SQUEEZED
     const { frame, instance } = mountFrame()
     act(() => { instance.actions.openDetails() })
     expect(tracks(frame)).toEqual([280, 0, 330])
@@ -298,7 +301,7 @@ describe('AppFrame', () => {
   it('viewport shrink triggers the concession chain via ResizeObserver', () => {
     const { frame, instance } = mountFrame()
     act(() => { instance.actions.openDetails() })
-    frameWidth = 1250
+    frameWidth = SQUEEZED
     act(() => { fireResize?.(); vi.advanceTimersByTime(20) })
     expect(tracks(frame)).toEqual([280, 0, 330])
     frameWidth = 1920
@@ -425,7 +428,7 @@ describe('AppFrame — unmount with an in-flight resize frame', () => {
   it('double resize inside one frame rides the pending rAF (??= guard)', () => {
     const { frame, instance } = mountFrame()
     act(() => { instance.actions.openDetails() })
-    frameWidth = 1250
+    frameWidth = SQUEEZED
     act(() => { fireResize?.(); fireResize?.(); vi.advanceTimersByTime(20) })
     expect(tracks(frame)).toEqual([280, 0, 330])
   })
