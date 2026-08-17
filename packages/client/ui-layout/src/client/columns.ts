@@ -19,7 +19,7 @@ export interface Columns { sidebar: number; center: number; shelf: number; detai
 
 // Contract-frozen geometry: the four-column concession chain's fixed points.
 /** Center column floor; only the final fallback may go below it. */
-export const CENTER_MIN = 640
+export const CENTER_MIN = 480
 /** Sidebar drag clamp floor. */
 export const SIDEBAR_MIN = 264
 /** Sidebar drag clamp ceiling. */
