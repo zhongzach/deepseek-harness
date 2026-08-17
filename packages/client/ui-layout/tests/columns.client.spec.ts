@@ -36,8 +36,8 @@ describe('computeColumns', () => {
   })
 
   it('step 2: details shrinks first, center pinned at min (shelf closed)', () => {
-    // 280 + 360 + 640 = 1280 > 1250; details concedes to 1250-280-640 = 330.
-    const cols = computeColumns(1250, open(SIDEBAR_DEFAULT), closed(SHELF_DEFAULT), open(DETAILS_DEFAULT))
+    // 280 + 360 + CENTER_MIN exceeds the viewport by 30; details concedes to 330.
+    const cols = computeColumns(280 + 360 + CENTER_MIN - 30, open(SIDEBAR_DEFAULT), closed(SHELF_DEFAULT), open(DETAILS_DEFAULT))
     expect(cols).toEqual({ sidebar: 280, center: CENTER_MIN, shelf: 0, details: 330 })
   })
 
@@ -49,9 +49,10 @@ describe('computeColumns', () => {
   })
 
   it('step 3: details auto-closes when its min still starves center — sidebar holds its preference', () => {
-    // 280 + 300 + 640 = 1220 > 1210 → details 0; sidebar untouched: center = 1210-280 = 930.
-    const cols = computeColumns(1210, open(SIDEBAR_DEFAULT), closed(SHELF_DEFAULT), open(DETAILS_DEFAULT))
-    expect(cols).toEqual({ sidebar: 280, center: 930, shelf: 0, details: 0 })
+    // 280 + DETAILS_MIN + CENTER_MIN exceeds the viewport by 10 → details 0; sidebar untouched: center = viewport - 280.
+    const viewport = 280 + DETAILS_MIN + CENTER_MIN - 10
+    const cols = computeColumns(viewport, open(SIDEBAR_DEFAULT), closed(SHELF_DEFAULT), open(DETAILS_DEFAULT))
+    expect(cols).toEqual({ sidebar: 280, center: viewport - 280, shelf: 0, details: 0 })
   })
 
   it('the sidebar never concedes: center absorbs the deficit below CENTER_MIN', () => {
@@ -82,7 +83,9 @@ describe('computeColumns', () => {
   })
 
   it('recovery is pure: re-widening restores preferred widths untouched', () => {
-    const squeezed = computeColumns(1100, open(SIDEBAR_DEFAULT), closed(SHELF_DEFAULT), open(DETAILS_DEFAULT))
+    const squeezed = computeColumns(
+      280 + DETAILS_MIN + CENTER_MIN - 120, open(SIDEBAR_DEFAULT), closed(SHELF_DEFAULT), open(DETAILS_DEFAULT),
+    )
     expect(squeezed.details).toBe(0)
     const restored = computeColumns(1920, open(SIDEBAR_DEFAULT), closed(SHELF_DEFAULT), open(DETAILS_DEFAULT))
     expect(restored.details).toBe(DETAILS_DEFAULT)
@@ -99,21 +102,24 @@ describe('computeColumns — the shelf column', () => {
   })
 
   it('step 2: the shelf shrinks first, center pinned at min', () => {
-    // 280 + 400 + 360 + 640 = 1680 > 1679; shelf concedes to 1679-280-360-640 = 399.
-    const cols = computeColumns(1679, open(SIDEBAR_DEFAULT), open(SHELF_DEFAULT), open(DETAILS_DEFAULT))
-    expect(cols).toEqual({ sidebar: 280, center: CENTER_MIN, shelf: 399, details: 360 })
+    // 280 + 400 + 360 + CENTER_MIN exceeds the viewport by 1; shelf concedes to 399.
+    const cols = computeColumns(
+      280 + SHELF_DEFAULT + 360 + CENTER_MIN - 1, open(SIDEBAR_DEFAULT), open(SHELF_DEFAULT), open(DETAILS_DEFAULT),
+    )
+    expect(cols).toEqual({ sidebar: 280, center: CENTER_MIN, shelf: SHELF_DEFAULT - 1, details: 360 })
   })
 
   it('step 3: details shrinks after the shelf reached its minimum', () => {
-    // 280 + 300 + 360 + 640 = 1580 > 1579; shelf floors at 300, details concedes to 359.
-    const cols = computeColumns(1579, open(SIDEBAR_DEFAULT), open(SHELF_DEFAULT), open(DETAILS_DEFAULT))
+    // 280 + SHELF_MIN + 360 + CENTER_MIN exceeds the viewport by 1; shelf floors at its min, details concedes to 359.
+    const cols = computeColumns(280 + SHELF_MIN + 360 + CENTER_MIN - 1, open(SIDEBAR_DEFAULT), open(SHELF_DEFAULT), open(DETAILS_DEFAULT))
     expect(cols).toEqual({ sidebar: 280, center: CENTER_MIN, shelf: SHELF_MIN, details: 359 })
   })
 
   it('step 4: details auto-closes before the shelf concedes — shelf never auto-closes', () => {
-    // 280 + 300 + 300 + 640 = 1520 > 1519; details closes, shelf keeps its floor.
-    const cols = computeColumns(1519, open(SIDEBAR_DEFAULT), open(SHELF_DEFAULT), open(DETAILS_DEFAULT))
-    expect(cols).toEqual({ sidebar: 280, center: 1519 - 280 - 300, shelf: SHELF_MIN, details: 0 })
+    // 280 + SHELF_MIN + DETAILS_MIN + CENTER_MIN exceeds the viewport by 1; details closes, shelf keeps its floor.
+    const viewport = 280 + SHELF_MIN + DETAILS_MIN + CENTER_MIN - 1
+    const cols = computeColumns(viewport, open(SIDEBAR_DEFAULT), open(SHELF_DEFAULT), open(DETAILS_DEFAULT))
+    expect(cols).toEqual({ sidebar: 280, center: viewport - 280 - SHELF_MIN, shelf: SHELF_MIN, details: 0 })
   })
 
   it('shelf preferences clamp into their contract range', () => {
