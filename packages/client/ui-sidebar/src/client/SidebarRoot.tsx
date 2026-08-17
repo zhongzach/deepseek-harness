@@ -9,6 +9,8 @@
  * the New Session button and the foot is the `sidebar.workspaces` registrant's,
  * and the foot holds `sidebar.settings` plus `sidebar.footer.action`; the shell
  * hands them the wide flag (plus an expand request callback for the browser).
+ * The brand mark is the `sidebar.brand` hole (wordmark when wide, rail glyph
+ * when collapsed), falling back to the shell's own DeepSeek Harness mark.
  *
  * The column also owns whether the scroll regions nested in it draw a
  * scrollbar at all: the shell tracks the pointer and rebinds ui-theme's
@@ -137,7 +139,8 @@ export function SidebarRoot({
             aria-label={t('session.new.label')}
             onClick={() => { startSession() }}
           >
-            <BrandWordmark />
+            {/* The brand hole: a downstream composition's wordmark, else ours. */}
+            {renderSlot('sidebar.brand', { wide: true }, { fallback: <BrandWordmark /> })}
           </button>
         )}
         {/* Rail resting state is the whale mark; hovering swaps in the panel
@@ -149,7 +152,9 @@ export function SidebarRoot({
             aria-label={collapsed ? t('toggle.open') : t('toggle.collapse')}
             onClick={() => { toggleSidebar() }}
           >
-            {!wide && <FishLogo className={css.railFish} size={24} />}
+            {/* The brand hole again, as the rail glyph: hidden on hover behind
+                the panel icon (every non-icon child of the toggle is). */}
+            {!wide && renderSlot('sidebar.brand', { wide: false }, { fallback: <FishLogo className={css.railFish} size={24} /> })}
             {/* Rail icons render at 18 (figma rail spec); expanded keeps the glyph-native sizes. */}
             <IconPanelLeftOutline16 className={css.panelIcon} size={wide ? 16 : 18} />
           </button>

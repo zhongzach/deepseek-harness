@@ -163,6 +163,12 @@
   display: none;
 }
 
+/* A registered brand mark rides the same swap: hovering the rail toggle hides
+   every non-icon child of it behind the panel icon. */
+.collapsed .toggle:hover > :not(.panelIcon) {
+  display: none;
+}
+
 /* Rail icons ride the primary ink (figma rail spec); expanded keeps the
    secondary icon-button ink. */
 .collapsed .iconButton {
