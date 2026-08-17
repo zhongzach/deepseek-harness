@@ -2,6 +2,7 @@
 // ConversationRoot skeleton behavior: the ONE resident composer across the
 // hero (blank session) and active phases — same textarea DOM node, machine-
 // owned draft, and the hero workspace picker (switching = retargetWorkspace).
+import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
@@ -138,12 +139,14 @@ function mount(
   /** Owner share handed to the two composer tool-row seats, per render. */
   const seatOwners: { key: string; owner: unknown }[] = []
   let pickerOwner: unknown
-  const renderSlot = ((key: string, owner: object, opts?: { only?: string }) => {
+  const renderSlot = ((key: string, owner: object, opts?: { only?: string; fallback?: ReactNode }) => {
     slotCalls.push(key)
     if (key === 'conversation.input.model' || key === 'conversation.input.plan') {
       seatOwners.push({ key, owner })
     }
     if (key === 'conversation.hero.workspace') { pickerOwner = owner; return null }
+    // Unregistered hole: the machinery renders the owner's fallback (the shipped headline).
+    if (key === 'conversation.hero.headline') return opts?.fallback ?? null
     if (key === 'conversation.session.header') {
       return (
         <ConversationSessionHeader
@@ -262,6 +265,15 @@ describe('Hero chrome', () => {
     const view = render(<HeroShell t={makeTranslate(en, commonEn)} />)
     expect(view.getByText('Into the Unknown')).toBeTruthy()
     expect(view.getByText('Preview')).toBeTruthy()
+  })
+
+  it('renders a registered headline instead of the shipped one', () => {
+    // The owner hands the `conversation.hero.headline` hole's render down;
+    // an occupant replaces the whale/tagline/badge row wholesale.
+    const view = render(<HeroShell t={makeTranslate(en, commonEn)} headline={<span>My Product</span>} />)
+    expect(view.getByText('My Product')).toBeTruthy()
+    expect(view.queryByText('Into the Unknown')).toBeNull()
+    expect(view.queryByText('Preview')).toBeNull()
   })
 })
 
