@@ -2,8 +2,8 @@
 // ConversationRoot skeleton behavior: the ONE resident composer across the
 // hero (blank session) and active phases — same textarea DOM node, machine-
 // owned draft, and the hero workspace picker (switching = retargetWorkspace).
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import {
@@ -164,6 +164,8 @@ function mount(
       lineageOwners.push(owner as ConversationHeaderLineageOwnerProps)
       return opts?.fallback ?? null
     }
+    // Unregistered hole: the machinery renders the owner's fallback (the shipped headline).
+    if (key === 'conversation.hero.headline') return opts?.fallback ?? null
     if (key === 'conversation.session.header') {
       return (
         <ConversationSessionHeader
@@ -292,6 +294,15 @@ describe('Hero chrome', () => {
     expect(brandMarkOwner.size).toBe(34)
     expect(brandMarkOwner.className).toBeTypeOf('string')
     expect(renderSlot.mock.calls[0]?.[2]?.fallback).toBeTruthy()
+  })
+
+  it('renders a registered headline instead of the shipped one', () => {
+    // The owner hands the `conversation.hero.headline` hole's render down;
+    // an occupant replaces the whale/tagline/badge row wholesale.
+    const view = render(<HeroShell t={makeTranslate(en, commonEn)} headline={<span>My Product</span>} />)
+    expect(view.getByText('My Product')).toBeTruthy()
+    expect(view.queryByText('Into the Unknown')).toBeNull()
+    expect(view.queryByText('Preview')).toBeNull()
   })
 })
 

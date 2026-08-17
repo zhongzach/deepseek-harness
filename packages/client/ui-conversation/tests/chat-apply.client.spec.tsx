@@ -96,6 +96,7 @@ describe('apply wiring', () => {
     expect(b.slots.spec('conversation.hero.agentPreset')).toEqual({ kind: 'single', scope: 'root' })
     expect(b.slots.spec('conversation.session.header.lineage'))
       .toEqual({ kind: 'single', scope: 'session' })
+    expect(b.slots.spec('conversation.hero.headline')).toEqual({ kind: 'single', scope: 'root' })
     expect(b.slots.entries('settings.general.item').map(entry => entry.options.id)).toEqual(['composer-enter'])
     await b.runtime.dispose()
   })

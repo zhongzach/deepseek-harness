@@ -1,5 +1,6 @@
-// Hero chrome for the blank-draft phase of ConversationRoot: fish headline,
-// glow backdrop, and the workspace row. Pure presentation — the resident
+// Hero chrome for the blank-draft phase of ConversationRoot: the headline
+// row (the `conversation.hero.headline` hole, shipped fish headline as its
+// fallback), glow backdrop, and the workspace row. Pure presentation — the resident
 // composer is NOT rendered here (it keeps its own stable tree position in
 // ConversationRoot so the textarea survives the hero → composer flip); CSS
 // positions it over this shell's glow area during the hero phase.
@@ -104,8 +105,37 @@ export interface HeroShellProps {
   t: HeroTranslate
   /** Authorized renderer for the hero brand-mark slot. */
   renderSlot: ConversationSlotProps['renderSlot']
+  /**
+   * The headline row's content. The owner passes the
+   * `conversation.hero.headline` hole's render (with {@link HeroHeadline} as
+   * its fallback); absent, the shipped headline renders directly.
+   */
+  headline?: ReactNode
   /** Overlay content after the stack (modals). */
   children?: ReactNode
+}
+
+/**
+ * The shipped headline: whale mark, tagline, preview badge (figma 34:10412:
+ * fish 34×25 leading the headline, gap 10). The fallback of the
+ * `conversation.hero.headline` hole; the mark itself rides the
+ * `conversation.hero.brand.mark` hole inside.
+ * @param props.t - the owner's locale seat.
+ * @param props.renderSlot - authorized renderer for the hero brand-mark slot.
+ * @returns the headline row content.
+ */
+export function HeroHeadline({ t, renderSlot }: { t: HeroTranslate; renderSlot: ConversationSlotProps['renderSlot'] }) {
+  return (
+    <>
+      <span className={css.fishHitbox}>
+        {renderSlot('conversation.hero.brand.mark', { size: 34, className: css.fish }, {
+          fallback: <FishLogo size={34} className={css.fish} />,
+        })}
+      </span>
+      <span className={css.headlineText}>{t('hero.headline')}</span>
+      <span className={css.previewBadge}>{t('hero.preview')}</span>
+    </>
+  )
 }
 
 /**
@@ -114,19 +144,12 @@ export interface HeroShellProps {
  * @param props - see {@link HeroShellProps}.
  * @returns the centered hero element tree.
  */
-export function HeroShell({ t, renderSlot, children }: HeroShellProps) {
+export function HeroShell({ t, renderSlot, headline, children }: HeroShellProps) {
   return (
     <div className={css.root}>
       <div className={css.stack}>
         <div className={css.headline}>
-          {/* figma 34:10412: fish 34×25 leading the headline, gap 10. */}
-          <span className={css.fishHitbox}>
-            {renderSlot('conversation.hero.brand.mark', { size: 34, className: css.fish }, {
-              fallback: <FishLogo size={34} className={css.fish} />,
-            })}
-          </span>
-          <span className={css.headlineText}>{t('hero.headline')}</span>
-          <span className={css.previewBadge}>{t('hero.preview')}</span>
+          {headline ?? <HeroHeadline t={t} renderSlot={renderSlot} />}
         </div>
         <div className={css.body}>
           {/* The resident composer (ConversationRoot's root-owned scrollport;
