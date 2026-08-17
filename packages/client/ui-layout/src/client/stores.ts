@@ -35,6 +35,7 @@ type LayoutActions = {
   setNarrow: (draft: LayoutState, narrow: boolean) => void
   openShelf: (draft: LayoutState) => void
   closeShelf: (draft: LayoutState) => void
+  toggleShelf: (draft: LayoutState) => void
   openDetails: (draft: LayoutState) => void
   closeDetails: (draft: LayoutState) => void
 }
@@ -71,6 +72,7 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       },
       openShelf: (d) => { if (d.shelf === 0) d.shelf = SHELF_DEFAULT },
       closeShelf: (d) => { d.shelf = 0 },
+      toggleShelf: (d) => { d.shelf = d.shelf === 0 ? SHELF_DEFAULT : 0 },
       openDetails: (d) => { if (d.details === 0) d.details = DETAILS_DEFAULT },
       closeDetails: (d) => { d.details = 0 },
     },
