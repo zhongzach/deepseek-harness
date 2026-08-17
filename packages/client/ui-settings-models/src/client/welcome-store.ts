@@ -8,7 +8,7 @@
 import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import {
-  WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_VERSION,
+  WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_ENABLED_FIELD, WELCOME_NOTICE_VERSION,
 } from '../onboarding-copy.ts'
 
 /** State rendered by the welcome step. */
@@ -37,6 +37,11 @@ export function decodeWelcomeSection(section: unknown): WelcomeSection {
 /* v8 ignore next 3 -- closed-union default only defends future source widening */
 function assertNever(_value: never): never {
   throw new Error('unexpected welcome settings status')
+}
+
+/** The composition switched the notice off (base layer); absent means on. */
+function noticeDisabled(section: WelcomeSection | undefined): boolean {
+  return section?.[WELCOME_NOTICE_ENABLED_FIELD] === false
 }
 
 /** Coordinates durable Host acknowledgement or a process-local remote fallback. */
@@ -125,7 +130,10 @@ export class WelcomeNoticeStore {
         })
         return
       case 'ready': {
-        const acknowledged = scope.value?.[WELCOME_NOTICE_ACK_FIELD] === WELCOME_NOTICE_VERSION
+        // A notice the composition switched off needs no acknowledgement:
+        // the step completes exactly as it does for an acknowledged copy.
+        const acknowledged = noticeDisabled(scope.value)
+          || scope.value?.[WELCOME_NOTICE_ACK_FIELD] === WELCOME_NOTICE_VERSION
         this.store.update((state) => {
           state.status = 'ready'
           state.acknowledged = acknowledged

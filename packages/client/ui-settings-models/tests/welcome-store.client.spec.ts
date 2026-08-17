@@ -6,7 +6,7 @@ import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/
 import { SettingsScopeController } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-scope.ts'
 import { decodeWelcomeSection, WelcomeNoticeStore } from '../src/client/welcome-store.ts'
 import {
-  WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_SETTINGS_NAMESPACE, WELCOME_NOTICE_VERSION,
+  WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_ENABLED_FIELD, WELCOME_NOTICE_SETTINGS_NAMESPACE, WELCOME_NOTICE_VERSION,
 } from '../src/onboarding-copy.ts'
 
 const schemaService = new SettingsSchemaService(new Context())
@@ -74,6 +74,20 @@ describe('WelcomeNoticeStore', () => {
         writable: true,
         hasDocument: false,
         namespaces: [version === undefined ? namespace() : acknowledgedNamespace(version)],
+      })))
+      const { mirror, controller } = buildWelcome({ describe: describeCall })
+      await mirror.load()
+      await controller.load()
+      expect(controller.store.getSnapshot()).toMatchObject({ status: 'ready', acknowledged })
+    }
+  })
+
+  it('treats a notice the composition switched off as acknowledged, without a version', async () => {
+    for (const [enabled, acknowledged] of [[false, true], [true, false], [undefined, false]] as const) {
+      const describeCall = vi.fn(() => Promise.resolve(ok({
+        writable: true,
+        hasDocument: false,
+        namespaces: [namespace(enabled === undefined ? {} : { [WELCOME_NOTICE_ENABLED_FIELD]: enabled })],
       })))
       const { mirror, controller } = buildWelcome({ describe: describeCall })
       await mirror.load()
