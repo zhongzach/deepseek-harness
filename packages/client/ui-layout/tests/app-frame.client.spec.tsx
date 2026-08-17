@@ -91,7 +91,9 @@ function mountFrame() {
     />
   )
   const utils = render(element())
-  const frame = utils.container.firstElementChild as HTMLElement
+  // The root occupant is the shell (titlebar row + frame); the frame is its
+  // last child.
+  const frame = utils.container.firstElementChild!.lastElementChild as HTMLElement
   return { instance, frame, slotCalls, rerenderFrame: () => { utils.rerender(element()) }, ...utils }
 }
 
