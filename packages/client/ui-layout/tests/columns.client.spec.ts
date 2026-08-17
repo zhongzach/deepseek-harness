@@ -117,9 +117,10 @@ describe('computeColumns — the shelf column', () => {
   })
 
   it('shelf preferences clamp into their contract range', () => {
-    const cols = computeColumns(1920, open(SIDEBAR_DEFAULT), open(9999), open(DETAILS_DEFAULT))
+    // A viewport wide enough to host SHELF_MAX beside the sidebar, details and CENTER_MIN.
+    const cols = computeColumns(2560, open(SIDEBAR_DEFAULT), open(9999), open(DETAILS_DEFAULT))
     expect(cols.shelf).toBe(SHELF_MAX)
-    const small = computeColumns(1920, open(SIDEBAR_DEFAULT), open(1), open(DETAILS_DEFAULT))
+    const small = computeColumns(2560, open(SIDEBAR_DEFAULT), open(1), open(DETAILS_DEFAULT))
     expect(small.shelf).toBe(SHELF_MIN)
   })
 })
