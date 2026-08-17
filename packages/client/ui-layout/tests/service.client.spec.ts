@@ -17,6 +17,7 @@ function fakePanels(): PanelActions {
     setNarrow: vi.fn(),
     openShelf: vi.fn(),
     closeShelf: vi.fn(),
+    toggleShelf: vi.fn(),
     openDetails: vi.fn(),
     closeDetails: vi.fn(),
   }
@@ -31,12 +32,14 @@ describe('LayoutController', () => {
     service.toggleSidebar()
     service.openShelf()
     service.closeShelf()
+    service.toggleShelf()
     service.openDetails()
     service.closeDetails()
 
     expect(panels.toggleSidebar).toHaveBeenCalledTimes(1)
     expect(panels.openShelf).toHaveBeenCalledTimes(1)
     expect(panels.closeShelf).toHaveBeenCalledTimes(1)
+    expect(panels.toggleShelf).toHaveBeenCalledTimes(1)
     expect(panels.openDetails).toHaveBeenCalledTimes(1)
     expect(panels.closeDetails).toHaveBeenCalledTimes(1)
     expect(panels.setSidebar).not.toHaveBeenCalled()

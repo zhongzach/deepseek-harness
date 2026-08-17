@@ -88,6 +88,11 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot().shelf).toBe(500)
     actions.closeShelf()
     expect(store.getSnapshot().shelf).toBe(0)
+    // toggleShelf flips closed ⟷ default width.
+    actions.toggleShelf()
+    expect(store.getSnapshot().shelf).toBe(SHELF_DEFAULT)
+    actions.toggleShelf()
+    expect(store.getSnapshot().shelf).toBe(0)
     actions.openDetails()
     expect(store.getSnapshot().details).toBe(DETAILS_DEFAULT)
     actions.setDetails(500)
