@@ -108,6 +108,25 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot().details).toBe(0)
   })
 
+  it('collapseSidebar/expandSidebar are the explicit forms of the toggle, in wide and narrow modes', () => {
+    const { store, actions } = createLayoutStore().create()
+    actions.collapseSidebar()
+    expect(store.getSnapshot().sidebar).toBe(0)
+    actions.collapseSidebar()
+    expect(store.getSnapshot().sidebar).toBe(0)
+    actions.expandSidebar()
+    expect(store.getSnapshot().sidebar).toBe(SIDEBAR_DEFAULT)
+    actions.setSidebar(360)
+    actions.expandSidebar()
+    expect(store.getSnapshot().sidebar).toBe(360)
+    // Narrow viewport: the override flag is what flips.
+    actions.setNarrow(true)
+    actions.expandSidebar()
+    expect(store.getSnapshot().narrowExpanded).toBe(true)
+    actions.collapseSidebar()
+    expect(store.getSnapshot().narrowExpanded).toBe(false)
+  })
+
   it('does not persist panel geometry', () => {
     const first = createLayoutStore().create()
     first.actions.setSidebar(400)
