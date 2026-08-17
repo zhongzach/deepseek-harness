@@ -430,6 +430,30 @@ export interface Config {
 
 来源：[`packages/client/hmr/src/index.ts:31`](../packages/client/hmr/src/index.ts)
 
+<a id="deepseek-aidsh-client-ui-settings-general"></a>
+
+## `@deepseek-ai/dsh-client-ui-settings-general`
+
+```ts config-catalog
+/**
+ * Plugin config: the product-wide onboarding facts a composition decides.
+ * They land as the `ui-onboarding` namespace's composition `base` layer, so
+ * the browser reads them through the same settings boundary as the
+ * per-person acknowledgement, and a person's own settings document can still
+ * override them.
+ */
+export interface Config {
+  /**
+   * Show the internal-testing welcome notice until its current copy version
+   * is acknowledged. A downstream composition that owns its own onboarding
+   * turns it off; the shipped GUI keeps it on.
+   */
+  welcomeNotice?: boolean
+}
+```
+
+来源：[`packages/client/ui-settings-general/src/index.ts:16`](../packages/client/ui-settings-general/src/index.ts)
+
 <a id="deepseek-aidsh-code-runtime-worker-thread"></a>
 
 ## `@deepseek-ai/dsh-code-runtime-worker-thread`
@@ -3049,7 +3073,6 @@ export interface Config {
 - `@deepseek-ai/dsh-client-ui-permission-presets`（[`packages/client/ui-permission-presets/src/index.ts`](../packages/client/ui-permission-presets/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-plan`（[`packages/client/ui-plan/src/index.ts`](../packages/client/ui-plan/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-settings`（[`packages/client/ui-settings/src/index.ts`](../packages/client/ui-settings/src/index.ts)）
-- `@deepseek-ai/dsh-client-ui-settings-general`（[`packages/client/ui-settings-general/src/index.ts`](../packages/client/ui-settings-general/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-settings-models`（[`packages/client/ui-settings-models/src/index.ts`](../packages/client/ui-settings-models/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-settings-plugin-inventory`（[`packages/client/ui-settings-plugin-inventory/src/index.ts`](../packages/client/ui-settings-plugin-inventory/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-settings-plugins`（[`packages/client/ui-settings-plugins/src/index.ts`](../packages/client/ui-settings-plugins/src/index.ts)）

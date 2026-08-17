@@ -4,7 +4,7 @@ import type { IApiClient, SettingsNamespaceView } from '@deepseek-ai/dsh-api-rem
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import {
-  WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_SETTINGS_NAMESPACE, WELCOME_NOTICE_VERSION,
+  WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_ENABLED_FIELD, WELCOME_NOTICE_SETTINGS_NAMESPACE, WELCOME_NOTICE_VERSION,
 } from '../onboarding-copy.ts'
 
 /** State rendered by the welcome step. */
@@ -22,6 +22,12 @@ function acknowledgementOf(view: SettingsNamespaceView): string | undefined {
   if (typeof view.value !== 'object' || view.value === null) return undefined
   const value = (view.value as Record<string, unknown>)[WELCOME_NOTICE_ACK_FIELD]
   return typeof value === 'string' ? value : undefined
+}
+
+/** The composition switched the notice off (base layer); absent means on. */
+function disabledBy(view: SettingsNamespaceView): boolean {
+  if (typeof view.value !== 'object' || view.value === null) return false
+  return (view.value as Record<string, unknown>)[WELCOME_NOTICE_ENABLED_FIELD] === false
 }
 
 /** Coordinates durable Host acknowledgement or a process-local remote fallback. */
@@ -60,7 +66,9 @@ export class WelcomeNoticeStore {
       if (generation !== this.generation) return
       this.store.update((state) => {
         state.status = 'ready'
-        state.acknowledged = acknowledgementOf(view) === WELCOME_NOTICE_VERSION
+        // A notice the composition switched off needs no acknowledgement:
+        // the step completes exactly as it does for an acknowledged copy.
+        state.acknowledged = disabledBy(view) || acknowledgementOf(view) === WELCOME_NOTICE_VERSION
         state.error = null
       })
     } catch (error) {
