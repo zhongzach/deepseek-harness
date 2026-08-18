@@ -272,7 +272,7 @@ describe('AppFrame', () => {
     act(() => { instance.actions.openShelf() })
     const handles = frame.querySelectorAll('[class*="handle"]')
     drag(handles[1]!, 1520, 1440)
-    expect(instance.getSnapshot().shelf).toBe(480)
+    expect(instance.getSnapshot().shelf).toBe(SHELF_DEFAULT + 80)
     drag(handles[1]!, 1440, 1520)
     expect(instance.getSnapshot().shelf).toBe(SHELF_DEFAULT)
   })
