@@ -8,6 +8,7 @@ import { usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-settings-general/client'
 import { CloseLabel, HeaderContent, TriggerContent } from '../src/client/chrome.tsx'
 import { GeneralSection } from '../src/client/GeneralSection.tsx'
+import type { SettingsRootInjected } from '../src/client/shell-contract.ts'
 import { SettingsDocumentAction } from '../src/client/SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from '../src/client/SettingsDocumentAction.tsx'
 
@@ -161,6 +162,29 @@ describe('ui-settings-general apply', () => {
     expect(b.settingsDescribe).toHaveBeenCalledOnce()
     b.ctx.emit('connection/reset')
     await vi.waitFor(() => { expect(b.settingsDescribe).toHaveBeenCalledTimes(2) })
+  })
+
+  it('projects nav rows and onboarding steps from the shadowing winners: a same-id lower-priority entry replaces, not adds', async () => {
+    const b = await bench()
+    // The sidebar seat alone: the shell root registers into it and declares
+    // the settings.* children itself (as it does in the app).
+    b.slots.register({ name: 'root', children: { 'sidebar.settings': { kind: 'single', scope: 'root' } } } as never, () => null)
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const root = b.slots.entries('sidebar.settings')[0]!
+    const { hooks } = (root.inject as unknown as () => SettingsRootInjected)()
+    expect(hooks.sections.getSnapshot().map(row => row.id)).toEqual(['general'])
+    // A downstream product shadows the General page (same id, lower priority).
+    const off = b.slots.register(
+      { name: 'settings.section', id: 'general', order: 0, priority: -1, label: 'Mine', inject: () => ({}) } as never,
+      (() => null) as never,
+    )
+    expect(hooks.sections.getSnapshot()).toEqual([{ id: 'general', order: 0, label: 'Mine' }])
+    // Onboarding steps project the same way.
+    b.slots.register({ name: 'settings.onboarding', id: 'step', order: 0, inject: () => ({}) } as never, (() => null) as never)
+    b.slots.register({ name: 'settings.onboarding', id: 'step', order: 0, priority: -1, inject: () => ({}) } as never, (() => null) as never)
+    expect(hooks.onboardingSteps.getSnapshot()).toEqual([{ id: 'step', order: 0 }])
+    off()
+    expect(hooks.sections.getSnapshot().map(row => row.label)).toEqual(['通用设置'])
   })
 
   it('withholds the loopback-only document action off-loopback', async () => {
