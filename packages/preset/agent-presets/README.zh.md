@@ -99,7 +99,7 @@ description: 仅提供持久 bash 与 str_replace_editor 的双工具编码 Agen
 
 `includeUserRoot: false` 使 roster 只覆盖 `roots`。把 preset 限制在自有目录内的部署需要它，任何钉住确切 roster 的测试同样需要——否则将由这台机器真实的 `<dshHome>` 决定 roster 的内容。
 
-随附根目录仍然是装配事实：它位于已安装 app 自身配置的旁边，那个路径只有该 app 能解析。
+随附根目录仍然是装配事实：它位于已安装 app 自身配置的旁边，那个路径只有该 app 能解析。`apps/cli` 把它**追加**在组合已配置的根目录之后（bundle 或 profile 可以提供自己的 preset 目录，`system` 或 `user` 皆可），因此优先级是 组合根目录 > 随附根目录 > 用户根目录；行上写 `includeShippedRoot: false`（仅启动器认识的键，送达本插件前已剥去）则挂载一个不含随附 preset 的 roster。已配置的条目原样经过启动器，因此根目录的 `path` 可以是 `!!js` 表达式（`dshHomePath(...)`、`baseUrl`），由 Loader 在该行挂载时求值。
 
 ### 默认 preset 是一项用户设置
 
