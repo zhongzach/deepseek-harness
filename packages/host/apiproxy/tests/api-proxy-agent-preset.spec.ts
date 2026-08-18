@@ -11,7 +11,7 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type AgentFactory } from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import SessionStore, { SessionId, type Session } from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionId, type Session, type SessionEvent, type SessionEventMap, type SessionHeader } from '@deepseek-ai/dsh-session'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import { RpcId, type RpcRequest } from '../src/api/rpc.ts'
 import type { HostFrame } from '../src/api/events.ts'
@@ -21,7 +21,7 @@ import {
 import type {} from '@deepseek-ai/dsh-agent-presets/types'
 import { GoalId } from '@deepseek-ai/dsh-goal'
 import { createApiProxy } from '../src/api-proxy.ts'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 let nextRpc = 0
 function request<P>(payload: P): RpcRequest<P> {
@@ -257,6 +257,88 @@ describe('session.create with an agent preset', () => {
  * requests that are ABOUT a session from OUTSIDE it, so it addresses the
  * instance through the agent instead of reading a root-realm singleton.
  */
+describe('a stale stored session (its recorded preset no longer exists)', () => {
+  /**
+   * Persistence reporting one stored session, and a resume double that runs
+   * setup on an agent-carrying ctx the way the factory does — the heal appends
+   * its record through `agentCtx.agent.session`.
+   */
+  async function staleHarness(
+    meta: SessionHeader,
+    events: SessionEvent[],
+    presets: readonly string[],
+  ) {
+    const fixture = await harness(presets, {
+      list: () => Promise.resolve([meta]),
+      inspect: () => Promise.resolve({ meta, events }),
+    })
+    vi.spyOn(fixture.ctx.agents, 'resume').mockImplementation(async (options) => {
+      const session = fixture.ctx.sessions.create(options.resumeSessionId, {
+        meta: {
+          ...meta.cwd === undefined ? {} : { cwd: meta.cwd },
+          ...meta.agentPreset === undefined ? {} : { agentPreset: meta.agentPreset },
+        },
+      })
+      for (const event of events) session.append(event.type as keyof SessionEventMap, event.data as never)
+      const agent = stubAgent(session)
+      const agentCtx = fixture.ctx.extend({ agent })
+      ;(agent as { ctx?: Context }).ctx = agentCtx
+      await options.setup?.(agentCtx)
+      const unregister = fixture.ctx.agents.register(agent)
+      return { agent, dispose: () => { unregister(); return Promise.resolve() } }
+    })
+    return fixture
+  }
+
+  const staleHeader = (id: string, cwd: string): SessionHeader =>
+    ({ version: 0, id: SessionId(id), createdAt: 1, cwd, agentPreset: 'gone' })
+
+  it('agentPreset.select heals a BLANK one: resumes on the default, records it, then swaps', async () => {
+    const meta = staleHeader('stale-select', '/proj')
+    const { api, ctx } = await staleHarness(meta, [], ['standard', 'minimal'])
+
+    const response = await api.agentPresets.select(
+      request({ sessionId: SessionId('stale-select'), agentPreset: 'minimal' }))
+
+    expect(response.result.ok).toBe(true)
+    if (!response.result.ok) throw new Error('unreachable')
+    expect(response.result.value.agentPreset).toBe('minimal')
+    const session = ctx.sessions.get(SessionId('stale-select'))
+    if (session === undefined) throw new Error('unreachable')
+    // The heal recorded the default the way a select records a switch, then
+    // the requested swap recorded over it — the log reads the FINAL preset,
+    // so the next resume needs no heal.
+    expect(resolveSessionPreset(session)).toBe('minimal')
+    expect(session.events.filter(event => event.type === 'agent-preset/selected').map(event => event.data))
+      .toEqual([{ agentPreset: 'standard' }, { agentPreset: 'minimal' }])
+  })
+
+  it('session.create on the stale blank id heals the same way', async () => {
+    const meta = staleHeader('stale-create', '/proj')
+    const { api, ctx } = await staleHarness(meta, [], ['standard', 'minimal'])
+
+    const created = await api.sessions.create(request({ sessionId: SessionId('stale-create'), cwd: '/proj' }))
+
+    expect(created.result.ok).toBe(true)
+    const session = ctx.sessions.get(SessionId('stale-create'))
+    if (session === undefined) throw new Error('unreachable')
+    expect(resolveSessionPreset(session)).toBe('standard')
+  })
+
+  it('a STARTED stale session still fails loud: its history ran tools the roster no longer composes', async () => {
+    const meta = staleHeader('stale-started', '/proj')
+    const events = [{ type: 'turn/start', seq: 1, time: 1, data: { turn: 1 } } as unknown as SessionEvent]
+    const { api } = await staleHarness(meta, events, ['standard', 'minimal'])
+
+    const response = await api.agentPresets.select(
+      request({ sessionId: SessionId('stale-started'), agentPreset: 'minimal' }))
+
+    expect(response.result.ok).toBe(false)
+    if (response.result.ok) throw new Error('unreachable')
+    expect(response.result.error.message).toContain('not found')
+  })
+})
+
 describe('a capability the session\'s preset mounts', () => {
   it('serves the goal RPC from the session\'s own goal service', async () => {
     const { api } = await harness(['standard'])
