@@ -99,7 +99,7 @@ The roots are resolved once, when the service is constructed. A root set that ch
 
 `includeUserRoot: false` mounts a roster over `roots` alone. A deployment that confines presets to its own directories needs it, and so does any test pinning an exact roster — otherwise the machine's real `<dshHome>` decides what the roster contains.
 
-The SHIPPED root stays an assembly fact: it sits beside the installed app's own config, a path only that app can resolve.
+The SHIPPED root stays an assembly fact: it sits beside the installed app's own config, a path only that app can resolve. `apps/cli` appends it AFTER the roots the composition configured (a bundle or profile may supply its own preset directory, `system` or `user`), so the precedence is composition roots > shipped root > user root; a row that sets `includeShippedRoot: false` (a launcher-only key, stripped before the config reaches this plugin) mounts a roster without the shipped presets at all. Configured entries pass through the launcher verbatim, so a root's `path` may be a `!!js` expression (`dshHomePath(...)`, `baseUrl`) that the Loader evaluates when the row mounts.
 
 ### The default preset is a user setting
 

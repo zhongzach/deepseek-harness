@@ -414,7 +414,9 @@
 #
 # Only the SHIPPED root is an assembly fact: it sits beside the installed app's
 # own config, so `apps/cli`'s `composeProfile` resolves and patches it in — the
-# same treatment `distIndex` gets on the webserver row. The writable root is
+# same treatment `distIndex` gets on the webserver row — APPENDED after any
+# `roots` a bundle or profile configures here (composition roots > shipped >
+# user; `includeShippedRoot: false` leaves it out). The writable root is
 # `dsh-agent-presets`' own default (`includeUserRoot`), so a composition that
 # never reaches that patch still finds a person's presets.
 - insert:

@@ -82,6 +82,54 @@ export function resolveTelemetryPatch(disabledEnv: string | undefined, hasRow: b
   return { id: TELEMETRY_ROW_ID, disabled: true }
 }
 
+/** The agent-preset roster row the launcher completes with the shipped root. */
+const AGENT_PRESETS_ROW_ID = 'agent-presets'
+
+/**
+ * Launcher-only key on the roster row's config: whether the shipped root is
+ * appended after the configured roots. Consumed here and stripped before the
+ * config reaches `dsh-agent-presets`, which knows nothing of shipped roots.
+ */
+const INCLUDE_SHIPPED_ROOT_KEY = 'includeShippedRoot'
+
+/**
+ * Whether one composed `roots` entry is a root object at all. Entries are
+ * carried VERBATIM otherwise: the composition may write a root's `path` as a
+ * `!!js` expression (a bundle deriving its own preset directory from
+ * `dshHomePath` or `baseUrl`), which the Loader evaluates only when the row
+ * mounts, and the roster's own schema is the authority on shape and defaults.
+ * @param entry - a value from the row's `roots` array.
+ * @returns whether the entry is an object the roster can judge.
+ */
+function isRootEntry(entry: unknown): entry is Record<string, unknown> {
+  return typeof entry === 'object' && entry !== null && !Array.isArray(entry)
+}
+
+/**
+ * Complete the composed roster row with the shipped preset root: the roots the
+ * composition configured stay, in order, and the shipped root is APPENDED
+ * after them (unless the row opts out with `includeShippedRoot: false`); the
+ * roster itself appends the harness-home user root last. Precedence is
+ * therefore composition roots > shipped root > user root — an earlier root
+ * wins a duplicate id, so a deployment's own preset directory can supply or
+ * shadow presets without touching the installation, and the shipped
+ * `standard` still shadows a home directory that claimed its name.
+ *
+ * A composition that configures no roots (the shipped bundles) gets exactly
+ * the roster it always did: the shipped root, then the user root.
+ * @param row - the composed `agent-presets` row, or `undefined` when the composition has none.
+ * @param shippedRoot - absolute path of the installation's shipped preset root.
+ * @returns the overlay patch completing the row, or `undefined` when there is no row to complete.
+ */
+export function resolveAgentPresetsPatch(row: EntryOptions | undefined, shippedRoot: string): PatchOptions | undefined {
+  if (row === undefined) return undefined
+  const { [INCLUDE_SHIPPED_ROOT_KEY]: includeShipped, roots: configuredRoots, ...rest } = (row.config ?? {}) as Record<string, unknown>
+  const roots: Record<string, unknown>[] = Array.isArray(configuredRoots) ? configuredRoots.filter(isRootEntry) : []
+  const namesShipped = roots.some(root => typeof root.path === 'string' && resolve(root.path) === resolve(shippedRoot))
+  if (includeShipped !== false && !namesShipped) roots.push({ path: shippedRoot, trust: 'system' })
+  return { id: AGENT_PRESETS_ROW_ID, config: { ...rest, roots } }
+}
+
 /**
  * Load a resolved profile for `name`: heal the shared module fallback, then
  * (re)write the empty root config. The root is always rewritten: the whole
@@ -154,17 +202,12 @@ function composeProfile(
   const composedOverlays = [...overlays]
   // The SHIPPED root is the part of the roster only this app can resolve: it
   // sits beside this app's own config, in both the source and built layouts.
-  // The writable root the roster appends is `dsh-agent-presets`' own, so a
-  // launcher that never reaches this patch still finds a person's presets.
-  if (rows.has('agent-presets')) {
-    composedOverlays.push({
-      id: 'agent-presets',
-      config: {
-        ...(rows.get('agent-presets')?.config ?? {}) as Record<string, unknown>,
-        roots: [{ path: SHIPPED_PRESET_ROOT, trust: 'system' }],
-      },
-    })
-  }
+  // It is appended after whatever roots the composition configured (see
+  // `resolveAgentPresetsPatch`). The writable root the roster appends is
+  // `dsh-agent-presets`' own, so a launcher that never reaches this patch
+  // still finds a person's presets.
+  const presetsPatch = resolveAgentPresetsPatch(rows.get(AGENT_PRESETS_ROW_ID), SHIPPED_PRESET_ROOT)
+  if (presetsPatch !== undefined) composedOverlays.push(presetsPatch)
   const telemetryPatch = resolveTelemetryPatch(process.env.DSH_TELEMETRY_DISABLED, rows.has(TELEMETRY_ROW_ID))
   if (telemetryPatch !== undefined) composedOverlays.push(telemetryPatch)
   return { profile, bundlePatches, homePatches, overlays: composedOverlays, rows }
