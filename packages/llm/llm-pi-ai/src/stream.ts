@@ -40,7 +40,10 @@ function classifyPiAiError(message: string): string {
   if (/\b(?:401|403)\b/.test(message)) return 'AUTH'
   if (isQuotaExceededError(message)) return QUOTA_EXCEEDED_CODE
   if (/\b429\b|rate.?limit/i.test(message)) return 'RATE_LIMIT'
-  if (/\b400\b|invalid.?request/i.test(message)) return 'INVALID_REQUEST'
+  // A gateway relaying its upstream's rejection often answers 5xx with a body
+  // that names the real cause ("upstream bad request", statusCode 400): the
+  // request itself is at fault, so retrying cannot help.
+  if (/\b400\b|invalid.?request|(?:^|[^a-z0-9])bad[\s_-]?request(?:$|[^a-z0-9])/i.test(message)) return 'INVALID_REQUEST'
   if (/\b5\d\d\b/.test(message)) return 'SERVER'
   if (/\btime(?:d)?\s*out\b|timeout/i.test(message)) return 'TIMEOUT'
   // A stream truncated before the provider's terminal event: each pi-ai provider

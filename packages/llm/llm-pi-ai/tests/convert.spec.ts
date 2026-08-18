@@ -713,6 +713,12 @@ describe('mapStopReason / mapUsage', () => {
     }))).toMatchObject({ kind: 'error', failure: { code: 'QUOTA' } })
     expect(mapStopReason(assistant({ stopReason: 'error', errorMessage: 'HTTP 500: backend down' })))
       .toMatchObject({ kind: 'error', failure: { code: 'SERVER' } })
+    // A gateway relaying its upstream's rejection: 5xx on the wire, but the
+    // body says the request itself was refused — not retryable.
+    expect(mapStopReason(assistant({
+      stopReason: 'error',
+      errorMessage: '502: {"code":"LLM_UPSTREAM_BAD_REQUEST","message":"上游服务拒绝了本次请求（参数不兼容）","type":"server_error"}',
+    }))).toMatchObject({ kind: 'error', failure: { code: 'INVALID_REQUEST' } })
     expect(mapStopReason(assistant({ stopReason: 'error', errorMessage: 'provider timed out' })))
       .toMatchObject({ kind: 'error', failure: { code: 'TIMEOUT' } })
     expect(mapStopReason(assistant({ stopReason: 'error', errorMessage: 'ECONNRESET socket closed' })))

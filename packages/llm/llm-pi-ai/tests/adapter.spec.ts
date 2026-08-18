@@ -663,6 +663,38 @@ describe('provider profile lifecycle', () => {
     expect(server.requests[1]).not.toHaveProperty('max_completion_tokens')
   })
 
+  it('keeps the OpenAI store field off the wire when the route declares supportsStore: false', async () => {
+    vi.stubEnv('PI_TEST_KEY', 'test-key')
+    const server = await mockServer([{ events: textEvents }, { events: textEvents }])
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(LlmPiAi, {
+      providers: {
+        'acme-default': {
+          apiKeyEnv: 'PI_TEST_KEY',
+          api: 'openai-completions',
+          baseURL: `${server.url}/v1`,
+          models: [{ id: 'acme-large', contextWindow: 65_536, maxTokens: 4096 }],
+        },
+        'acme-strict': {
+          apiKeyEnv: 'PI_TEST_KEY',
+          api: 'openai-completions',
+          baseURL: `${server.url}/v1`,
+          // pi-ai sends `store: false` to every URL it does not recognize as
+          // non-standard; a vendor that rejects unknown fields opts out.
+          compat: { supportsStore: false },
+          models: [{ id: 'acme-large', contextWindow: 65_536, maxTokens: 4096 }],
+        },
+      },
+    })
+
+    await assemble(ctx, { provider: 'acme-default', model: 'acme-large', messages: [] })
+    expect(server.requests[0]).toMatchObject({ store: false })
+
+    await assemble(ctx, { provider: 'acme-strict', model: 'acme-large', messages: [] })
+    expect(server.requests[1]).not.toHaveProperty('store')
+  })
+
   it('sends a declared off value as the effort parameter instead of omitting it', async () => {
     vi.stubEnv('PI_TEST_KEY', 'test-key')
     const server = await mockServer([{ events: textEvents }])

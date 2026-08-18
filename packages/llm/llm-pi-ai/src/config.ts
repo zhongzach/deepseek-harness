@@ -190,6 +190,7 @@ const compatProfile: z<PiAiCompatProfile> = z.object({
   supportsReasoningEffort: z.boolean(),
   supportsUsageInStreaming: z.boolean(),
   maxTokensField: z.union(['max_tokens', 'max_completion_tokens'] as const),
+  supportsStore: z.boolean(),
 })
 
 /**

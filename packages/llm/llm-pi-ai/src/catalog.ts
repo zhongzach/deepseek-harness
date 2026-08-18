@@ -210,6 +210,14 @@ export interface PiAiCompatProfile {
    * URL pi-ai does not recognize).
    */
   maxTokensField?: 'max_tokens' | 'max_completion_tokens'
+  /**
+   * Whether the endpoint accepts OpenAI's `store` field (pi-ai sends
+   * `store: false` wherever it believes so — which is every URL it does not
+   * recognize as non-standard); `false` keeps the field off the wire for a
+   * vendor or gateway that rejects unknown parameters. Absent keeps the
+   * catalog entry's, then pi-ai's baseURL-derived guess.
+   */
+  supportsStore?: boolean
 }
 
 /** One configured model entry: an id plus the catalog fields it overrides. */
@@ -410,13 +418,15 @@ function resolveModelCompat(
   const supportsReasoningEffort = entry.compat?.supportsReasoningEffort ?? route?.supportsReasoningEffort
   const supportsUsageInStreaming = entry.compat?.supportsUsageInStreaming ?? route?.supportsUsageInStreaming
   const maxTokensField = entry.compat?.maxTokensField ?? route?.maxTokensField
+  const supportsStore = entry.compat?.supportsStore ?? route?.supportsStore
   if (thinkingFormat === undefined && supportsReasoningEffort === undefined && supportsUsageInStreaming === undefined
-    && maxTokensField === undefined) return {}
+    && maxTokensField === undefined && supportsStore === undefined) return {}
   if (api !== 'openai-completions') {
     if (entry.compat?.thinkingFormat !== undefined || entry.compat?.supportsReasoningEffort !== undefined
-      || entry.compat?.supportsUsageInStreaming !== undefined || entry.compat?.maxTokensField !== undefined) {
+      || entry.compat?.supportsUsageInStreaming !== undefined || entry.compat?.maxTokensField !== undefined
+      || entry.compat?.supportsStore !== undefined) {
       invalid(provider, `model "${entry.id}" sets compat switches, but its api is "${api}";`
-        + ' thinkingFormat, supportsReasoningEffort, supportsUsageInStreaming, and maxTokensField exist only on openai-completions')
+        + ' thinkingFormat, supportsReasoningEffort, supportsUsageInStreaming, maxTokensField, and supportsStore exist only on openai-completions')
     }
     return {}
   }
@@ -434,6 +444,7 @@ function resolveModelCompat(
       ...supportsReasoningEffort === undefined ? {} : { supportsReasoningEffort },
       ...supportsUsageInStreaming === undefined ? {} : { supportsUsageInStreaming },
       ...maxTokensField === undefined ? {} : { maxTokensField },
+      ...supportsStore === undefined ? {} : { supportsStore },
     },
   }
 }
