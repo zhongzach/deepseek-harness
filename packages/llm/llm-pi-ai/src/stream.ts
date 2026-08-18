@@ -43,7 +43,10 @@ function classifyPiAiError(message: string): string {
   // A rejected request body (gateway or provider size cap): resending the
   // same request cannot succeed, so it is invalid, not transient.
   if (/\b413\b|failed to buffer the request body:\s*length limit exceeded|payload too large|request body too large/i.test(message)) return 'INVALID_REQUEST'
-  if (/\b400\b|invalid.?request/i.test(message)) return 'INVALID_REQUEST'
+  // A gateway relaying its upstream's rejection often answers 5xx with a body
+  // that names the real cause ("upstream bad request", statusCode 400): the
+  // request itself is at fault, so retrying cannot help.
+  if (/\b400\b|invalid.?request|(?:^|[^a-z0-9])bad[\s_-]?request(?:$|[^a-z0-9])/i.test(message)) return 'INVALID_REQUEST'
   if (/\b5\d\d\b/.test(message)) return 'SERVER'
   if (/\btime(?:d)?\s*out\b|timeout/i.test(message)) return 'TIMEOUT'
   // A stream truncated before the provider's terminal event: each pi-ai provider
