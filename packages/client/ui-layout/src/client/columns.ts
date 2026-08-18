@@ -36,8 +36,9 @@ export const SIDEBAR_AUTO_COLLAPSE = 1024
 export const SHELF_MIN = 300
 /** Shelf drag clamp ceiling: wide enough for a reading pane beside a file tree. */
 export const SHELF_MAX = 1040
-/** Shelf width before any user drag. */
-export const SHELF_DEFAULT = 400
+/** Shelf width before any user drag: it opens at its floor (a file tree
+ * needs no more) and grows on request (a reading pane asks through resizeShelf). */
+export const SHELF_DEFAULT = SHELF_MIN
 /** Details drag clamp floor. */
 export const DETAILS_MIN = 300
 /** Details drag clamp ceiling. */
