@@ -218,6 +218,14 @@ export interface PiAiCompatProfile {
    * catalog entry's, then pi-ai's baseURL-derived guess.
    */
   supportsStore?: boolean
+  /**
+   * Whether the endpoint accepts OpenAI's `developer` role for the system
+   * prompt of a reasoning model (pi-ai uses it wherever it believes so — which
+   * is every URL it does not recognize as non-standard); `false` keeps the
+   * prompt on the universal `system` role. Absent keeps the catalog entry's,
+   * then pi-ai's baseURL-derived guess.
+   */
+  supportsDeveloperRole?: boolean
 }
 
 /** One configured model entry: an id plus the catalog fields it overrides. */
@@ -419,14 +427,15 @@ function resolveModelCompat(
   const supportsUsageInStreaming = entry.compat?.supportsUsageInStreaming ?? route?.supportsUsageInStreaming
   const maxTokensField = entry.compat?.maxTokensField ?? route?.maxTokensField
   const supportsStore = entry.compat?.supportsStore ?? route?.supportsStore
+  const supportsDeveloperRole = entry.compat?.supportsDeveloperRole ?? route?.supportsDeveloperRole
   if (thinkingFormat === undefined && supportsReasoningEffort === undefined && supportsUsageInStreaming === undefined
-    && maxTokensField === undefined && supportsStore === undefined) return {}
+    && maxTokensField === undefined && supportsStore === undefined && supportsDeveloperRole === undefined) return {}
   if (api !== 'openai-completions') {
     if (entry.compat?.thinkingFormat !== undefined || entry.compat?.supportsReasoningEffort !== undefined
       || entry.compat?.supportsUsageInStreaming !== undefined || entry.compat?.maxTokensField !== undefined
-      || entry.compat?.supportsStore !== undefined) {
+      || entry.compat?.supportsStore !== undefined || entry.compat?.supportsDeveloperRole !== undefined) {
       invalid(provider, `model "${entry.id}" sets compat switches, but its api is "${api}";`
-        + ' thinkingFormat, supportsReasoningEffort, supportsUsageInStreaming, maxTokensField, and supportsStore exist only on openai-completions')
+        + ' thinkingFormat, supportsReasoningEffort, supportsUsageInStreaming, maxTokensField, supportsStore, and supportsDeveloperRole exist only on openai-completions')
     }
     return {}
   }
@@ -445,6 +454,7 @@ function resolveModelCompat(
       ...supportsUsageInStreaming === undefined ? {} : { supportsUsageInStreaming },
       ...maxTokensField === undefined ? {} : { maxTokensField },
       ...supportsStore === undefined ? {} : { supportsStore },
+      ...supportsDeveloperRole === undefined ? {} : { supportsDeveloperRole },
     },
   }
 }

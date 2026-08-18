@@ -663,6 +663,40 @@ describe('provider profile lifecycle', () => {
     expect(server.requests[1]).not.toHaveProperty('max_completion_tokens')
   })
 
+  it('sends a reasoning model system prompt as system when the route declares supportsDeveloperRole: false', async () => {
+    vi.stubEnv('PI_TEST_KEY', 'test-key')
+    const server = await mockServer([{ events: textEvents }, { events: textEvents }])
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    const reasoningModel = { id: 'acme-think', contextWindow: 65_536, maxTokens: 4096, reasoningEfforts: { low: 'low', high: 'high' } }
+    await ctx.plugin(LlmPiAi, {
+      providers: {
+        'acme-default': {
+          apiKeyEnv: 'PI_TEST_KEY',
+          api: 'openai-completions',
+          baseURL: `${server.url}/v1`,
+          models: [reasoningModel],
+        },
+        'acme-vendor': {
+          apiKeyEnv: 'PI_TEST_KEY',
+          api: 'openai-completions',
+          baseURL: `${server.url}/v1`,
+          // pi-ai puts a reasoning model's system prompt on OpenAI's
+          // `developer` role for every URL it does not recognize as
+          // non-standard; a vendor that only knows `system` rejects it.
+          compat: { supportsDeveloperRole: false },
+          models: [reasoningModel],
+        },
+      },
+    })
+
+    await assemble(ctx, { provider: 'acme-default', model: 'acme-think', system: '你是助手', messages: [] })
+    expect((server.requests[0] as { messages: { role: string }[] }).messages[0]?.role).toBe('developer')
+
+    await assemble(ctx, { provider: 'acme-vendor', model: 'acme-think', system: '你是助手', messages: [] })
+    expect((server.requests[1] as { messages: { role: string }[] }).messages[0]?.role).toBe('system')
+  })
+
   it('keeps the OpenAI store field off the wire when the route declares supportsStore: false', async () => {
     vi.stubEnv('PI_TEST_KEY', 'test-key')
     const server = await mockServer([{ events: textEvents }, { events: textEvents }])
