@@ -628,6 +628,41 @@ describe('provider profile lifecycle', () => {
     expect(server.requests[1]).not.toHaveProperty('stream_options')
   })
 
+  it('names the output-cap field per route: max_tokens where the route says so, the pi-ai guess otherwise', async () => {
+    vi.stubEnv('PI_TEST_KEY', 'test-key')
+    const server = await mockServer([{ events: textEvents }, { events: textEvents }])
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(LlmPiAi, {
+      providers: {
+        'acme-default': {
+          apiKeyEnv: 'PI_TEST_KEY',
+          api: 'openai-completions',
+          baseURL: `${server.url}/v1`,
+          models: [{ id: 'acme-large', contextWindow: 65_536, maxTokens: 4096 }],
+        },
+        'acme-vendor': {
+          apiKeyEnv: 'PI_TEST_KEY',
+          api: 'openai-completions',
+          baseURL: `${server.url}/v1`,
+          // An unrecognized URL gets pi-ai's OpenAI-native guess
+          // (max_completion_tokens); most compatible vendors and gateways
+          // want the classic field.
+          compat: { maxTokensField: 'max_tokens' },
+          models: [{ id: 'acme-large', contextWindow: 65_536, maxTokens: 4096 }],
+        },
+      },
+    })
+
+    await assemble(ctx, { provider: 'acme-default', model: 'acme-large', messages: [], maxTokens: 512 })
+    expect(server.requests[0]).toMatchObject({ max_completion_tokens: 512 })
+    expect(server.requests[0]).not.toHaveProperty('max_tokens')
+
+    await assemble(ctx, { provider: 'acme-vendor', model: 'acme-large', messages: [], maxTokens: 512 })
+    expect(server.requests[1]).toMatchObject({ max_tokens: 512 })
+    expect(server.requests[1]).not.toHaveProperty('max_completion_tokens')
+  })
+
   it('sends a declared off value as the effort parameter instead of omitting it', async () => {
     vi.stubEnv('PI_TEST_KEY', 'test-key')
     const server = await mockServer([{ events: textEvents }])

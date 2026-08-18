@@ -202,6 +202,14 @@ export interface PiAiCompatProfile {
    * standard field declares `false` and pi-ai omits it.
    */
   supportsUsageInStreaming?: boolean
+  /**
+   * Which request field carries the output cap: the OpenAI-native
+   * `max_completion_tokens`, or the `max_tokens` most OpenAI-compatible
+   * vendors and gateways expect; absent keeps the catalog entry's, then
+   * pi-ai's baseURL-derived guess (which is `max_completion_tokens` for any
+   * URL pi-ai does not recognize).
+   */
+  maxTokensField?: 'max_tokens' | 'max_completion_tokens'
 }
 
 /** One configured model entry: an id plus the catalog fields it overrides. */
@@ -401,12 +409,14 @@ function resolveModelCompat(
   const thinkingFormat = entry.compat?.thinkingFormat ?? route?.thinkingFormat
   const supportsReasoningEffort = entry.compat?.supportsReasoningEffort ?? route?.supportsReasoningEffort
   const supportsUsageInStreaming = entry.compat?.supportsUsageInStreaming ?? route?.supportsUsageInStreaming
-  if (thinkingFormat === undefined && supportsReasoningEffort === undefined && supportsUsageInStreaming === undefined) return {}
+  const maxTokensField = entry.compat?.maxTokensField ?? route?.maxTokensField
+  if (thinkingFormat === undefined && supportsReasoningEffort === undefined && supportsUsageInStreaming === undefined
+    && maxTokensField === undefined) return {}
   if (api !== 'openai-completions') {
     if (entry.compat?.thinkingFormat !== undefined || entry.compat?.supportsReasoningEffort !== undefined
-      || entry.compat?.supportsUsageInStreaming !== undefined) {
-      invalid(provider, `model "${entry.id}" sets compat reasoning switches, but its api is "${api}";`
-        + ' thinkingFormat, supportsReasoningEffort, and supportsUsageInStreaming exist only on openai-completions')
+      || entry.compat?.supportsUsageInStreaming !== undefined || entry.compat?.maxTokensField !== undefined) {
+      invalid(provider, `model "${entry.id}" sets compat switches, but its api is "${api}";`
+        + ' thinkingFormat, supportsReasoningEffort, supportsUsageInStreaming, and maxTokensField exist only on openai-completions')
     }
     return {}
   }
@@ -423,6 +433,7 @@ function resolveModelCompat(
       ...thinkingFormat === undefined ? {} : { thinkingFormat },
       ...supportsReasoningEffort === undefined ? {} : { supportsReasoningEffort },
       ...supportsUsageInStreaming === undefined ? {} : { supportsUsageInStreaming },
+      ...maxTokensField === undefined ? {} : { maxTokensField },
     },
   }
 }
