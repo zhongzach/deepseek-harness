@@ -62,6 +62,16 @@ const TOO_LARGE_FOR_CONTEXT = new RegExp(
   'i',
 )
 
+/**
+ * Structured codes and phrases that call the context itself too large/long
+ * (`CONTEXT_TOO_LARGE`, `context_too_long`, "context too large") — the shape a
+ * gateway that caps input by size rather than by token window reports.
+ */
+const CONTEXT_TOO_LARGE = new RegExp(
+  String.raw`(?:^|[^a-z0-9])context[\s_-]+(?:is\s+)?too[\s_-]+(?:large|long|big)(?:$|[^a-z0-9])`,
+  'i',
+)
+
 /** "Exceeds" wording is safe only when its object is explicitly the model context. */
 const EXCEEDS_MODEL_CONTEXT = new RegExp(
   String.raw`\b(?:input|prompt|request|messages?)\b.{0,40}`
@@ -79,6 +89,7 @@ const EXCEEDS_MODEL_CONTEXT = new RegExp(
  */
 export function isContextWindowExceededError(detail: string): boolean {
   return STRUCTURED_CONTEXT_OVERFLOW.test(detail)
+    || CONTEXT_TOO_LARGE.test(detail)
     || /\b(?:maximum|max)(?:\s+(?:allowed|supported))?\s+context\s+(?:length|window)\b/i.test(detail)
     || TOO_LARGE_FOR_CONTEXT.test(detail)
     || /\b(?:input|prompt|request)\s+(?:is\s+)?too\s+(?:long|large)\s+for\s+(?:this|the)\s+model\b/i.test(detail)

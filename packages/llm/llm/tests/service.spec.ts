@@ -106,6 +106,10 @@ describe('LlmRuntime', () => {
     expect(isContextWindowExceededError('input is too long for this model')).toBe(true)
     expect(isContextWindowExceededError('request too large for model context')).toBe(true)
     expect(isContextWindowExceededError('input exceeds the model context window limit')).toBe(true)
+    // A gateway that caps input by size reports the CONTEXT itself as too large.
+    expect(isContextWindowExceededError('413: {"code":"LLM_CONTEXT_TOO_LARGE","message":"本次内容超过所选内置模型的输入上限","type":"invalid_request_error"}')).toBe(true)
+    expect(isContextWindowExceededError('context_too_long')).toBe(true)
+    expect(isContextWindowExceededError('the context is too large for the model')).toBe(true)
   })
 
   it('does not mistake unrelated input validation for context-window overflow', () => {
@@ -113,6 +117,7 @@ describe('LlmRuntime', () => {
     expect(isContextWindowExceededError('invalid input: temperature exceeds maximum allowed value')).toBe(false)
     expect(isContextWindowExceededError('input exceeds maximum allowed value')).toBe(false)
     expect(isContextWindowExceededError('context window size must be positive')).toBe(false)
+    expect(isContextWindowExceededError('the response took too long; contextual retry advised')).toBe(false)
   })
 
   it('distinguishes exhausted account quota from transient rate limiting', () => {
