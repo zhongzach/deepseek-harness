@@ -100,7 +100,10 @@ export function apply(ctx: ClientContext): void {
           if (version !== rowsVersion || revision !== rowsRevision) {
             rowsVersion = version
             rowsRevision = revision
-            rows = ctx.slots.entries('settings.section')
+            // Shadowing winners, like the render outlet: a downstream entry that
+            // shadows a section (same id, lower priority) replaces its nav row
+            // rather than adding a second one.
+            rows = ctx.slots.entriesOfSlot('settings.section')
               .map(e => ({
                 /* v8 ignore next -- list-slot registration requires id (SlotCore rejects an entry without one) */
                 id: e.options.id ?? '',
@@ -125,7 +128,7 @@ export function apply(ctx: ClientContext): void {
           const version = ctx.slots.getVersion('settings.onboarding')
           if (version !== onboardingVersion) {
             onboardingVersion = version
-            onboardingSteps = ctx.slots.entries('settings.onboarding')
+            onboardingSteps = ctx.slots.entriesOfSlot('settings.onboarding')
               .map(e => ({
                 /* v8 ignore next -- list-slot registration requires id */
                 id: e.options.id ?? '',
