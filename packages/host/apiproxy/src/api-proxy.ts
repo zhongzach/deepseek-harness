@@ -1255,6 +1255,43 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     apiRemoteSubagentOwnershipError(sessionId)
   const inspectServable = (sessionId: SessionId): Promise<{ meta: SessionHeader; events: SessionEvent[] }> =>
     inspectApiRemoteSession(ctx, sessionId)
+  /**
+   * Compose the preset a stored session recorded, healing one dead end: a
+   * BLANK session whose recorded preset the roster no longer supplies (the
+   * deployment renamed or removed it) could otherwise never be materialized
+   * again — `agentPreset.select`, the exact remedy for that state, also
+   * resumes through here and died on the missing composition before it could
+   * swap. A blank session has no history produced under the missing tools, so
+   * it resumes under the deployment default, and the substitution is recorded
+   * the way a select records one (`agent-preset/selected`), making the heal
+   * durable: the next resume reads the recorded switch and needs none. A
+   * STARTED session still fails loud — its turns ran tools the current
+   * roster no longer composes, and rebuilding that history under different
+   * ones would replay calls the model can no longer make.
+   * @param stored - the inspected session (header and events).
+   * @returns the setup composing the recorded preset, or the healing setup.
+   */
+  async function composeStoredSetup(
+    stored: { header: SessionHeader; events: readonly SessionEvent[] },
+  ): Promise<(agentCtx: Context) => Promise<void>> {
+    const storedPreset = resolveSessionPreset(stored)
+    try {
+      return (await composeAgent(storedPreset)).setup
+    } catch (error: unknown) {
+      const blank = !stored.events.some(event => event.type === 'turn/start')
+      if (!(error instanceof UnknownPresetError) || !blank) throw error
+      const healed = await composeAgent(undefined)
+      return async (agentCtx: Context) => {
+        await healed.setup(agentCtx)
+        // Setup runs on the unpublished agent's own context (`prepared.agent
+        // .ctx`), so the session is reachable to take the record.
+        if (healed.agentPreset !== undefined) {
+          agentCtx.agent?.session.append('agent-preset/selected', { agentPreset: healed.agentPreset })
+        }
+      }
+    }
+  }
+
   // Cold resume composes the preset the session recorded, for the same reason
   // `session.create` does: its history was produced under that composition.
   // Every generic entry point — prompt, models, commands — arrives here, so
@@ -1266,8 +1303,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   // restore that history under the old tool set.
   const agentFor = createApiRemoteAgentResolver(ctx, {
     agentOptions,
-    setup: async ({ meta, events }) =>
-      (await composeAgent(resolveSessionPreset({ header: meta, events }))).setup,
+    setup: async ({ meta, events }) => composeStoredSetup({ header: meta, events }),
   })
 
   /** Send one transient frame to every connected mux consumer. */
@@ -1653,11 +1689,12 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           // The stored preset wins over anything the request names: a resumed
           // session's history was produced under that composition, and
           // rebuilding it differently would replay tool calls the model can no
-          // longer make.
+          // longer make. (`composeStoredSetup` heals the one exception: a
+          // BLANK session whose recorded preset no longer exists.)
           return (await ctx.agents.resume({
             resumeSessionId: sessionId,
             agentOptions: agentOptions(),
-            setup: (await composeAgent(storedPreset)).setup,
+            setup: await composeStoredSetup({ header: inspected.meta, events: inspected.events }),
           })).agent
         }
 
