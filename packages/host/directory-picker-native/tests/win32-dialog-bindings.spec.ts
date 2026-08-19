@@ -180,6 +180,18 @@ describe('loadWin32DialogBindings over the fake COM world', () => {
     expect(world.uninitialized).toBe(1)
   })
 
+  it('reads a path whole when a code unit of the path ends in 0x00 (开 U+5F00, 一 U+4E00)', async () => {
+    // Regression: the terminator scan tested only the low byte, so `D:\\开局`
+    // came back as `D:\` and a workspace picked under such a name landed on
+    // its parent.
+    const world = comWorld({ path: 'D:\\开局时停当大师\\一号书\\稀有' })
+    installFakeKoffi(world)
+    const { loadWin32DialogBindings } = await loadBindingsModule()
+    const bindings = await loadWin32DialogBindings()
+
+    expect(runFolderDialog(bindings, 't', vi.fn())).toBe('D:\\开局时停当大师\\一号书\\稀有')
+  })
+
   it('maps dismissal and the S_FALSE CoInitializeEx', async () => {
     const world = comWorld({ showHr: HRESULT_CANCELLED, coInitHr: 1 })
     installFakeKoffi(world)
