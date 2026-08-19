@@ -51,6 +51,7 @@ import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { toPiContext } from './context.ts'
+import { fillReasoningPassback } from './passback.ts'
 import { toStreamChunks } from './stream.ts'
 
 /** One resolution's frozen view: the profiles and the collection built from them. */
@@ -319,6 +320,10 @@ export class PiAiAdapter extends LlmAdapter {
         // Profile headers are deployment-owned; attribution names are
         // Harness-owned and therefore win collisions.
         headers: requestHeaders(profile.headers),
+        // Chat Completions only: a DeepSeek-style thinking endpoint refuses a
+        // tool-call history with a step that carries no `reasoning_content`
+        // (see passback.ts); pi-ai cannot fill it, the wire hook can.
+        ...model.api === 'openai-completions' ? { onPayload: (payload: unknown) => { fillReasoningPassback(payload); return undefined } } : {},
       })
       const iterator = toStreamChunks(events, model.contextWindow)[Symbol.asyncIterator]()
       let exhausted = false

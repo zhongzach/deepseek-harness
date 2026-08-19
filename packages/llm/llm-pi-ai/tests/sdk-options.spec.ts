@@ -70,4 +70,23 @@ describe('pi-ai SDK retry boundary', () => {
       maxTokens: 1024,
     })
   })
+
+  it('hands a Chat Completions route the thinking-passback wire hook', async () => {
+    streamSimple.mockImplementation(() => { throw new Error('mock SDK boundary') })
+
+    await drain(gatewayAdapter())
+
+    const options = streamSimple.mock.calls[0]?.[2] as { onPayload?: (payload: unknown, model: unknown) => unknown }
+    expect(typeof options.onPayload).toBe('function')
+    // The hook repairs in place and returns undefined so pi-ai keeps its own params object.
+    const payload = {
+      messages: [
+        { role: 'assistant', content: '', reasoning_content: 'r', tool_calls: [{ id: 'a', type: 'function', function: { name: 'x', arguments: '{}' } }] },
+        { role: 'tool', tool_call_id: 'a', content: 'ok' },
+        { role: 'assistant', content: 'go on', tool_calls: [{ id: 'b', type: 'function', function: { name: 'y', arguments: '{}' } }] },
+      ],
+    }
+    expect(options.onPayload?.(payload, {})).toBeUndefined()
+    expect(payload.messages[2]).toMatchObject({ reasoning_content: '' })
+  })
 })
