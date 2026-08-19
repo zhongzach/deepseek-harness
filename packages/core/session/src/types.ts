@@ -377,6 +377,17 @@ export type SurfaceOp =
  * Surface placement and cited source-event seqs for {@link Session.append}. Required on
  * message-producing events and forbidden on log-only events.
  */
+/** Append-time envelope options every event kind may carry. */
+export interface AppendIntent {
+  /**
+   * Stamp the envelope's reader-skip marker ({@link SessionEvent.ignorable}):
+   * set by writers of purely informational, deployment-owned records so a
+   * harness that does not know the type skips them instead of refusing the
+   * log. Never set it on anything reconstruction depends on.
+   */
+  ignorable?: true
+}
+
 export interface SurfaceIntent {
   surfaceOp: SurfaceOp
   /**
