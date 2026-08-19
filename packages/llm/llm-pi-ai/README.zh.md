@@ -99,6 +99,8 @@ pi-ai 依据提供方 id 与 baseURL 决定每个请求的形状：系统提示�
 
 三类键会被拒绝而非丢弃：没有任何协议声明的键（笔误）；pi-ai 已安装 catalog 为具名厂商掌管的键（`openRouterRouting`、`zaiToolStream`、`deferredToolsMode`、`sessionAffinityFormat`、`supportsOpenAIGrammarTools`、`supportsToolSearch`、`supportsExplicitPromptCacheMode`、`supportsToolReferences`、`vercelGatewayRouting`、`sendSessionAffinityHeaders`）——需要某厂商专属开关的路由，本就是一条应当以该厂商命名的 catalog 路由；以及完全没有写值的键（`supportsDeveloperRole:`），schemastery 会把它放行为 null，若照单收下就会用空值替换已安装 catalog 的值。开放集由漂移门禁钉在 pi-ai 的四个 compat 类型上，承载它们的协议集派生自 `Model.compat` 本身，每个字段的类型也派生自上游而非重述，因此上游新增字段、给别的协议加上 compat 类型、或拓宽某个值并集，都会使构建失败，直到有人为它做出分类。
 
+Chat Completions 线上还有一处不需要开关的修补。DeepSeek 式的思考端点（官方 API，以及跑 DeepSeek 聊天模板的 vLLM / SGLang 部署）把推理以 `reasoning_content` 流出，并要求本轮工具调用循环里的每条 assistant 消息都把这个字段传回——否则 `400 messages[N].reasoning_content is required for thinking tool-call history`，这一轮就死在半路。pi-ai 会为每个产出过推理的步骤回传该字段，但端点某一步没给任何推理（有些部署对琐碎的工具调用会吐一个空的思考块）就在历史里留了个洞，pi-ai 填不上：它只写非空的思考。因此适配器经 pi-ai 的 `onPayload` 钩子把这种洞填成 `""`——检查要的只是"有这个字段"——并且只在请求里已经有某条 assistant 消息带着 `reasoning_content` 时才动手，从没说过这个字段的端点永远看不到它（OpenAI 本尊拒收消息里的未知键）。
+
 条目与已安装 catalog 都没有给出尺寸的模型，会采用该路由的 `defaultContextWindow`（262,144）与 `defaultMaxTokens`（32,768），因此一份只公布 id 的列表同样能产出可服务的路由。两个回退值本质上都是猜测，这正是它们作为路由字段、供网关服务更小模型的部署一次性更正的原因，而不是埋在适配器里的常量；回退值只用于给模型定尺寸，绝不会变成单次请求上限。
 
 请求模态的解析顺序是：条目的 `input` → 已安装 catalog 条目 → 路由的 `defaultInput`（默认 `[text]`），与上面两个容量字段的顺序和「回退值」定位完全一致。因此 catalog 模型保留 catalog 为它记录的模态，更窄的路由默认值也绝不会把它剥掉；而**未被 catalog 描述的**模型全都接受图片的网关，只需在路由上写一次 `[text, image]`，不必逐条目写。条目的空列表与缺省同义——它描述的是一个什么都不接受的模型，因此不作答，解析继续往下走——这正是当 `models` 条目点到某个 catalog 模型却不声明模态时，该模型仍保留 catalog 自有模态的原因。路由的那个则不得为空，因为它下面已经没有可以代为作答的层级。
