@@ -14,7 +14,10 @@ import type { Scoped } from '@deepseek-ai/dsh-scope'
 import type { Message } from '@deepseek-ai/dsh-llm'
 import { SESSION_FORMAT_VERSION, SessionId } from './types.ts'
 import type { TypertLookup } from '@deepseek-ai/dsh-typert-protocol'
-import type { CreateSessionOptions, EpochHeader, PrepareSessionOptions, RequestContext, SessionEvent, SessionEventMap, SessionEventType, SessionHeader, SurfaceIntent, SurfaceEventType } from './types.ts'
+import type {
+  AppendIntent, CreateSessionOptions, EpochHeader, PrepareSessionOptions, RequestContext, SessionEvent,
+  SessionEventMap, SessionEventType, SessionHeader, SurfaceEventType, SurfaceIntent,
+} from './types.ts'
 import { snapshotJsonValue } from './json.ts'
 import { deriveEventMessage, SurfaceManager } from './surface.ts'
 import type { SessionSurface } from './surface.ts'
@@ -32,7 +35,7 @@ export type { ChunkRow, StorageRecord } from './chunk-rows.ts'
 export type { SessionSurface, SurfaceFoldReplacement, SurfaceFoldResult } from './surface.ts'
 export { deriveEventMessage, foldSurface, isAppendSurfaceEvent, isReplacementSurfaceEvent, isSurfaceEvent, isSurfaceEligibleType } from './surface.ts'
 export { canonicalHeader, foldRequestHeader, headerEquals } from './request-header.ts'
-export { KNOWN_SESSION_EVENT_TYPES } from './known-event-types.ts'
+export { isKnownSessionEventType, KNOWN_SESSION_EVENT_TYPES, registerSessionEventType } from './known-event-types.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -604,12 +607,12 @@ export class Session {
   append<T extends SessionEventType>(
     type: T,
     data: SessionEventMap[T],
-    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : []
+    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent & AppendIntent] : [opts?: AppendIntent]
   ): SessionEvent<T> {
-    const surfaceOpts: SurfaceIntent | undefined = opts[0]
+    const surfaceOpts = opts[0] as (SurfaceIntent & AppendIntent) | AppendIntent | undefined
     const surfaceMetadata = {
-      ...surfaceOpts?.sourceEventSeqs === undefined ? {} : { sourceEventSeqs: surfaceOpts.sourceEventSeqs },
-      ...surfaceOpts?.surfaceOp === undefined ? {} : { surfaceOp: surfaceOpts.surfaceOp },
+      ...surfaceOpts !== undefined && 'sourceEventSeqs' in surfaceOpts && surfaceOpts.sourceEventSeqs !== undefined ? { sourceEventSeqs: surfaceOpts.sourceEventSeqs } : {},
+      ...surfaceOpts !== undefined && 'surfaceOp' in surfaceOpts && surfaceOpts.surfaceOp !== undefined ? { surfaceOp: surfaceOpts.surfaceOp } : {},
     }
     const dataSnapshot = snapshotJsonValue(data)
     if (dataSnapshot === undefined) {
@@ -629,6 +632,10 @@ export class Session {
       seq: this.log.length,
       time: Date.now(),
       data: dataSnapshot,
+      // The envelope's reader-skip marker (types.ts): a writer stamps it on
+      // purely informational records so a harness that does not know the
+      // type can skip them instead of refusing the whole log.
+      ...surfaceOpts?.ignorable === true ? { ignorable: true as const } : {},
       ...(surfaceMetadataSnapshot as { surfaceOp?: unknown; sourceEventSeqs?: unknown }),
     } as unknown as SessionEvent<T>)
     this.surfaceManager.validateNext(event as SessionEvent)

@@ -16,6 +16,36 @@
  * construction; a registration surface for them is deferred until such a
  * consumer exists.
  */
+/**
+ * Event types a DEPLOYMENT registered at runtime (a product plugin's own
+ * log-only records). The resume support check consults this beside the static
+ * set, so a session written by the same composition loads even when an event
+ * predates the writer stamping `ignorable: true`. Registration is
+ * process-wide and additive on purpose: the composition that appends a type
+ * is the composition that mounts the registering plugin.
+ */
+const RUNTIME_SESSION_EVENT_TYPES = new Set<string>()
+
+/**
+ * Teach this process one deployment-owned session event type.
+ * @param type - the event type (e.g. `writerx/charge`).
+ * @returns an unregister function (plugin unload).
+ */
+export function registerSessionEventType(type: string): () => void {
+  RUNTIME_SESSION_EVENT_TYPES.add(type)
+  return () => { RUNTIME_SESSION_EVENT_TYPES.delete(type) }
+}
+
+/**
+ * Whether this process can interpret `type` — statically known, or registered
+ * by the running composition.
+ * @param type - the event type.
+ * @returns true when a log carrying it may be reconstructed.
+ */
+export function isKnownSessionEventType(type: string): boolean {
+  return KNOWN_SESSION_EVENT_TYPES.has(type) || RUNTIME_SESSION_EVENT_TYPES.has(type)
+}
+
 export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'agent-preset/selected',
   'agent/inbox/spliced',

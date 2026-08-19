@@ -13,7 +13,7 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { describe, expect, it, vi } from 'vitest'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
 import { scopeTarget } from '@deepseek-ai/dsh-scope'
-import SessionStore, { SESSION_FORMAT_VERSION, Session, SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { registerSessionEventType, SESSION_FORMAT_VERSION, Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { meta, oneTurnLog, appendLog } from './contract.ts'
 
@@ -1379,6 +1379,35 @@ export function runCoordinatorContract(name: string, makeFixture: () => Promise<
         ])
         const loaded = await ctx.sessionPersistence.load(skippable.id)
         expect(loaded.events.some(event => (event.type as string) === 'future/event')).toBe(true)
+      } finally {
+        await fiber.dispose()
+        await fix.cleanup()
+      }
+    })
+
+    it('loads an unknown FLAGLESS event type once the running composition registers it', async () => {
+      // The deployment case: a product plugin appended its own log-only type
+      // before it learned to stamp `ignorable: true`. Registering the type at
+      // runtime makes those logs loadable in the composition that owns them;
+      // an unregistered process (stock harness) still refuses.
+      const fix = await makeFixture()
+      const { ctx, fiber } = await freshCtx(fix)
+      try {
+        const record = meta('deployment-registered', WORK)
+        await ctx.sessionPersistence.create(record)
+        await ctx.sessionPersistence.append(record.id, [
+          ...oneTurnLog(),
+          { type: 'writerx/test-charge', seq: oneTurnLog().length, time: 99, data: { charged: 1 } } as unknown as SessionEvent,
+        ])
+        await expect(ctx.sessionPersistence.load(record.id)).rejects.toMatchObject({ name: 'SessionFormatUnsupportedError' })
+        const unregister = registerSessionEventType('writerx/test-charge')
+        try {
+          const loaded = await ctx.sessionPersistence.load(record.id)
+          expect(loaded.events.some(event => (event.type as string) === 'writerx/test-charge')).toBe(true)
+        } finally {
+          unregister()
+        }
+        await expect(ctx.sessionPersistence.load(record.id)).rejects.toMatchObject({ name: 'SessionFormatUnsupportedError' })
       } finally {
         await fiber.dispose()
         await fix.cleanup()
