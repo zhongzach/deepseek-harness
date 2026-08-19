@@ -71,6 +71,42 @@ describe('pi-ai SDK retry boundary', () => {
     })
   })
 
+  it('forwards provider response status and headers through onResponseMeta, tagged with the request identity', async () => {
+    streamSimple.mockImplementation(() => { throw new Error('mock SDK boundary') })
+    const seen: unknown[] = []
+    const adapter = new PiAiAdapter({
+      profiles: () => resolveProfiles({
+        'local-gateway': {
+          api: 'openai-completions',
+          baseURL: 'http://127.0.0.1:9/v1',
+          models: [{ id: 'local-model', contextWindow: 8192, maxTokens: 1024 }],
+        },
+      }),
+      resolveApiKey: () => Promise.resolve('test-key'),
+      onResponseMeta: (meta) => { seen.push(meta) },
+    })
+    const chunks: unknown[] = []
+    for await (const chunk of adapter.stream({
+      provider: 'local-gateway',
+      model: 'local-model',
+      messages: [],
+      sessionId: 'session-1' as never,
+      purpose: 'compaction',
+    })) chunks.push(chunk)
+
+    const options = streamSimple.mock.calls[0]?.[2] as { onResponse?: (response: unknown, model: unknown) => void }
+    expect(typeof options.onResponse).toBe('function')
+    options.onResponse?.({ status: 200, headers: { 'x-writerx-charged': '3', 'x-writerx-balance': '197' } }, {})
+    expect(seen).toEqual([{
+      provider: 'local-gateway',
+      model: 'local-model',
+      sessionId: 'session-1',
+      purpose: 'compaction',
+      status: 200,
+      headers: { 'x-writerx-charged': '3', 'x-writerx-balance': '197' },
+    }])
+  })
+
   it('hands a Chat Completions route the thinking-passback wire hook', async () => {
     streamSimple.mockImplementation(() => { throw new Error('mock SDK boundary') })
 

@@ -201,6 +201,9 @@ export function apply(ctx: Context, config: Config): void {
     profiles,
     resolveApiKey,
     resolveAttachments: () => ctx.get('attachments'),
+    // Deployment seam: provider response status/headers → the llm/response-meta
+    // event (billing and quota headers ride HTTP responses, not the stream).
+    onResponseMeta: (meta) => { ctx.emit('llm/response-meta', meta) },
   })
   // The full installed catalog is configurable from the moment the plugin
   // mounts — dormant or not — so configuration surfaces can offer every

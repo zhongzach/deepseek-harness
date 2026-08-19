@@ -10,6 +10,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type {
   GenerateOptions,
   LlmConfigurableProvider,
+  LlmResponseMeta,
   LlmDiscoveredModel,
   LlmFailure,
   LlmModelContext,
@@ -62,6 +63,16 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
      */
     'llm/stream'(this: LlmRuntime, options: GenerateOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>
+
+    /**
+     * Fired by an adapter that observed the provider's HTTP response — status
+     * and headers — as soon as they arrived, before the stream body is
+     * consumed. Deployment plugins read billing/quota response headers here
+     * (a gateway's charge-per-call accounting, a balance snapshot); core
+     * emits nothing itself and never listens.
+     * @mode emit
+     */
+    'llm/response-meta'(meta: LlmResponseMeta): void
 
   }
 }
