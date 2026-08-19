@@ -50,6 +50,7 @@ import type {
   LlmModelInfo,
   LlmProviderInfo,
   LlmResolvedModelInfo,
+  LlmResponseMeta,
   PreparedAdapterCall,
   ReasoningEffortId as ReasoningEffortIdType,
   ResolvedRetryPolicy,
@@ -99,6 +100,13 @@ export interface PiAiAdapterOptions {
    * conversion because its stored replay state is unusable by this build.
    */
   onReplayDegrade?: (detail: { provider: string; model: string; reason: string }) => void
+  /**
+   * Observe each provider HTTP response's status and headers the moment they
+   * arrive (pi-ai's `onResponse`), tagged with the request's route, model,
+   * session and purpose. The plugin forwards this to the `llm/response-meta`
+   * event; deployment plugins read billing/quota headers there.
+   */
+  onResponseMeta?: (meta: LlmResponseMeta) => void
 }
 
 /** The two auth injectables a pi-ai collection is built with. */
@@ -378,6 +386,20 @@ export class PiAiAdapter extends LlmAdapter {
         // tool-call history with a step that carries no `reasoning_content`
         // (see passback.ts); pi-ai cannot fill it, the wire hook can.
         ...model.api === 'openai-completions' ? { onPayload: (payload: unknown) => { fillReasoningPassback(payload); return undefined } } : {},
+        // Response status + headers, tagged with the request identity, for the
+        // deployment seam (billing/quota headers; see PiAiAdapterOptions).
+        ...this.config.onResponseMeta === undefined ? {} : {
+          onResponse: (response: { status: number; headers: Record<string, string> }) => {
+            this.config.onResponseMeta?.({
+              provider: options.provider,
+              model: model.id,
+              ...options.sessionId === undefined ? {} : { sessionId: String(options.sessionId) },
+              ...options.purpose === undefined ? {} : { purpose: options.purpose },
+              status: response.status,
+              headers: response.headers,
+            })
+          },
+        },
       })
       const iterator = toStreamChunks(events, model.contextWindow)[Symbol.asyncIterator]()
       let exhausted = false

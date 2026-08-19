@@ -203,6 +203,9 @@ export function apply(ctx: Context, config: Config): void {
         + ` sending that message as provider-neutral content (${reason})`,
       )
     },
+    // Deployment seam: provider response status/headers → the llm/response-meta
+    // event (billing and quota headers ride HTTP responses, not the stream).
+    onResponseMeta: (meta) => { ctx.emit('llm/response-meta', meta) },
   })
   // Independent of the route set: signing in is what makes a route worth
   // adding, so the flows are offered before any profile names their provider.

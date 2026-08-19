@@ -110,6 +110,28 @@ export type ContentBlockType = keyof ContentBlockMap
 export type ContentBlock = ContentBlockMap[ContentBlockType]
 
 /**
+ * What an adapter observed on the provider's HTTP response, the moment its
+ * status line and headers arrived (before the body stream is consumed).
+ * Deployment-specific response headers — billing, quota balances, request
+ * ids — travel on the `llm/response-meta` event for host plugins to read;
+ * core never emits or interprets them itself.
+ */
+export interface LlmResponseMeta {
+  /** Registered provider route of the request. */
+  provider: string
+  /** Model id the request named. */
+  model: string
+  /** The request's session, when the caller supplied one. */
+  sessionId?: string
+  /** The request's declared purpose (`compaction`, `session-title`), when supplied. */
+  purpose?: string
+  /** HTTP status of the response. */
+  status: number
+  /** Response headers, lower-cased names. */
+  headers: Record<string, string>
+}
+
+/**
  * Why a model response stopped.
  * Merge-extensible so adapters can surface provider-specific reasons.
  */
