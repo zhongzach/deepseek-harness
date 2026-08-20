@@ -58,6 +58,10 @@ function displayName(name: string): string {
 }
 
 function optionLabel(option: PermissionSelectValue['options'][number]): string {
+  // A host-configured display name (anything that is not a kebab machine
+  // name) wins everywhere — including over the Full-access product label, so
+  // deployments can localize the whole menu through the preset table.
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(option.name)) return option.name
   return option.value === FULL_ACCESS ? 'Full access' : displayName(option.name)
 }
 
