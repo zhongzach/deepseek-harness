@@ -912,6 +912,28 @@ The provider topology changed: an adapter registered or unregistered routes, or 
 
 Source: [`packages/llm/llm/src/types.ts`](../../packages/llm/llm/src/types.ts)
 
+<a id="llmresponse-meta--emit"></a>
+
+#### `llm/response-meta` — emit
+
+Fired by an adapter that observed the provider's HTTP response — status and headers — as soon as they arrived, before the stream body is consumed. Deployment plugins read billing/quota response headers here (a gateway's charge-per-call accounting, a balance snapshot); core emits nothing itself and never listens.
+
+```ts cordis-catalog
+/**
+ * Fired by an adapter that observed the provider's HTTP response — status
+ * and headers — as soon as they arrived, before the stream body is
+ * consumed. Deployment plugins read billing/quota response headers here
+ * (a gateway's charge-per-call accounting, a balance snapshot); core
+ * emits nothing itself and never listens.
+ * @mode emit
+ * @param meta - the observed response: route, model, session, purpose,
+ * status, and headers.
+ */
+'llm/response-meta'(meta: LlmResponseMeta): void
+```
+
+Source: [`packages/llm/llm/src/index.ts`](../../packages/llm/llm/src/index.ts)
+
 <a id="llmstream--waterfall"></a>
 
 #### `llm/stream` — waterfall

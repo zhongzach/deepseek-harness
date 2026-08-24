@@ -72,6 +72,8 @@ declare module '@deepseek-ai/cordis' {
      * (a gateway's charge-per-call accounting, a balance snapshot); core
      * emits nothing itself and never listens.
      * @mode emit
+     * @param meta - the observed response: route, model, session, purpose,
+     * status, and headers.
      */
     'llm/response-meta'(meta: LlmResponseMeta): void
 

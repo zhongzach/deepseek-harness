@@ -2614,6 +2614,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [],
   },
   {
+    name: 'llm/response-meta',
+    mode: 'emit',
+    signature: '\'llm/response-meta\'(meta: LlmResponseMeta): void',
+    summary: 'Fired by an adapter that observed the provider\'s HTTP response — status and headers — as soon as they arrived, before the stream body is consumed.',
+    description: 'Fired by an adapter that observed the provider\'s HTTP response — status and headers — as soon as they arrived, before the stream body is consumed. Deployment plugins read billing/quota response headers here (a gateway\'s charge-per-call accounting, a balance snapshot); core emits nothing itself and never listens.',
+    parameters: [{ name: 'meta', description: 'the observed response: route, model, session, purpose, status, and headers.' }],
+  },
+  {
     name: 'llm/stream',
     mode: 'waterfall',
     signature: '\'llm/stream\'(this: LlmRuntime, options: GenerateOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>',
@@ -3644,6 +3652,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'LlmResolvedModelInfo',
     declaration: 'export interface LlmResolvedModelInfo extends LlmModelInfo {\n    context?: LlmModelContext;\n    defaultMaxTokens?: number;\n    reasoning?: LlmModelReasoningInfo;\n}',
+  },
+  {
+    name: 'LlmResponseMeta',
+    declaration: 'export interface LlmResponseMeta {\n    provider: string;\n    model: string;\n    sessionId?: string;\n    purpose?: string;\n    status: number;\n    headers: Record<string, string>;\n}',
   },
   {
     name: 'LlmRuntime',
