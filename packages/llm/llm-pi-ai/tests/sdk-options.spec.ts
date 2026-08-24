@@ -85,6 +85,7 @@ describe('pi-ai SDK retry boundary', () => {
         },
       }),
       resolveApiKey: () => Promise.resolve('test-key'),
+      auth: memoryAuth(),
       onResponseMeta: (meta) => { seen.push(meta) },
     })
     const chunks: unknown[] = []
