@@ -351,6 +351,11 @@ const clientExternalCache = new Map<string, ReadonlySet<string>>()
  * `process.cwd()` during a workspace build. Callers read it on the first
  * resolveId of a build, not while a config is built, so selecting a build face
  * never touches a manifest.
+ *
+ * Deployment fallback: a product repository that vendors this harness as its
+ * `harness/` subdirectory keeps its own packages in the parent root's
+ * packages tree — those are searched second, so a standalone harness
+ * checkout behaves exactly as before.
  * @param id - package name, as spelled at the preset call site.
  * @returns the parsed manifest.
  * @throws {Error} when no workspace package declares that name.
@@ -358,13 +363,15 @@ const clientExternalCache = new Map<string, ReadonlySet<string>>()
 function workspaceManifest(id: string): WorkspaceManifest {
   const cached = manifestCache.get(id)
   if (cached !== undefined) return cached
-  for (const manifestPath of globSync('packages/*/*/package.json', { cwd: REPOSITORY_ROOT })) {
-    const manifest = JSON.parse(
-      readFileSync(resolvePath(REPOSITORY_ROOT, manifestPath), 'utf8'),
-    ) as WorkspaceManifest
-    if (manifest.name !== id) continue
-    manifestCache.set(id, manifest)
-    return manifest
+  for (const root of [REPOSITORY_ROOT, resolvePath(REPOSITORY_ROOT, '..')]) {
+    for (const manifestPath of globSync('packages/*/*/package.json', { cwd: root })) {
+      const manifest = JSON.parse(
+        readFileSync(resolvePath(root, manifestPath), 'utf8'),
+      ) as WorkspaceManifest
+      if (manifest.name !== id) continue
+      manifestCache.set(id, manifest)
+      return manifest
+    }
   }
   throw new Error(`tsdown: no packages/*/*/package.json declares the name ${id}`)
 }
