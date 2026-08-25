@@ -6,6 +6,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useEffect } from 'react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import type {
   AssistantMessageNode, CommandNode, CompactionSummaryNode, ConversationNode, ConversationSnapshot,
   ModelRetryNode, RunningToolCall, SessionId, SessionListState, ToolCallBlock, ToolResultNode, TurnErrorNode,
@@ -377,6 +379,12 @@ describe('Chat node rendering', () => {
 })
 
 describe('ChatView', () => {
+  it('keeps settled message rows as intrinsic-size content-visibility units', () => {
+    const source = readFileSync(resolve('packages/client/ui-conversation/src/client/chat/ChatView.module.css'), 'utf8')
+    expect(source).toMatch(/\.flowItem\s*\{[^}]*content-visibility:\s*auto;/s)
+    expect(source).toMatch(/\.flowItem\s*\{[^}]*contain-intrinsic-size:\s*auto 80px;/s)
+  })
+
   it('hands a windowless tool result to the Tool seat with an empty tool name', () => {
     const h = makeHarness({
       nodes: [{ ...toolResult(3, 'w1'), call: null }],
