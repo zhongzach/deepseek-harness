@@ -6,6 +6,33 @@
 import type { LoaderEntryState } from './loader-status.ts'
 import css from './boot-page.module.css'
 
+/** Optional product copy injected before the framework-free boot kernel runs. */
+export interface BootPresentation {
+  wordmark?: string
+  documentTitle?: string
+  loadingText?: string
+  failureTitle?: string
+  /** Internal package namespace prefixes mapped to one public component name. */
+  namespaceLabels?: Readonly<Record<string, string>>
+}
+
+const DEFAULT_PRESENTATION = {
+  wordmark: 'HARNESS',
+  loadingText: 'Loading plugins…',
+  failureTitle: 'Failed to load plugins',
+} as const
+
+/** Replace complete scoped-package tokens without mutating the underlying error. */
+export function presentBootText(text: string, presentation: BootPresentation): string {
+  let output = text
+  for (const [prefix, label] of Object.entries(presentation.namespaceLabels ?? {})) {
+    if (prefix === '') continue
+    const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    output = output.replace(new RegExp(`${escaped}[A-Za-z0-9._/-]+`, 'g'), label)
+  }
+  return output
+}
+
 /** Create a div with one module class and optional text. */
 function div(className: string | undefined, text?: string): HTMLDivElement {
   const el = document.createElement('div')
@@ -21,6 +48,7 @@ export class BootPage {
   private readonly wordmark: HTMLDivElement
   private readonly spinner: HTMLDivElement
   private readonly hint: HTMLDivElement
+  private readonly presentation: BootPresentation
   private readonly states = new Map<string, LoaderEntryState>()
   private readonly active = new Set<string>()
   private total = 0
@@ -30,14 +58,15 @@ export class BootPage {
    * Build and attach the boot page.
    * @param container - Application mount point.
    */
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, presentation: BootPresentation = {}) {
+    this.presentation = presentation
     this.root = div(css.boot)
     this.root.dataset.dshBoot = ''
     this.card = div(css.card)
-    this.wordmark = div(css.wordmark, 'HARNESS')
+    this.wordmark = div(css.wordmark, presentation.wordmark ?? DEFAULT_PRESENTATION.wordmark)
     this.spinner = div(css.spinner)
     this.spinner.dataset.dshBootSpinner = ''
-    this.hint = div(css.hint, 'Loading plugins…')
+    this.hint = div(css.hint, presentation.loadingText ?? DEFAULT_PRESENTATION.loadingText)
     this.card.append(this.wordmark, this.spinner, this.hint)
     this.root.append(this.card)
     container.append(this.root)
@@ -89,9 +118,11 @@ export class BootPage {
       return
     }
     const report = div(css.failed)
-    report.append(div(css.failedTitle, 'Failed to load plugins'))
-    for (const id of failed) report.append(div(css.failedItem, id))
-    if (this.failure !== undefined) report.append(div(css.failedItem, this.failure))
+    report.append(div(css.failedTitle, this.presentation.failureTitle ?? DEFAULT_PRESENTATION.failureTitle))
+    for (const id of failed) report.append(div(css.failedItem, presentBootText(id, this.presentation)))
+    if (this.failure !== undefined) {
+      report.append(div(css.failedItem, presentBootText(this.failure, this.presentation)))
+    }
     this.card.replaceChildren(this.wordmark, report)
   }
 

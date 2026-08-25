@@ -10,7 +10,7 @@ import type {
   BootManifest, ClientModuleCreateOptions, ClientModuleSystem, DshWindow,
 } from '@deepseek-ai/dsh-client-modules/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import { BootPage } from './boot-page.ts'
+import { BootPage, type BootPresentation } from './boot-page.ts'
 import { getStaticModules } from './seed.ts'
 import { STATE_LABELS } from './loader-status.ts'
 import './base.css'
@@ -35,7 +35,9 @@ export class AppWebEntry {
   constructor(container: HTMLElement, seams?: BootSeams) {
     this.container = container
     this.seams = seams
-    this.page = new BootPage(container)
+    const presentation = (globalThis as { __DSH_BOOT_PRESENTATION__?: BootPresentation })
+      .__DSH_BOOT_PRESENTATION__
+    this.page = new BootPage(container, presentation)
   }
 
   /**

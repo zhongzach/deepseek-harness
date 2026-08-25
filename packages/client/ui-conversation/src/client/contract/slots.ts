@@ -120,6 +120,16 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
       hookContext: string
       inject: ChatNodeTurnDataInjected
     }
+    /**
+     * Conditional presentation takeover for one durable context node. The
+     * default context renderer remains the fallback, so a product can claim a
+     * technical producer without copying or replacing every context form.
+     */
+    'conversation.chat.context.presentation': {
+      kind: 'chain'
+      scope: 'session'
+      owner: ContextPresentationOwnerProps
+    }
     /** Optional renderer for one consecutive group of durable message images. */
     'conversation.message.images': { kind: 'single'; scope: 'session'; owner: MessageImagesOwnerProps }
     /**
@@ -412,6 +422,9 @@ export interface AssistantActionOwnerProps {
   /** Stable identity carried from the `assistant/message` event. */
   messageId: MessageId
 }
+
+/** Stable context-node data handed to conditional presentation entries. */
+export type ContextPresentationOwnerProps = ChatNode<'context'>['data']
 
 /** Hook constrained to business data published on the current Chat Node's Turn. */
 export type UseChatNodeTurnData = <Key extends Extract<keyof ConversationTurnDataMap, string>>(

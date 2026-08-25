@@ -7,6 +7,7 @@ afterEach(() => {
   cleanup()
   document.title = ''
   vi.unstubAllEnvs()
+  delete (globalThis as { __DSH_BOOT_PRESENTATION__?: unknown }).__DSH_BOOT_PRESENTATION__
 })
 
 describe('DocumentTitle', () => {
@@ -32,5 +33,15 @@ describe('DocumentTitle', () => {
     expect(document.title).toBe('First title — DSH Local Build')
     mounted.unmount()
     expect(document.title).toBe('DSH Local Build')
+  })
+
+  it('prefers the preboot product title over the generic build title', () => {
+    ;(globalThis as { __DSH_BOOT_PRESENTATION__?: unknown }).__DSH_BOOT_PRESENTATION__ = {
+      documentTitle: 'WriterX Hermes',
+    }
+    const mounted = render(<DocumentTitle title="第一章" />)
+    expect(document.title).toBe('第一章 — WriterX Hermes')
+    mounted.rerender(<DocumentTitle />)
+    expect(document.title).toBe('WriterX Hermes')
   })
 })

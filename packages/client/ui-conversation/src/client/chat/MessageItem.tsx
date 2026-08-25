@@ -9,6 +9,7 @@ import type {
   ModelRetryNode, TurnErrorNode, UserMessageNode,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { JsonBlock, MessageText, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ChatNodeOwnerProps, ChatNodeViewProps, ChatViewSlotProps } from '../contract/slots.ts'
 import { ReferenceIcon } from '../reference/ReferenceIcon.tsx'
 import { CompactionItem } from './CompactionItem.tsx'
@@ -301,10 +302,15 @@ export const UserMessageNodeView = memo(function UserMessageNodeView({
   )
 })
 
-/** Injected-context keyed Chat renderer. */
-export const ContextMessageNodeView = memo(function ContextMessageNodeView({ node, t }: ChatNodeViewProps<'context'>) {
+type ContextMessageNodeViewProps = ChatNodeViewProps<'context'>
+  & PropsRenderSlots<'conversation.chat.context.presentation'>
+
+/** Injected-context keyed Chat renderer with a conditional product takeover chain. */
+export const ContextMessageNodeView = memo(function ContextMessageNodeView({
+  node, t, renderSlotChain,
+}: ContextMessageNodeViewProps) {
   const data = node.data
-  return (
+  return renderSlotChain('conversation.chat.context.presentation', data, { fallback: (
     <ContextInjectionRow
       content={data.content}
       source={data.source}
@@ -312,7 +318,7 @@ export const ContextMessageNodeView = memo(function ContextMessageNodeView({ nod
       form={data.form}
       t={t}
     />
-  )
+  ) })
 })
 
 /** Automatic compaction keyed Chat renderer. */

@@ -178,6 +178,10 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
   }> = []
   const renderCommandSlot = ((_key: string, _owner: object, opts?: { fallback?: React.ReactNode }) =>
     opts?.fallback ?? null) as unknown as React.ComponentProps<typeof CommandNodeView>['renderSlot']
+  const renderContextPresentation = ((_key: string, _owner: object, opts?: { fallback?: React.ReactNode }) =>
+    opts?.fallback ?? null) as unknown as React.ComponentProps<typeof ContextMessageNodeView>['renderSlotChain']
+  const renderContextSlot = (() => null) as unknown as
+    React.ComponentProps<typeof ContextMessageNodeView>['renderSlot']
   const renderTurnTail = ((_key: string, _owner: object) => null) as unknown as
     React.ComponentProps<typeof TurnTailNodeView>['renderSlotChain']
   const renderTurnTailSlot = (() => null) as unknown as
@@ -203,7 +207,14 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
       case 'steering':
         return <UserMessageNodeView {...nodeProps<'user' | 'steering'>()} />
       case 'context':
-        return <ContextMessageNodeView {...nodeProps<'context'>()} />
+        return (
+          <ContextMessageNodeView
+            {...nodeProps<'context'>()}
+            renderSlot={renderContextSlot}
+            renderSlotChain={renderContextPresentation}
+            SessionProvider={props.SessionProvider}
+          />
+        )
       case 'assistant-step':
         return <AssistantNodeView {...nodeProps<'assistant-step'>()} />
       case 'command':

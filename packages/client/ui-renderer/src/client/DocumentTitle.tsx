@@ -15,7 +15,12 @@ export interface DocumentTitleProps {
  * @returns No rendered content.
  */
 export function DocumentTitle({ title }: DocumentTitleProps): null {
-  const productTitle = process.env.DSH_CLIENT_TITLE ?? DEFAULT_CLIENT_TITLE
+  const injectedTitle = (globalThis as {
+    __DSH_BOOT_PRESENTATION__?: { documentTitle?: unknown }
+  }).__DSH_BOOT_PRESENTATION__?.documentTitle
+  const productTitle = typeof injectedTitle === 'string' && injectedTitle !== ''
+    ? injectedTitle
+    : process.env.DSH_CLIENT_TITLE ?? DEFAULT_CLIENT_TITLE
   useEffect(() => {
     document.title = title === undefined ? productTitle : `${title} — ${productTitle}`
     return () => { document.title = productTitle }

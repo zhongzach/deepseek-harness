@@ -10,6 +10,20 @@ function mount() {
   return { el, page: new BootPage(el) }
 }
 
+function mountProduct() {
+  const el = document.createElement('div')
+  document.body.append(el)
+  return {
+    el,
+    page: new BootPage(el, {
+      wordmark: 'WriterX',
+      loadingText: '正在加载 WriterX…',
+      failureTitle: 'WriterX 启动失败',
+      namespaceLabels: { '@deepseek-ai/': 'WriterX' },
+    }),
+  }
+}
+
 describe('BootPage', () => {
   it('draws the loading skeleton before any plugin state arrives', () => {
     const { el } = mount()
@@ -51,6 +65,18 @@ describe('BootPage', () => {
     page.setState('a', 'active')
     expect(el.textContent).toContain(report)
     expect(el.textContent).not.toContain('Loading plugins…')
+  })
+
+  it('uses preboot product copy and removes private package ids from failures', () => {
+    const { el, page } = mountProduct()
+    expect(el.textContent).toContain('WriterX')
+    expect(el.textContent).toContain('正在加载 WriterX…')
+    page.setState('@deepseek-ai/dsh-client-ui-layout', 'failed')
+    page.fail('Cannot import @deepseek-ai/dsh-client-ui-tool')
+    expect(el.textContent).toContain('WriterX 启动失败')
+    expect(el.textContent).toContain('Cannot import WriterX')
+    expect(el.textContent).not.toContain('@deepseek-ai/')
+    expect(el.textContent).not.toContain('HARNESS')
   })
 
   it('detaches on disposal', () => {

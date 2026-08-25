@@ -300,6 +300,7 @@ export function AgentPresetSection(props: AgentPresetSectionProps): ReactNode {
                             <button
                               type="button"
                               className={css.iconButton}
+                              data-agent-preset-source-view
                               data-tip={t('view')}
                               aria-label={`${t('view')}: ${text.name}`}
                               onClick={() => { void props.view(row.id) }}

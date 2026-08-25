@@ -51,6 +51,10 @@ interface MessageItemProps {
   readonly referenceLabels?: readonly string[]
 }
 
+const renderContextPresentation = ((_key: string, _owner: object, opts?: { fallback?: React.ReactNode }) =>
+  opts?.fallback ?? null) as unknown as React.ComponentProps<typeof ContextMessageNodeView>['renderSlotChain']
+const renderContextSlot = (() => null) as unknown as React.ComponentProps<typeof ContextMessageNodeView>['renderSlot']
+
 /** Legacy-node fixture adapter for the independently registered renderers. */
 function MessageItem({ node, t: translate, referenceLabels }: MessageItemProps) {
   const kind = node.kind === 'assistant' ? 'assistant-step' : node.kind
@@ -74,7 +78,14 @@ function MessageItem({ node, t: translate, referenceLabels }: MessageItemProps) 
     case 'steering':
       return <UserMessageNodeView {...props as ChatNodeViewProps<'user' | 'steering'>} />
     case 'context':
-      return <ContextMessageNodeView {...props as ChatNodeViewProps<'context'>} />
+      return (
+        <ContextMessageNodeView
+          {...props as ChatNodeViewProps<'context'>}
+          renderSlot={renderContextSlot}
+          renderSlotChain={renderContextPresentation}
+          SessionProvider={(() => null) as never}
+        />
+      )
     case 'compaction':
       return <CompactionNodeView {...props as ChatNodeViewProps<'compaction'>} />
     case 'model-retry':
