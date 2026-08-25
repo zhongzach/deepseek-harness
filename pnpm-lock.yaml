@@ -421,6 +421,9 @@ importers:
       '@deepseek-ai/dsh-attachment-local':
         specifier: workspace:^
         version: link:../../packages/attachment/attachment-local
+      '@deepseek-ai/dsh-authorization':
+        specifier: workspace:^
+        version: link:../../packages/credentials/authorization
       '@deepseek-ai/dsh-base':
         specifier: workspace:^
         version: link:../../packages/bundle/base
@@ -448,15 +451,15 @@ importers:
       '@deepseek-ai/dsh-client-runtime':
         specifier: workspace:^
         version: link:../../packages/client/runtime
-      '@deepseek-ai/dsh-client-schema-form':
-        specifier: workspace:^
-        version: link:../../packages/client/schema-form
       '@deepseek-ai/dsh-client-ui-agent-preset':
         specifier: workspace:^
         version: link:../../packages/client/ui-agent-preset
       '@deepseek-ai/dsh-client-ui-attachment':
         specifier: workspace:^
         version: link:../../packages/client/ui-attachment
+      '@deepseek-ai/dsh-client-ui-brand-official':
+        specifier: workspace:^
+        version: link:../../packages/client/ui-brand-official
       '@deepseek-ai/dsh-client-ui-commands':
         specifier: workspace:^
         version: link:../../packages/client/ui-commands
@@ -499,9 +502,12 @@ importers:
       '@deepseek-ai/dsh-client-ui-plan':
         specifier: workspace:^
         version: link:../../packages/client/ui-plan
-      '@deepseek-ai/dsh-client-ui-primitives':
+      '@deepseek-ai/dsh-client-ui-reference':
         specifier: workspace:^
-        version: link:../../packages/client/ui-primitives
+        version: link:../../packages/client/ui-reference
+      '@deepseek-ai/dsh-client-ui-renderer':
+        specifier: workspace:^
+        version: link:../../packages/client/ui-renderer
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: workspace:^
         version: link:../../packages/client/ui-settings
@@ -523,9 +529,6 @@ importers:
       '@deepseek-ai/dsh-client-ui-skill':
         specifier: workspace:^
         version: link:../../packages/client/ui-skill
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: workspace:^
-        version: link:../../packages/client/ui-slots
       '@deepseek-ai/dsh-client-ui-subagent':
         specifier: workspace:^
         version: link:../../packages/client/ui-subagent
@@ -547,12 +550,6 @@ importers:
       '@deepseek-ai/dsh-client-ui-workspace':
         specifier: workspace:^
         version: link:../../packages/client/ui-workspace
-      '@deepseek-ai/dsh-client-web':
-        specifier: workspace:^
-        version: link:../../packages/client/web
-      '@deepseek-ai/dsh-client-web-react':
-        specifier: workspace:^
-        version: link:../../packages/client/web-react
       '@deepseek-ai/dsh-cmdline':
         specifier: workspace:^
         version: link:../../packages/boot/cmdline
@@ -595,6 +592,12 @@ importers:
       '@deepseek-ai/dsh-credentials-local':
         specifier: workspace:^
         version: link:../../packages/credentials/credentials-local
+      '@deepseek-ai/dsh-file-reference':
+        specifier: workspace:^
+        version: link:../../packages/context/file-reference
+      '@deepseek-ai/dsh-file-reference-local':
+        specifier: workspace:^
+        version: link:../../packages/context/file-reference-local
       '@deepseek-ai/dsh-fs':
         specifier: workspace:^
         version: link:../../packages/fs/fs
@@ -871,6 +874,9 @@ importers:
       '@deepseek-ai/dsh-tool-pwsh':
         specifier: workspace:^
         version: link:../../packages/shell/tool-pwsh
+      '@deepseek-ai/dsh-tool-pwsh-persistent':
+        specifier: workspace:^
+        version: link:../../packages/shell/tool-pwsh-persistent
       '@deepseek-ai/dsh-tool-ralph':
         specifier: workspace:^
         version: link:../../packages/workflow/tool-ralph
@@ -15247,7 +15253,7 @@ packages:
         optional: true
 
   wsl-utils@0.3.1:
-    resolution: {integrity: sha512-g/eziiSUNBSsdDJtCLB8bdYEUMj4jR7AGeUo96p/3dTafgjHhpF4RiCFPiRILwjQoDXx5MqkBr4fwWtR3Ky4Wg==}
+    resolution: {integrity: sha512-g/eziiSUNBSsdDJtCLB8bdYEUMj4R7AGeUo96p/3dTafgjHhpF4RiCFPiRILwjQoDXx5MqkBr4fwWtR3Ky4Wg==}
     engines: {node: '>=20'}
 
   xml-name-validator@5.0.0:
