@@ -14,15 +14,16 @@ import { createScope } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
-import type { ModelSelection } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ModelProviderGroup, ModelSelection } from '@deepseek-ai/dsh-api-remotes/client'
 import type { CommandContribution, SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import type { ModelSelectInjected } from '../src/client/slots.ts'
+import { orderModelGroups } from '../src/client/directory.ts'
 import { apply, inject } from '../src/client/index.ts'
 import { zh } from '../src/client/locales.ts'
 
 const sid = (k: string): SessionId => k as SessionId
 
-const GROUPS = [{
+const GROUPS: ModelProviderGroup[] = [{
   id: 'deepseek-official',
   name: 'DeepSeek',
   models: [
@@ -57,12 +58,13 @@ const GROUPS = [{
 async function bench() {
   const ctx = new Context()
   let current: ModelSelection = { provider: 'deepseek-official', model: 'deepseek-v4-flash' }
+  let groups = GROUPS
   const calls = { models: 0, select: 0 }
   ctx.provide('connection', { api: { sessions: {
     models: () => {
       calls.models += 1
       return Promise.resolve({
-        result: { ok: true as const, value: { current, routable, groups: GROUPS, failures: [] } },
+        result: { ok: true as const, value: { current, routable, groups, failures: [] } },
       })
     },
     selectModel: (payload: { provider: string; model: string; reasoningEffort?: string }) => {
@@ -133,6 +135,7 @@ async function bench() {
     seat: () => seats.get('conversation.input.model')!,
     hostCurrent: () => current,
     setHostCurrent: (selection: ModelSelection) => { current = selection },
+    setGroups: (next: ModelProviderGroup[]) => { groups = next },
     address: (id: SessionId) => { addressed.add(id) },
     setRoutable: (next: boolean) => { routable = next },
     blockOf: (key: string) => blocks.get(sid(key)),
@@ -142,6 +145,18 @@ async function bench() {
 const projection = (id: string) => ({ sessionId: sid(id) })
 
 describe('ui-model-selection dual entry', () => {
+  it('ranks Hub then DeepSeek, preserving every other Host group and the input array', () => {
+    const others = [
+      { id: 'zhipu', name: '智谱', models: [] },
+      { id: 'custom-a', name: 'A', models: [] },
+    ]
+    const input = [others[0]!, GROUPS[0]!, others[1]!, { id: 'hub', name: 'WriterX', models: [] }]
+    const ordered = orderModelGroups(input)
+    expect(ordered.map(group => group.id)).toEqual(['hub', 'deepseek-official', 'zhipu', 'custom-a'])
+    expect(input.map(group => group.id)).toEqual(['zhipu', 'deepseek-official', 'custom-a', 'hub'])
+    expect(ordered).not.toBe(input)
+  })
+
   it('registers the /model contribution and the composer model seat', async () => {
     const b = await bench()
     expect(b.contribution().name).toBe('model')
@@ -158,6 +173,28 @@ describe('ui-model-selection dual entry', () => {
     expect(options.map((o: SelectOption) => o.label)).toEqual(['DeepSeek-V4-Flash', 'DeepSeek-V4-Pro'])
     expect(options[0]).toMatchObject({ active: true, detail: 'DeepSeek' })
     expect(options[1]?.active).toBeUndefined()
+  })
+
+  it('returns and stores the same ranked groups shared by the popup and composer seat', async () => {
+    const b = await bench()
+    b.mint('s1')
+    const hostGroups = [
+      { id: 'zhipu', name: '智谱', models: [{ id: 'glm', name: 'GLM' }] },
+      ...GROUPS,
+      { id: 'hub', name: 'WriterX', models: [{ id: 'writerx', name: 'WriterX 模型' }] },
+      { id: 'custom', name: '自定义', models: [{ id: 'mine', name: '我的模型' }] },
+    ]
+    b.setGroups(hostGroups)
+    const face = b.seat().inject!(sid('s1'))
+    const loaded = await b.ctx.modelDirectories.directoryFor(sid('s1')).load()
+    expect(loaded.groups.map(group => group.id)).toEqual(['hub', 'deepseek-official', 'zhipu', 'custom'])
+    expect(face.directory.getSnapshot().groups.map(group => group.id)).toEqual(['hub', 'deepseek-official', 'zhipu', 'custom'])
+    expect(hostGroups.map(group => group.id)).toEqual(['zhipu', 'deepseek-official', 'hub', 'custom'])
+
+    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
+    expect(options.map((option: SelectOption) => option.detail)).toEqual([
+      'WriterX', 'DeepSeek', 'DeepSeek', '智谱', '自定义',
+    ])
   })
 
   it('a seat selection is the current the popup marks active next — one shared state', async () => {
@@ -226,6 +263,21 @@ describe('ui-model-selection dual entry', () => {
       current: { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
       status: 'ready',
     })
+  })
+
+  it('reloads existing directories when a credential reference changes', async () => {
+    const b = await bench()
+    b.mint('s1')
+    const face = b.seat().inject!(sid('s1'))
+    face.load()
+    await Promise.resolve()
+    await Promise.resolve()
+    const before = b.calls.models
+
+    b.ctx.remote.$dispatch('credentials/reference-updated', ['DEEPSEEK_API_KEY'])
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(b.calls.models).toBe(before + 1)
   })
 
   it('scope disposal drops the directory; a reborn scope gets a fresh one', async () => {

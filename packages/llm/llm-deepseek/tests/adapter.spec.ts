@@ -1504,6 +1504,7 @@ describe('plugin registration and config', () => {
   })
 
   it('owns the deepseek provider and advertises the default models', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', 'catalog-key')
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(LlmDeepSeek, { baseURL: 'http://127.0.0.1:1' })
@@ -1612,6 +1613,7 @@ describe('plugin registration and config', () => {
   })
 
   it('uses the default model catalog when apply is called directly', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', 'catalog-key')
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     LlmDeepSeek.apply(ctx, { baseURL: 'http://127.0.0.1:1' })
@@ -1637,7 +1639,18 @@ describe('plugin registration and config', () => {
     }])
   })
 
+  it('propagates credential failures other than a missing credential from model listing', async () => {
+    const connection = resolveAdapterOptions({ models: [{ id: 'adapter-model' }] })
+    const adapter = new DeepSeekAdapter({
+      options: () => connection,
+      resolveApiKey: () => Promise.reject(new LlmError('invalid key', 'INVALID_CREDENTIAL')),
+      resolveUserId: () => TEST_USER_ID,
+    })
+    await expect(adapter.listModels('deepseek-official')).rejects.toMatchObject({ code: 'INVALID_CREDENTIAL' })
+  })
+
   it('advertises configured models without restricting arbitrary request ids', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', 'catalog-key')
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(LlmDeepSeek, {
@@ -1894,15 +1907,15 @@ describe('plugin registration and config', () => {
     expect(ctx.llm.listProviders()).toEqual([{ id: 'deepseek-official', name: 'DeepSeek' }])
   })
 
-  it('loads keyless, keeps the catalog browsable, and fails the request actionably', async () => {
+  it('loads keyless, hides the catalog, and fails the request actionably', async () => {
     vi.stubEnv('DEEPSEEK_API_KEY', '')
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(LlmDeepSeek, { baseURL: 'http://127.0.0.1:1' })
-    // First-boot onboarding: the route registers so models stay discoverable;
-    // only the request itself needs a key.
+    // The configurable provider stays registered for onboarding, while the
+    // picker catalog remains empty until that route can authenticate.
     expect(ctx.llm.listProviders()).toEqual([{ id: 'deepseek-official', name: 'DeepSeek' }])
-    await expect(ctx.llm.listModels('deepseek-official')).resolves.toHaveLength(3)
+    await expect(ctx.llm.listModels('deepseek-official')).resolves.toEqual([])
     const first = await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
     expect(first.finish).toMatchObject({ kind: 'error', failure: { code: 'MISSING_CREDENTIAL' } })
     // The guidance leads with the managed credential store.

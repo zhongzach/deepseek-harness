@@ -58,6 +58,7 @@ export class ModelDirectoryResolver extends Service {
     }
     ctx.remote.$on('llm/adapters-updated', refresh)
     ctx.remote.$on('settings/document-updated', refresh)
+    ctx.remote.$on('credentials/reference-updated', refresh)
   }
 
   /**

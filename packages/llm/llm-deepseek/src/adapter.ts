@@ -367,8 +367,15 @@ export class DeepSeekAdapter extends LlmAdapter {
     return this.config.options().retryPolicy
   }
 
-  override listModels(provider: string): Promise<readonly LlmModelInfo[]> {
-    return Promise.resolve(this.config.options().models.map(model => modelInfo(provider, model)))
+  override async listModels(provider: string): Promise<readonly LlmModelInfo[]> {
+    const connection = this.config.options()
+    try {
+      await this.config.resolveApiKey(connection)
+    } catch (error) {
+      if (error instanceof LlmError && error.code === 'MISSING_CREDENTIAL') return []
+      throw error
+    }
+    return connection.models.map(model => modelInfo(provider, model))
   }
 
   override resolveModel(

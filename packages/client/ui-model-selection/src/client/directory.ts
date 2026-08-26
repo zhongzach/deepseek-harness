@@ -33,6 +33,24 @@ export interface ModelDirectoryState {
   error: string | null
 }
 
+/** WriterX's stable provider order: built-in Hub, direct DeepSeek, then every other Host group. */
+function providerRank(provider: string): number {
+  if (provider === 'hub') return 0
+  if (provider === 'deepseek-official') return 1
+  return 2
+}
+
+/**
+ * Return a newly allocated, stably ranked directory without mutating the
+ * Host-owned array. Equal-rank providers retain their Host order.
+ */
+export function orderModelGroups(groups: readonly ModelProviderGroup[]): ModelProviderGroup[] {
+  return groups
+    .map((group, index) => ({ group, index }))
+    .sort((left, right) => providerRank(left.group.id) - providerRank(right.group.id) || left.index - right.index)
+    .map(entry => entry.group)
+}
+
 /** One session's shared directory controller; disposed with the session scope. */
 export class ModelDirectory {
   /** The shared snapshot both entries render from (uSES-safe store). */
@@ -65,24 +83,26 @@ export class ModelDirectory {
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'loading'; s.error = null })
     const { result } = await this.sessions.models({ sessionId: this.sessionId })
-    if (this.disposed || generation !== this.generation) {
-      if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
-      return result.value
-    }
     if (!result.ok) {
+      if (this.disposed || generation !== this.generation) {
+        throw new Error(`${result.error.code}: ${result.error.message}`)
+      }
       this.store.update((s) => { s.status = 'error'; s.error = `${result.error.code}: ${result.error.message}` })
       throw new Error(`session.models failed: ${result.error.code}: ${result.error.message}`)
     }
     const { current, routable, groups, failures } = result.value
+    const orderedGroups = orderModelGroups(groups)
+    const value: SessionModels = { current, routable, groups: orderedGroups, failures }
+    if (this.disposed || generation !== this.generation) return value
     this.store.update((s) => {
       s.current = current
       s.routable = routable
-      s.groups = groups
+      s.groups = orderedGroups
       s.failures = failures
       s.status = 'ready'
       s.error = null
     })
-    return result.value
+    return value
   }
 
   /**
