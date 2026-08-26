@@ -22,7 +22,16 @@ describe('tails', () => {
     expect(() => { nodeApply(new Context()) }).not.toThrow()
   })
 
-  it('AssistantMarkdown renders reasoning as a Think row and unknown blocks as JSON fallback', () => {
+  it('provides the Chinese tool-title copy used by tool rows', () => {
+    expect([
+      t('tool.title.search'),
+      t('tool.title.read'),
+      t('tool.title.write'),
+      t('tool.title.edit'),
+    ]).toEqual(['查找资料', '阅读内容', '写入', '修改'])
+  })
+
+  it('AssistantMarkdown renders reasoning as a 构思 row and unknown blocks as JSON fallback', () => {
     const view = render(
       <AssistantMarkdown
         t={t}
@@ -35,7 +44,7 @@ describe('tails', () => {
         renderMessageImages={renderMessageImages}
       />,
     )
-    expect(view.getByText('Think')).toBeTruthy()
+    expect(view.getByText('构思')).toBeTruthy()
     expect(view.getByText('thinking hard')).toBeTruthy()
     expect(view.getByText(/未知内容块/)).toBeTruthy()
     const stopped = render(

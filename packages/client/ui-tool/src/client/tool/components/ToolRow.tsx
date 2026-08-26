@@ -31,6 +31,32 @@ import { terminalBlockLabels, type TerminalCardModel } from '../models/terminal-
 import type { ToolRowState, ToolRowVariant } from '../models/tool-call-model.ts'
 import css from './ToolRow.module.css'
 
+/** Conversation-locale keys for the four generic author-facing action titles. */
+export type ToolRowTitleKey =
+  | 'tool.title.search'
+  | 'tool.title.read'
+  | 'tool.title.write'
+  | 'tool.title.edit'
+
+/**
+ * Exact presentation-only title mapping. Wire tool names, row variants and
+ * model-derived titles stay untouched; only these four generic literals cross
+ * the locale boundary at the final render site. Tool-owned titles such as
+ * Bash, Inspect and Run Cordis Plugin pass through verbatim.
+ */
+const TOOL_ROW_TITLE_KEYS: Readonly<Record<string, ToolRowTitleKey>> = Object.freeze({
+  Search: 'tool.title.search',
+  Read: 'tool.title.read',
+  Write: 'tool.title.write',
+  Edit: 'tool.title.edit',
+})
+
+/** Resolve one visible row title without changing its model or dispatch identity. */
+export function presentToolRowTitle(title: string, t: TranslateNS<'conversation'>): string {
+  const key = TOOL_ROW_TITLE_KEYS[title]
+  return key === undefined ? title : t(key)
+}
+
 export interface ToolRowProps {
   /** The render site's conversation locale seat (terminal/code body copy). */
   t: TranslateNS<'conversation'>
@@ -162,6 +188,7 @@ export function ToolRow({
   // The run-state label AT needs: the StateDot and the running sweep are both
   // aria-hidden / colour-only, so a stopped or running row is otherwise silent.
   const status = stateStatus(state, t)
+  const visibleTitle = presentToolRowTitle(title, t)
   // An error row's collapsed summary IS the failure: the first error line in
   // the error color outranks both the args summary and a terminal description.
   const failureLine = state === 'error' ? errorSummary ?? null : null
@@ -200,7 +227,7 @@ export function ToolRow({
         titleClassName={css.title}
         chevronClassName={css.chevron}
         icon={leadingFor(state, icon)}
-        title={title}
+        title={visibleTitle}
         open={open}
         expandable={expandable}
         expandOnRowClick

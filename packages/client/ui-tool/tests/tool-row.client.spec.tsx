@@ -4,11 +4,12 @@ import { cleanup, fireEvent, render } from '@testing-library/react'
 
 import type { RunningToolCall, ToolResultNode } from '@deepseek-ai/dsh-client-runtime/client'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
+import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import { classifyTool, resultText, toolRowModel } from '../src/client/tool/models/tool-call-model.ts'
-import { ToolRow } from '../src/client/tool/components/ToolRow.tsx'
+import { presentToolRowTitle, ToolRow } from '../src/client/tool/components/ToolRow.tsx'
 import { GenericToolCard, type GenericToolCardProps } from '../src/client/tool/toolviews/GenericToolCard.tsx'
-import { zh } from '@deepseek-ai/dsh-client-ui-conversation/src/client/locales.ts'
+import { en, zh } from '@deepseek-ai/dsh-client-ui-conversation/src/client/locales.ts'
 
 afterEach(() => {
   cleanup()
@@ -16,6 +17,7 @@ afterEach(() => {
 
 // Mirrors the real lookup chain (conversation namespace, then common).
 const t: GenericToolCardProps['t'] = makeTranslate(zh, commonZh)
+const tEn: GenericToolCardProps['t'] = makeTranslate(en, commonEn)
 
 const running = (over?: Partial<RunningToolCall>): RunningToolCall => ({
   callId: 'c1', name: 'bash', argsRaw: '{"command":"ls -la","description":"List files"}',
@@ -231,6 +233,15 @@ describe('ToolRow', () => {
     summary: 'List files', body: '{\n  "a": 1\n}', state: 'ok' as const,
   }
 
+  it('localizes only the four generic action titles at the presentation boundary', () => {
+    expect(['Search', 'Read', 'Write', 'Edit'].map(title => presentToolRowTitle(title, t)))
+      .toEqual(['查找资料', '阅读内容', '写入', '修改'])
+    expect(['Search', 'Read', 'Write', 'Edit'].map(title => presentToolRowTitle(title, tEn)))
+      .toEqual(['Search', 'Read', 'Write', 'Edit'])
+    expect(presentToolRowTitle('Bash', t)).toBe('Bash')
+    expect(presentToolRowTitle('Inspect', t)).toBe('Inspect')
+  })
+
   it('renders leading icon, title and summary while collapsed', () => {
     const view = render(<ToolRow {...rowProps} />)
     expect(view.queryByTestId('tool-icon')).not.toBeNull()
@@ -286,7 +297,7 @@ describe('ToolRow', () => {
     const view = render(
       <ToolRow {...rowProps} variant="read" title="Read" summary="src/a.ts" filePath="src/a.ts" onOpenFile={open} />,
     )
-    const row = view.getByRole('button', { name: /Read/ })
+    const row = view.getByRole('button', { name: /阅读内容/ })
     // Path click opens the file and leaves the row collapsed.
     fireEvent.click(view.getByText('src/a.ts'))
     expect(open).toHaveBeenCalledWith('src/a.ts')
@@ -427,7 +438,7 @@ describe('GenericToolCard', () => {
         argsRaw: '{"file_path":"src/x.ts","old_string":"before","new_string":"after"}',
       }))} />,
     )
-    expect(view.getByText('Edit')).toBeTruthy()
+    expect(view.getByText('修改')).toBeTruthy()
     expect(view.getByText('src/x.ts')).toBeTruthy()
     expect(view.container.querySelector('[data-variant="edit"]')).not.toBeNull()
     expect(view.container.querySelector('svg')).not.toBeNull()
@@ -440,7 +451,7 @@ describe('GenericToolCard', () => {
         argsRaw: '{"file_path":"src/x.ts","content":"hello"}',
       }))} />,
     )
-    expect(view.getByText('Write')).toBeTruthy()
+    expect(view.getByText('写入')).toBeTruthy()
     expect(view.getByText('src/x.ts')).toBeTruthy()
     expect(view.container.querySelector('[data-variant="write"]')).not.toBeNull()
     expect(view.container.querySelector('svg')).not.toBeNull()

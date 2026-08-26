@@ -176,6 +176,7 @@ describe('FileMutationRow diff card', () => {
 
   it('collapses to the summary row; expanding reveals the applied diff card', () => {
     const view = render(<FileMutationRow {...rowProps(settled())} />)
+    expect(view.getByText('修改')).toBeTruthy()
     // The diff card is collapsed by default — not in the DOM until expanded.
     expect(view.container.querySelector('[data-diff]')).toBeNull()
     expect(view.queryByText('hello fixture')).toBeNull()
@@ -202,6 +203,7 @@ describe('FileMutationRow diff card', () => {
       callView: { card: 'diff', title: 'Write notes/new.txt', diffs: [{ path: 'notes/new.txt', oldText: null, newText: 'hello fixture' }] },
       resultView: { card: 'diff', title: 'Write notes/new.txt', diffs: [{ path: 'notes/new.txt', oldText: null, newText: 'hello fixture' }] },
     }), 'write')} />)
+    expect(view.getByText('写入')).toBeTruthy()
     // The footer counts live inside the collapsed diff card.
     toggleRow(view)
     expect(view.getByText('└ +1 -0 · 1 file')).toBeTruthy()
