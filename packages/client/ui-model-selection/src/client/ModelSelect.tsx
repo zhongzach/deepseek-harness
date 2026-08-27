@@ -23,6 +23,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ModelSelectInjected } from './slots.ts'
+import { modelPresentationSections } from './presentation.ts'
 import css from './ModelSelect.module.css'
 
 /** Which pane the dropdown shows: the two-row root or one drilled-in list. */
@@ -284,12 +285,14 @@ export function ModelSelect(
                 </div>
               ))}
               <div className={clsx(css.groups, 'scrollable')}>
-                {state.groups.map((group) => {
-                  const headingId = `${id}-${group.id}`
+                {state.groups.flatMap(group => modelPresentationSections(group).map((section, sectionIndex) => {
+                  const headingId = section.presented
+                    ? `${id}-group-${String(sectionIndex)}-${encodeURIComponent(section.key)}`
+                    : `${id}-${group.id}`
                   return (
-                    <section role="group" aria-labelledby={headingId} className={css.group} key={group.id}>
-                      <div className={css.groupTitle} id={headingId}>{group.name}</div>
-                      {group.models.map((model) => {
+                    <section role="group" aria-labelledby={headingId} className={css.group} key={section.key}>
+                      <div className={css.groupTitle} id={headingId}>{section.name}</div>
+                      {section.models.map((model) => {
                         const selected = state.current?.provider === group.id && state.current.model === model.id
                         return (
                           <button
@@ -317,7 +320,7 @@ export function ModelSelect(
                       })}
                     </section>
                   )
-                })}
+                }))}
               </div>
               {state.status === 'ready' && choices.length === 0 && (
                 <div className={css.empty}>{t('empty.models')}</div>

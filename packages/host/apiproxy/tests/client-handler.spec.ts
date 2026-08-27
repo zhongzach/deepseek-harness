@@ -735,7 +735,15 @@ describe('config unary surface', () => {
       settingsPath: ['providers', 'openai'],
       active: false,
     }
-    const group = { id: 'deepseek-official', name: 'DeepSeek', models: [{ id: 'deepseek-v4-flash', name: 'Flash' }] }
+    const group = {
+      id: 'hub',
+      name: 'WriterX 云',
+      models: [{
+        id: 'deepseek-v4-flash',
+        name: 'Flash',
+        presentation: { sectionId: 'free', sectionName: '内置免费', sectionOrder: 10 },
+      }],
+    }
     const api = scriptedApi({
       settings: {
         describe: record('settings.describe', r => ok(r, { writable: true, hasDocument: false, namespaces: [view] })),

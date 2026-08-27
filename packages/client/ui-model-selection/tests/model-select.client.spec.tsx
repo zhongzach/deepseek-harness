@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { ModelSelection } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ModelProviderGroup, ModelSelection } from '@deepseek-ai/dsh-api-remotes/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ComponentProps } from 'react'
 import type { ModelDirectoryState } from '../src/client/directory.ts'
 import { ModelSelect } from '../src/client/ModelSelect.tsx'
+import { modelPresentationSections, modelSectionKey } from '../src/client/presentation.ts'
 import { zh } from '../src/client/locales.ts'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 
@@ -45,9 +46,80 @@ function state(overrides: Partial<ModelDirectoryState> = {}): ModelDirectoryStat
   }
 }
 
+function presentedModel(
+  id: string,
+  name: string,
+  sectionId: string,
+  sectionName: string,
+  sectionOrder: number,
+): ModelProviderGroup['models'][number] {
+  return { id, name, presentation: { sectionId, sectionName, sectionOrder } } as never
+}
+
 afterEach(cleanup)
 
 describe('ModelSelect reasoning effort', () => {
+  it('keeps an unmarked provider as the existing single group', () => {
+    const group = state().groups[0]!
+    const sections = modelPresentationSections(group)
+    expect(sections).toEqual([{
+      key: 'deepseek-official',
+      name: 'DeepSeek',
+      models: group.models,
+      presented: false,
+    }])
+  })
+
+  it('renders stable Hub sections while current selection and clicks keep provider=hub', async () => {
+    const groups: ModelProviderGroup[] = [{
+      id: 'hub',
+      name: 'WriterX 云',
+      models: [
+        presentedModel('vip-current', '专供当前', 'premium', '会员专供', 20),
+        presentedModel('free-a', '免费 A', 'free', '内置免费', 10),
+        presentedModel('vip-next', '专供 B', 'premium', '会员专供', 20),
+        presentedModel('free-b', '免费 C', 'free', '内置免费', 10),
+      ],
+    }]
+    const directory = createSnapshotStore<ModelDirectoryState>(state({
+      groups,
+      current: { provider: 'hub', model: 'vip-current' },
+    }))
+    const select = vi.fn().mockResolvedValue(true)
+    render(<ModelSelect
+      locked={false}
+      available
+      directory={directory}
+      load={vi.fn()}
+      select={select}
+      t={t}
+    />)
+
+    expect(screen.getByRole('button', { name: '选择模型，当前 专供当前' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '选择模型，当前 专供当前' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /模型/ }))
+    const headings = screen.getAllByRole('group').map(group => group.getAttribute('aria-labelledby'))
+      .map(labelledBy => document.getElementById(labelledBy!)?.textContent)
+    expect(headings).toEqual(['内置免费', '会员专供'])
+    expect(screen.getByRole('menuitemradio', { name: '专供当前' }).getAttribute('aria-checked')).toBe('true')
+
+    fireEvent.click(screen.getByRole('menuitemradio', { name: '专供 B' }))
+    await waitFor(() => {
+      expect(select).toHaveBeenCalledWith({ provider: 'hub', model: 'vip-next' })
+    })
+  })
+
+  it('scopes identical presentation section ids by provider for unique keys', () => {
+    expect(modelSectionKey('hub', 'presented:free')).not.toBe(modelSectionKey('other', 'presented:free'))
+    const hub = modelPresentationSections({
+      id: 'hub', name: 'WriterX', models: [presentedModel('h', 'H', 'free', '内置免费', 0)],
+    })
+    const other = modelPresentationSections({
+      id: 'other', name: 'Other', models: [presentedModel('o', 'O', 'free', '免费', 0)],
+    })
+    expect(new Set([...hub, ...other].map(section => section.key)).size).toBe(2)
+  })
+
   it('renders adapter metadata and submits the effort as part of the session selection', async () => {
     const directory = createSnapshotStore<ModelDirectoryState>(state())
     const select = vi.fn(async (selection: ModelSelection) => {

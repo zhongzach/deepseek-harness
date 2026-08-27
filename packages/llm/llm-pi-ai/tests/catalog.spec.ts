@@ -113,6 +113,37 @@ describe('hand-declared providers', () => {
     })
   })
 
+  it('keeps selector presentation beside the materialized model rather than inside pi-ai', () => {
+    const resolved = resolveProfiles({
+      'acme-gateway': {
+        api: 'openai-completions',
+        baseURL: 'https://acme.test',
+        models: [{
+          id: 'acme-large',
+          presentation: { sectionId: 'premium', sectionName: 'Premium', sectionOrder: 20 },
+        }],
+      },
+    })
+    const profile = resolved.get('acme-gateway')
+    expect(profile?.modelPresentations.get('acme-large')).toEqual({
+      sectionId: 'premium', sectionName: 'Premium', sectionOrder: 20,
+    })
+    expect(profile?.piProvider.getModels()[0]).not.toHaveProperty('presentation')
+  })
+
+  it('rejects empty or non-finite presentation facts during service resolution', () => {
+    const declare = (presentation: unknown) => () => resolveProfiles({
+      'acme-gateway': {
+        api: 'openai-completions',
+        baseURL: 'https://acme.test',
+        models: [{ id: 'acme-large', presentation } as LlmPiAi.PiAiModelProfile],
+      },
+    })
+    expect(declare({ sectionId: '', sectionName: 'Premium' })).toThrow(/sectionId/)
+    expect(declare({ sectionId: 'premium', sectionName: '' })).toThrow(/sectionName/)
+    expect(declare({ sectionId: 'premium', sectionName: 'Premium', sectionOrder: Number.NaN })).toThrow(/sectionOrder/)
+  })
+
   it('offers no reasoning control it could not honour', async () => {
     const server = await mockServer([])
     const ctx = await harness(gateway(`${server.url}/v1`))
@@ -702,6 +733,7 @@ describe('modelOverrides', () => {
             name: 'DeepSeek (proxied)',
             maxTokens: 4096,
             reasoningEfforts: { off: null, high: 'high' },
+            presentation: { sectionId: 'proxied', sectionName: 'Proxied' },
           },
         },
       },
@@ -718,6 +750,9 @@ describe('modelOverrides', () => {
     // An override's cap is explicit configuration, so it becomes the request
     // default exactly as a models entry's would.
     expect(resolved.get('deepseek')?.configuredMaxTokens.get(target.id)).toBe(4096)
+    expect(resolved.get('deepseek')?.modelPresentations.get(target.id)).toEqual({
+      sectionId: 'proxied', sectionName: 'Proxied',
+    })
     // A sibling the overrides do not name is byte-identical to the catalog.
     const sibling = models.find(model => model.id !== target.id)
     expect(sibling?.maxTokens).toBe(getBuiltinModels('deepseek').find(model => model.id === sibling?.id)?.maxTokens)

@@ -28,6 +28,7 @@ import type {
   Provider,
   ThinkingLevelMap,
 } from '@earendil-works/pi-ai'
+import type { LlmModelPresentation } from '@deepseek-ai/dsh-llm'
 
 /**
  * Pricing for a model the installed catalog does not describe. The harness
@@ -536,6 +537,8 @@ export interface PiAiModelProfile {
   id: string
   /** Display name for selectors; defaults to the catalog name, then the id. */
   name?: string
+  /** Optional selector-only section placement; it never enters pi-ai's model or request identity. */
+  presentation?: LlmModelPresentation
   /** Maximum combined request and response context in tokens. */
   contextWindow?: number
   /**
@@ -769,6 +772,8 @@ export interface RouteCatalog {
    * picked, so only an explicit configuration lands here.
    */
   configuredMaxTokens: ReadonlyMap<string, number>
+  /** Selector-only placement configured for exact model ids. */
+  presentations: ReadonlyMap<string, LlmModelPresentation>
 }
 
 /**
@@ -830,6 +835,7 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
   }
   const seen = new Set<string>()
   const configuredMaxTokens = new Map<string, number>()
+  const presentations = new Map<string, LlmModelPresentation>()
   const models = entries.map((entry) => {
     if (entry.id.length === 0) invalid(provider, 'has a model with an empty id')
     if (seen.has(entry.id)) invalid(provider, `lists model "${entry.id}" more than once`)
@@ -859,6 +865,26 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
     // Only a value the profile named is a deployment choice; the catalog's is
     // the model's capability and stays out of request defaults.
     if (entry.maxTokens !== undefined) configuredMaxTokens.set(entry.id, entry.maxTokens)
+    if ((entry.presentation as unknown) === null) {
+      invalid(provider, `model "${entry.id}" presentation must name sectionId and sectionName, or be removed`)
+    }
+    if (entry.presentation !== undefined) {
+      const { sectionId, sectionName, sectionOrder } = entry.presentation
+      if (typeof sectionId !== 'string' || sectionId.length === 0) {
+        invalid(provider, `model "${entry.id}" presentation.sectionId must not be empty`)
+      }
+      if (typeof sectionName !== 'string' || sectionName.length === 0) {
+        invalid(provider, `model "${entry.id}" presentation.sectionName must not be empty`)
+      }
+      if (sectionOrder !== undefined && !Number.isFinite(sectionOrder)) {
+        invalid(provider, `model "${entry.id}" presentation.sectionOrder must be finite`)
+      }
+      presentations.set(entry.id, {
+        sectionId,
+        sectionName,
+        ...sectionOrder === undefined ? {} : { sectionOrder },
+      })
+    }
     return {
       // The installed entry lays the floor, and the fields below override it.
       // Enumerating instead would silently drop every `Model` field this
@@ -889,5 +915,5 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
     invalid(provider, `sets compat "${field}", but no model on the route speaks a protocol that takes it;`
       + ` it exists on ${takers.join(', ')}`)
   }
-  return { models, configuredMaxTokens }
+  return { models, configuredMaxTokens, presentations }
 }

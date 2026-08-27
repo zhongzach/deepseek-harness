@@ -278,12 +278,17 @@ export class PiAiAdapter extends LlmAdapter {
     return Promise.resolve().then(() => {
       const snapshot = this.current()
       this.profileOf(snapshot, provider)
-      return snapshot.models.getModels(provider).map(model => ({
-        provider,
-        id: model.id,
-        name: model.name,
-        inputModalities: [...model.input],
-      }))
+      const profile = this.profileOf(snapshot, provider)
+      return snapshot.models.getModels(provider).map((model) => {
+        const presentation = profile.modelPresentations.get(model.id)
+        return {
+          provider,
+          id: model.id,
+          name: model.name,
+          inputModalities: [...model.input],
+          ...presentation === undefined ? {} : { presentation },
+        }
+      })
     })
   }
 
@@ -305,11 +310,13 @@ export class PiAiAdapter extends LlmAdapter {
     // Only a cap the deployment configured is a request default; the
     // catalog's `maxTokens` sizes the model and stops there.
     const configuredMaxTokens = profile.configuredMaxTokens.get(model)
+    const presentation = profile.modelPresentations.get(model)
     return {
       provider,
       id: model,
       name: resolvedModel.name,
       inputModalities: [...resolvedModel.input],
+      ...presentation === undefined ? {} : { presentation },
       context: { contextWindow: resolvedModel.contextWindow },
       ...configuredMaxTokens === undefined ? {} : { defaultMaxTokens: configuredMaxTokens },
       ...reasoningInfo(resolvedModel, defaultLevel),

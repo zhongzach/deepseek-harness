@@ -6,7 +6,7 @@
 
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
 import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
+import type { ContentBlock, LlmModelPresentation } from '@deepseek-ai/dsh-llm/types'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 // The pure-type outlet: api/ is browser-importable, and the package root's
 // cordis Context merge (via dsh-agent) must not enter client aggregates.
@@ -120,6 +120,9 @@ export interface ModelReasoning {
   defaultEffort?: string
 }
 
+/** Optional model-selector grouping metadata; never used as a provider route. */
+export type ModelCatalogPresentation = LlmModelPresentation
+
 /** One model displayed inside its provider group. */
 export interface ModelCatalogModel {
   /** Provider-owned model id. */
@@ -128,6 +131,8 @@ export interface ModelCatalogModel {
   name: string
   /** Optional provider-supplied description. */
   description?: string
+  /** Optional presentation-only subsection; selection still uses the parent provider id. */
+  presentation?: ModelCatalogPresentation
   /** Exact-route reasoning metadata when the adapter exposes it. */
   reasoning?: ModelReasoning
 }

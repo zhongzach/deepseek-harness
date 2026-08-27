@@ -214,6 +214,7 @@ describe('sessions domain schemas', () => {
           id: 'deepseek-v4-flash',
           name: 'DeepSeek V4 Flash',
           description: 'fast',
+          presentation: { sectionId: 'free', sectionName: '内置免费', sectionOrder: 10 },
           reasoning: {
             efforts: [
               { id: 'off', name: 'Off' },
@@ -224,7 +225,22 @@ describe('sessions domain schemas', () => {
         }],
       }],
       failures: [{ id: 'broken', name: 'Broken', message: 'offline' }],
-    }).groups[0]?.models[0]?.id).toBe('deepseek-v4-flash')
+    }).groups[0]?.models[0]).toMatchObject({
+      id: 'deepseek-v4-flash',
+      presentation: { sectionId: 'free', sectionName: '内置免费', sectionOrder: 10 },
+    })
+    for (const presentation of [
+      { sectionId: '', sectionName: '内置免费' },
+      { sectionId: 'free', sectionName: '' },
+      { sectionId: 'free', sectionName: '内置免费', sectionOrder: Number.POSITIVE_INFINITY },
+    ]) {
+      expect(() => sessionModelsValueSchema.parse({
+        current: { provider: 'hub', model: 'm' },
+        routable: true,
+        groups: [{ id: 'hub', name: 'WriterX 云', models: [{ id: 'm', name: 'M', presentation }] }],
+        failures: [],
+      })).toThrow()
+    }
     expect(sessionSelectModelRequestSchema.parse({
       sessionId: 's1',
       provider: 'deepseek-official',

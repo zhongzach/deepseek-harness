@@ -60,6 +60,7 @@ class CatalogAdapter extends ScriptedAdapter {
     private readonly contexts: Readonly<Record<string, LlmModelContext>> = {},
     private readonly reasoning: Readonly<Record<string, LlmModelReasoningInfo>> = {},
     private readonly defaultMaxTokens: Readonly<Record<string, number>> = {},
+    private readonly presentations: Readonly<Record<string, LlmModelInfo['presentation']>> = {},
   ) {
     super(SCRIPT)
   }
@@ -83,6 +84,7 @@ class CatalogAdapter extends ScriptedAdapter {
       ...this.contexts[model] === undefined ? {} : { context: this.contexts[model] },
       ...this.reasoning[model] === undefined ? {} : { reasoning: this.reasoning[model] },
       ...this.defaultMaxTokens[model] === undefined ? {} : { defaultMaxTokens: this.defaultMaxTokens[model] },
+      ...this.presentations[model] === undefined ? {} : { presentation: this.presentations[model] },
     })
   }
 }
@@ -548,6 +550,28 @@ describe('LlmRuntime', () => {
     }])
   })
 
+  it('detaches selector-only presentation metadata from catalog and exact model results', async () => {
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    const presentation = { sectionId: 'premium', sectionName: 'Premium', sectionOrder: 20 }
+    const model = { provider: 'catalog', id: 'fast', name: 'Fast', presentation }
+    ctx.llm.registerAdapter(['catalog'], new CatalogAdapter(
+      { id: 'catalog', name: 'Catalog' },
+      [model],
+      {},
+      {},
+      {},
+      { fast: presentation },
+    ))
+
+    const [listed] = await ctx.llm.listModels('catalog')
+    const exact = await ctx.llm.resolveModelInfo('catalog', 'fast')
+    expect(listed?.presentation).toEqual(presentation)
+    expect(exact.presentation).toEqual(presentation)
+    expect(listed?.presentation).not.toBe(presentation)
+    expect(exact.presentation).not.toBe(presentation)
+  })
+
   it('defaults adapters to their route name and an empty advisory model list', async () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
@@ -569,6 +593,7 @@ describe('LlmRuntime', () => {
     [{ provider: 'route', id: 'model', name: 1 }, 'non-string name'],
     [{ provider: 'route', id: 'model', name: '' }, 'empty name'],
     [{ provider: 'route', id: 'model', name: 'Model', description: 1 }, 'non-string description'],
+    [{ provider: 'route', id: 'model', name: 'Model', presentation: { sectionId: '', sectionName: 'Section' } }, 'invalid presentation'],
   ] as const)('rejects invalid exact model metadata (%s: %s)', async (metadata, _label) => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
@@ -1080,6 +1105,9 @@ describe('LlmRuntime', () => {
     [{ provider: 'route', id: 'm', name: 1 }, 'non-string name'],
     [{ provider: 'route', id: 'm', name: '' }, 'empty name'],
     [{ provider: 'route', id: 'm', name: 'M', description: 1 }, 'non-string description'],
+    [{ provider: 'route', id: 'm', name: 'M', presentation: { sectionId: '', sectionName: 'Section' } }, 'empty section id'],
+    [{ provider: 'route', id: 'm', name: 'M', presentation: { sectionId: 'section', sectionName: '' } }, 'empty section name'],
+    [{ provider: 'route', id: 'm', name: 'M', presentation: { sectionId: 'section', sectionName: 'Section', sectionOrder: Number.NaN } }, 'non-finite section order'],
   ] as const)('rejects invalid model metadata (%s: %s)', async (metadata, _label) => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)

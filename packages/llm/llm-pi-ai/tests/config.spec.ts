@@ -65,6 +65,29 @@ describe('modality schema boundary', () => {
   })
 })
 
+describe('model presentation schema boundary', () => {
+  it('accepts a complete selector-only section and preserves omission', () => {
+    type Materialized = { providers: Record<string, { models?: { presentation?: unknown }[] }> }
+    const configured = configWith({
+      presentation: { sectionId: 'premium', sectionName: 'Premium', sectionOrder: 20 },
+    })() as Materialized
+    expect(configured.providers['acme-gateway']?.models?.[0]?.presentation).toEqual({
+      sectionId: 'premium', sectionName: 'Premium', sectionOrder: 20,
+    })
+    const absent = configWith({})() as Materialized
+    expect(absent.providers['acme-gateway']?.models?.[0]?.presentation).toBeUndefined()
+  })
+
+  it('rejects an incomplete section at service resolution', () => {
+    expect(() => {
+      assertServiceable(configWith({ presentation: { sectionId: 'premium' } })() as Config)
+    }).toThrow(/sectionName/)
+    expect(() => {
+      assertServiceable(configWith({ presentation: { sectionName: 'Premium' } })() as Config)
+    }).toThrow(/sectionId/)
+  })
+})
+
 describe('request image policy bounds', () => {
   it.each([
     ['requestImagePixelBudget', 0, /requestImagePixelBudget must be a positive safe integer/],

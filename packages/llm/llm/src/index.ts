@@ -16,6 +16,7 @@ import type {
   LlmModelContext,
   LlmModelDiscoveryRequest,
   LlmModelInfo,
+  LlmModelPresentation,
   LlmResolvedModelInfo,
   LlmProviderInfo,
   ModelModality,
@@ -612,6 +613,33 @@ export class LlmRuntime extends Service {
     return modalities === undefined ? undefined : [...modalities]
   }
 
+  /** Validate and detach selector-only model placement metadata. */
+  private detachedPresentation(
+    presentation: LlmModelPresentation | undefined,
+    provider: string,
+    model: string,
+    code: 'INVALID_CATALOG' | 'INVALID_MODEL_INFO',
+  ): LlmModelPresentation | undefined {
+    if (presentation === undefined) return undefined
+    if (
+      typeof presentation.sectionId !== 'string'
+      || presentation.sectionId.length === 0
+      || typeof presentation.sectionName !== 'string'
+      || presentation.sectionName.length === 0
+      || (presentation.sectionOrder !== undefined && !Number.isFinite(presentation.sectionOrder))
+    ) {
+      throw new LlmError(
+        `adapter returned invalid presentation metadata for provider "${provider}" model "${model}"`,
+        code,
+      )
+    }
+    return {
+      sectionId: presentation.sectionId,
+      sectionName: presentation.sectionName,
+      ...presentation.sectionOrder === undefined ? {} : { sectionOrder: presentation.sectionOrder },
+    }
+  }
+
   /**
    * Discover models advertised by one registered provider. Catalog membership
    * is advisory and never changes routing or request validation.
@@ -637,12 +665,14 @@ export class LlmRuntime extends Service {
       }
       seen.add(model.id)
       const inputModalities = this.detachedModalities(model.inputModalities)
+      const presentation = this.detachedPresentation(model.presentation, provider, model.id, 'INVALID_CATALOG')
       return {
         provider: model.provider,
         id: model.id,
         name: model.name,
         ...model.description === undefined ? {} : { description: model.description },
         ...inputModalities === undefined ? {} : { inputModalities },
+        ...presentation === undefined ? {} : { presentation },
       }
     })
   }
@@ -704,6 +734,7 @@ export class LlmRuntime extends Service {
     // Capability metadata rides through: an explicit modality omission is
     // negative capability downstream preflights act on (image admission).
     const inputModalities = this.detachedModalities(resolved.inputModalities)
+    const presentation = this.detachedPresentation(resolved.presentation, provider, model, 'INVALID_MODEL_INFO')
     const defaultMaxTokens = resolved.defaultMaxTokens
     if (defaultMaxTokens !== undefined
       && (!Number.isSafeInteger(defaultMaxTokens) || defaultMaxTokens <= 0)) {
@@ -718,6 +749,7 @@ export class LlmRuntime extends Service {
       name: resolved.name,
       ...resolved.description === undefined ? {} : { description: resolved.description },
       ...inputModalities === undefined ? {} : { inputModalities },
+      ...presentation === undefined ? {} : { presentation },
       ...context === undefined ? {} : { context: { contextWindow: context.contextWindow } },
       ...defaultMaxTokens === undefined ? {} : { defaultMaxTokens },
     }

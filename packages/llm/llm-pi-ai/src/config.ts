@@ -20,7 +20,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { resolveRetryPolicy, RetryPolicySchema } from '@deepseek-ai/dsh-llm'
-import type { ResolvedRetryPolicy, RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
+import type { LlmModelPresentation, ResolvedRetryPolicy, RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
 import {
   CACHE_CONTROL_FORMATS,
   CHAT_TEMPLATE_VARS,
@@ -207,6 +207,8 @@ export interface ResolvedPiAiProviderProfile
    * own, so a catalog capability must not appear here.
    */
   configuredMaxTokens: ReadonlyMap<string, number>
+  /** Selector-only section placement configured by exact model id. */
+  modelPresentations: ReadonlyMap<string, LlmModelPresentation>
 }
 
 /** Plugin configuration: the provider routes this instance owns. */
@@ -280,9 +282,20 @@ const reasoningEfforts = z.dict(
   z.union(THINKING_LEVELS),
 ) as unknown as z<PiAiReasoningEfforts>
 
+/** Selector-only section placement; route/model identity remains outside this block. */
+const modelPresentation = z.union([
+  z.object({
+    sectionId: z.string(),
+    sectionName: z.string(),
+    sectionOrder: z.number(),
+  }),
+  z.const(null),
+]) as unknown as z<LlmModelPresentation>
+
 /** The fields a `models` entry and a `modelOverrides` value share; only the id's home differs. */
 const modelFields = {
   name: z.string(),
+  presentation: modelPresentation,
   contextWindow: z.number().step(1).min(1),
   maxTokens: z.number().step(1).min(1),
   // No explicit default, unlike the route's `defaultInput`: schemastery
@@ -451,6 +464,7 @@ export function resolveProfiles(
       ...rest.headers === undefined ? {} : { headers: { ...rest.headers } },
       ...rest.thinkingBudgets === undefined ? {} : { thinkingBudgets: { ...rest.thinkingBudgets } },
       configuredMaxTokens: catalog.configuredMaxTokens,
+      modelPresentations: catalog.presentations,
       piProvider: buildProvider({
         provider,
         displayName,

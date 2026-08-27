@@ -11,7 +11,7 @@ import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
 import type {
-  HistoryEntry, ModelCatalogFailure, ModelCatalogModel, ModelProviderGroup, ModelReasoning,
+  HistoryEntry, ModelCatalogFailure, ModelCatalogModel, ModelCatalogPresentation, ModelProviderGroup, ModelReasoning,
   ModelReasoningEffort, ModelSelection, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem, SessionSummary,
 } from './sessions.ts'
 import type { ToolEventView } from './events.ts'
@@ -165,11 +165,19 @@ export const modelReasoningSchema = z.object({
   defaultEffort: z.string().min(1).optional(),
 }) satisfies z.ZodType<Wire<ModelReasoning>>
 
+/** Presentation-only subsection metadata for one model row. */
+export const modelCatalogPresentationSchema = z.object({
+  sectionId: z.string().min(1),
+  sectionName: z.string().min(1),
+  sectionOrder: z.number().finite().optional(),
+}) satisfies z.ZodType<Wire<ModelCatalogPresentation>>
+
 /** One advisory model entry inside a provider group. */
 export const modelCatalogModelSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string().optional(),
+  presentation: modelCatalogPresentationSchema.optional(),
   reasoning: modelReasoningSchema.optional(),
 }) satisfies z.ZodType<Wire<ModelCatalogModel>>
 

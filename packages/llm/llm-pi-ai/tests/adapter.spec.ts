@@ -573,6 +573,37 @@ describe('provider profile lifecycle', () => {
     })
   })
 
+  it('serves selector presentation from list and exact resolution without sending it', async () => {
+    vi.stubEnv('PI_TEST_KEY', 'test-key')
+    const server = await mockServer([{ events: textEvents }])
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(LlmPiAi, {
+      providers: {
+        'acme-gateway': {
+          apiKeyEnv: 'PI_TEST_KEY',
+          api: 'openai-completions',
+          baseURL: `${server.url}/v1`,
+          models: [{
+            id: 'acme-large',
+            presentation: { sectionId: 'premium', sectionName: 'Premium', sectionOrder: 20 },
+          }],
+        },
+      },
+    })
+
+    const expected = { sectionId: 'premium', sectionName: 'Premium', sectionOrder: 20 }
+    await expect(ctx.llm.listModels('acme-gateway')).resolves.toEqual([expect.objectContaining({
+      id: 'acme-large', presentation: expected,
+    })])
+    await expect(ctx.llm.resolveModelInfo('acme-gateway', 'acme-large')).resolves.toMatchObject({
+      presentation: expected,
+    })
+    await assemble(ctx, { provider: 'acme-gateway', model: 'acme-large', messages: [] })
+    expect(server.requests[0]).not.toHaveProperty('presentation')
+    expect(JSON.stringify(server.requests[0])).not.toContain('sectionId')
+  })
+
   it('sends the declared wire spelling and refuses undeclared levels before network I/O', async () => {
     vi.stubEnv('PI_TEST_KEY', 'test-key')
     const server = await mockServer([{ events: textEvents }])

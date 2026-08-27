@@ -251,6 +251,16 @@ export interface LlmDiscoveredModel {
   maxTokens?: number
 }
 
+/** Optional selector-only placement for one model without changing its route identity. */
+export interface LlmModelPresentation {
+  /** Stable section identity used only by presentation consumers. */
+  sectionId: string
+  /** Human-readable section heading. */
+  sectionName: string
+  /** Optional ascending placement among sections; omission preserves provider order. */
+  sectionOrder?: number
+}
+
 /** One adapter-discovered model; catalog membership is advisory, not request validation. */
 export interface LlmModelInfo {
   /** Provider route that owns this model entry. */
@@ -263,6 +273,8 @@ export interface LlmModelInfo {
   description?: string
   /** Accepted request modalities; absent means unknown, while an explicit omission is negative capability. */
   inputModalities?: readonly ModelModality[]
+  /** Optional selector-only placement; never part of provider/model request identity. */
+  presentation?: LlmModelPresentation
 }
 
 /** Provider-owned context capacity for one exact provider/model route. */

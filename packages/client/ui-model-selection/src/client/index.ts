@@ -25,12 +25,15 @@ import { ModelDirectoryResolver } from './service.ts'
 import type { ModelSelectInjected } from './slots.ts'
 import { ModelSelect } from './ModelSelect.tsx'
 import { en, zh, type ModelKey } from './locales.ts'
+import { modelPresentationSections } from './presentation.ts'
 
 export { ModelDirectory } from './directory.ts'
 export type { ModelDirectoryState } from './directory.ts'
 export { ModelDirectoryResolver } from './service.ts'
 export type { ModelSelectInjected } from './slots.ts'
 export type { ModelKey } from './locales.ts'
+export { modelPresentationSections, modelSectionKey } from './presentation.ts'
+export type { ModelPresentation, ModelPresentationSection } from './presentation.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -48,14 +51,17 @@ function rowId(providerId: string, modelId: string): string {
 function optionsOf(directory: SessionModels, t: TranslateNS<'model'>): SelectOption[] {
   const rows: SelectOption[] = []
   for (const group of directory.groups) {
-    for (const model of group.models) {
-      rows.push({
-        id: rowId(group.id, model.id),
-        label: model.name,
-        detail: model.description !== undefined ? `${group.name} · ${model.description}` : group.name,
-        ...(directory.current.provider === group.id && directory.current.model === model.id
-          ? { active: true } : {}),
-      })
+    for (const section of modelPresentationSections(group)) {
+      const groupDetail = section.presented ? `${group.name} · ${section.name}` : group.name
+      for (const model of section.models) {
+        rows.push({
+          id: rowId(group.id, model.id),
+          label: model.name,
+          detail: model.description !== undefined ? `${groupDetail} · ${model.description}` : groupDetail,
+          ...(directory.current.provider === group.id && directory.current.model === model.id
+            ? { active: true } : {}),
+        })
+      }
     }
   }
   for (const failure of directory.failures) {

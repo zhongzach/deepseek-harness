@@ -144,6 +144,10 @@ async function bench() {
 
 const projection = (id: string) => ({ sessionId: sid(id) })
 
+function presentedModel(id: string, name: string, sectionId: string, sectionName: string, sectionOrder: number) {
+  return { id, name, presentation: { sectionId, sectionName, sectionOrder } } as never
+}
+
 describe('ui-model-selection dual entry', () => {
   it('ranks Hub then DeepSeek, preserving every other Host group and the input array', () => {
     const others = [
@@ -195,6 +199,27 @@ describe('ui-model-selection dual entry', () => {
     expect(options.map((option: SelectOption) => option.detail)).toEqual([
       'WriterX', 'DeepSeek', 'DeepSeek', '智谱', '自定义',
     ])
+  })
+
+  it('/model describes Hub presentation sections but submits the real hub provider', async () => {
+    const b = await bench()
+    b.mint('s1')
+    b.setGroups([{
+      id: 'hub',
+      name: 'WriterX 云',
+      models: [
+        presentedModel('free', '免费模型', 'free', '内置免费', 0),
+        presentedModel('premium', '专供模型', 'premium', '会员专供', 1),
+      ],
+    }])
+
+    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
+    expect(options.map((option: SelectOption) => [option.label, option.detail])).toEqual([
+      ['免费模型', 'WriterX 云 · 内置免费'],
+      ['专供模型', 'WriterX 云 · 会员专供'],
+    ])
+    await b.contribution().ui.onSelect(options[1]!, projection('s1'))
+    expect(b.hostCurrent()).toEqual({ provider: 'hub', model: 'premium' })
   })
 
   it('a seat selection is the current the popup marks active next — one shared state', async () => {
