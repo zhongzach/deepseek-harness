@@ -3,6 +3,34 @@ import type { ModelProviderGroup } from '@deepseek-ai/dsh-api-remotes/client'
 
 type CatalogModel = ModelProviderGroup['models'][number]
 
+/** One deployment-owned help action, deduplicated across unavailable model rows. */
+export interface ModelAvailabilityAction {
+  id: string
+  label: string
+  reason?: string
+}
+
+/**
+ * Collect separate help controls without turning any unavailable model into a selectable row.
+ * @param groups - the current advertised model directory.
+ * @returns unique help actions in catalog order; eligible rows never contribute actions.
+ */
+export function modelAvailabilityActions(groups: readonly ModelProviderGroup[]): ModelAvailabilityAction[] {
+  const actions = new Map<string, ModelAvailabilityAction>()
+  for (const group of groups) {
+    for (const model of group.models) {
+      const availability = model.availability
+      if (availability?.selectable !== false || availability.action === undefined) continue
+      const action = availability.action
+      if (!actions.has(action.id)) actions.set(action.id, {
+        ...action,
+        ...availability.reason === undefined ? {} : { reason: availability.reason },
+      })
+    }
+  }
+  return [...actions.values()]
+}
+
 /** Optional model metadata carried by deployments that subdivide one real provider. */
 export interface ModelPresentation {
   sectionId: string

@@ -43,6 +43,8 @@ function providerRank(provider: string): number {
 /**
  * Return a newly allocated, stably ranked directory without mutating the
  * Host-owned array. Equal-rank providers retain their Host order.
+ * @param groups - Host-advertised provider groups.
+ * @returns a new array in the client presentation order.
  */
 export function orderModelGroups(groups: readonly ModelProviderGroup[]): ModelProviderGroup[] {
   return groups
@@ -113,6 +115,13 @@ export class ModelDirectory {
  */
   async select(selection: ModelSelection): Promise<void> {
     this.assertAvailable()
+    const availability = this.store.getSnapshot().groups.find(group => group.id === selection.provider)
+      ?.models.find(model => model.id === selection.model)?.availability
+    if (availability?.selectable === false) {
+      const message = availability.reason ?? 'This model cannot be selected.'
+      this.store.update((s) => { s.status = 'error'; s.error = message })
+      throw new Error(message)
+    }
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'selecting'; s.error = null })
     const { result } = await this.sessions.selectModel({
@@ -159,6 +168,20 @@ export class ModelDirectory {
     })
     if (!this.available()) return
     void this.load().catch(() => { /* the next menu open remains the explicit retry surface */ })
+  }
+
+  /** Clear selectable rows before re-reading changed authorization, preserving the current selection. */
+  invalidateCatalog(): void {
+    if (this.disposed) return
+    ++this.generation
+    this.store.update((s) => {
+      s.groups = []
+      s.failures = []
+      s.status = 'idle'
+      s.error = null
+    })
+    if (!this.available()) return
+    void this.load().catch(() => { /* the menu's catalog retry owns the visible failure */ })
   }
 
   /** Scope teardown: late settlements lose write access to the store. */

@@ -9,7 +9,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SelectOption } from '../src/client/contract.ts'
 import type { PopupSpec, TokenSegment } from '../src/client/popup.ts'
-import { filterOptions, PopupSelectController } from '../src/client/popup.ts'
+import { filterOptions, optionActions, PopupSelectController } from '../src/client/popup.ts'
 
 interface Ctx { readonly session: string }
 const CTX_A: Ctx = { session: 'A' }
@@ -63,9 +63,63 @@ describe('filterOptions', () => {
     expect(filterOptions(OPTIONS, 'warm')).toEqual([OPTIONS[2]])
     expect(filterOptions(OPTIONS, 'nope')).toEqual([])
   })
+
+  it('deduplicates only disabled rows\' help, leaving selectable options independent', () => {
+    const action = { id: 'membership', label: 'Review membership' }
+    expect(optionActions([
+      { id: 'a', label: 'A', disabled: true, action },
+      { id: 'b', label: 'B', disabled: true, action },
+      { id: 'c', label: 'C', disabled: true },
+      { id: 'd', label: 'D', action: { id: 'ignored', label: 'Ignored' } },
+    ])).toEqual([action])
+  })
+})
+
+describe('disabled row actions', () => {
+  const option = { id: 'locked', label: 'Locked', disabled: true, action: { id: 'help', label: 'Help' } }
+
+  it('dismisses before calling help with the opening context and never selects, consumes, or steals focus', async () => {
+    const onSelect = vi.fn()
+    const onAction = vi.fn()
+    const { popup, deps } = await readyPopup({ options: async () => [option], onSelect, onAction })
+    onAction.mockImplementation(() => { expect(popup.state.getSnapshot().open).toBe(false) })
+    popup.requestAction('help')
+    expect(onAction).toHaveBeenCalledExactlyOnceWith('help', CTX_A)
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(deps.consume).not.toHaveBeenCalled()
+    expect(deps.focusComposer).not.toHaveBeenCalled()
+    popup.requestAction('help')
+    expect(onAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores actions that are missing, filtered away, unhandled, or no longer open', async () => {
+    const onAction = vi.fn()
+    const { popup } = await readyPopup({ options: async () => [option], onAction })
+    popup.requestAction('unknown')
+    popup.setSearch('another')
+    popup.requestAction('help')
+    popup.dismiss()
+    popup.requestAction('help')
+    expect(onAction).not.toHaveBeenCalled()
+    const unhandled = await readyPopup({ options: async () => [option] })
+    unhandled.popup.requestAction('help')
+    expect(unhandled.popup.state.getSnapshot().open).toBe(true)
+  })
 })
 
 describe('open and options load', () => {
+  it('keeps a disabled option visible without invoking its executor or consuming input', async () => {
+    const onSelect = vi.fn()
+    const { popup, deps } = await readyPopup({
+      options: async () => [{ id: 'locked', label: 'Locked', disabled: true, disabledReason: 'Not authorized.' }], onSelect,
+    })
+    await popup.select(0)
+    expect(popup.state.getSnapshot().options[0]?.label).toBe('Locked')
+    expect(popup.state.getSnapshot().open).toBe(true)
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(deps.consume).not.toHaveBeenCalled()
+  })
+
   it('publishes pending immediately, ready when options land', async () => {
     const popup = new PopupSelectController<Ctx>(makeDeps())
     let release!: (options: readonly SelectOption[]) => void

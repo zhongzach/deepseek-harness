@@ -140,6 +140,13 @@
   overflow-y: auto;
 }
 
+.availabilityActions {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--dsw-alias-border-l3);
+}
+
 .group + .group {
   margin-top: 4px;
 }

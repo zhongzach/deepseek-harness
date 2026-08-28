@@ -14,7 +14,7 @@ import { useSyncExternalStore } from 'react'
 import clsx from 'clsx'
 import { IconCheckOutline16, RiskConfirmation, useAnchoredMaxHeight } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import { filterOptions } from './popup.ts'
+import { filterOptions, optionActions } from './popup.ts'
 import type { PopupSelectController } from './popup.ts'
 import css from './PopupSelectView.module.css'
 
@@ -77,6 +77,7 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
   if (!state.open) return null
 
   const rows = filterOptions(state.options, state.search)
+  const actions = optionActions(rows)
   const confirmation = state.confirming?.confirmation
 
   const onKeyDown = (ev: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -141,6 +142,8 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
                   key={option.id}
                   role="option"
                   aria-selected={index === state.active}
+                  aria-disabled={option.disabled === true || undefined}
+                  title={option.disabledReason}
                   className={clsx(css.row, index === state.active && css.rowActive)}
                   // mousedown would race the document capture listener; the shell
                   // owns focus anyway, so a plain click (inside the card → no
@@ -152,6 +155,27 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
                   {option.detail !== undefined && <span className={css.detail}>{option.detail}</span>}
                   {option.active === true && <span className={css.check}><IconCheckOutline16 /></span>}
                 </div>
+              ))}
+            </div>
+          )}
+          {state.status === 'ready' && actions.length > 0 && (
+            <div className={css.actions}>
+              {actions.map(action => (
+                <button
+                  key={action.id}
+                  type="button"
+                  className={css.action}
+                  disabled={state.submitting}
+                  onClick={() => { popup.requestAction(action.id) }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault()
+                    event.stopPropagation()
+                    popup.requestAction(action.id)
+                  }}
+                >
+                  {action.label}
+                </button>
               ))}
             </div>
           )}

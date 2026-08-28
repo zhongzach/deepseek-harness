@@ -34,6 +34,8 @@ export interface RpcErrorDetailsMap {
   'cancelled': {}
   'session-not-found': { sessionId: SessionId }
   'model-unavailable': { provider: string; model: string }
+  /** Deployment authorization refused before the operation; the reason is not a provider or transport failure. */
+  'operation-denied': { reasonCode: string; retryable: false; reasonDetails?: Record<string, unknown> }
   'session-conflict': { sessionId: SessionId; requestedCwd: string; existingCwd?: string }
   'invalid-time-zone': { value: string }
   'workspace-attach-failed': { sessionId: SessionId; workspaceId: string }

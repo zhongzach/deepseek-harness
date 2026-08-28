@@ -12,6 +12,10 @@ Host 报告的 `ModelSelection` 是唯一的选择事实，其中包含提供方
 
 每一份常驻目录都会直接在转发的 owner 事件 `llm/adapters-updated` 与 `settings/document-updated` 上重拉。因此提供方拓扑、提供方目录与默认选择都能收敛，Host 与 client runtime 无需再派生一个单独的模型变更别名。
 
+Host 提供的模型 `availability` 让不具资格的条目保持可见并显示原因，同时禁止 composer 与 `/model` 两条选择路径。目录还会在提交 RPC 之前拒绝直接选择已知禁用行；执行授权仍由 Host 负责。部署客户端在授权变化后调用 `ctx.modelDirectories.invalidateCatalogs()`，清空可选行并重新读取，不替换当前模型，也不伪造适配器变更事件。
+
+不可用行可以通过 `availability.action` 提供不透明 id 和标签。两个入口都显示独立的帮助按钮，并在关闭菜单后发布本地 `model-selection/action(actionId)`；账号弹窗及后续购买或登录由部署方负责。动作不会选择模型、重试操作或授予权限。`/model` 底部区域从筛选后的行派生动作，打开帮助时保留命令文本。
+
 `/client` 导出面为插件本体（`apply`/`inject`）、`ModelDirectoryResolver`、`ModelDirectory` 及其状态形状、slot 注入面类型。
 
 ## 模型体验

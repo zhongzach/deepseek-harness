@@ -23,7 +23,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ModelSelectInjected } from './slots.ts'
-import { modelPresentationSections } from './presentation.ts'
+import { modelAvailabilityActions, modelPresentationSections } from './presentation.ts'
 import css from './ModelSelect.module.css'
 
 /** Which pane the dropdown shows: the two-row root or one drilled-in list. */
@@ -44,7 +44,7 @@ interface EffortChoice {
  * @returns the trigger and, while open, the two-level menu.
  */
 export function ModelSelect(
-  { locked, available, directory, load, select, t }:
+  { locked, available, directory, load, select, requestAction, t }:
   ModelSelectInjected & { locked: boolean } & PropsLocale<'model'>,
 ) {
   const state = useSyncExternalStore(
@@ -102,6 +102,7 @@ export function ModelSelect(
       })),
     ], [reasoning, t])
   const busy = state.status === 'selecting'
+  const availabilityActions = useMemo(() => modelAvailabilityActions(state.groups), [state.groups])
 
   const reload = (): void => {
     lastActionRef.current = 'load'
@@ -140,10 +141,10 @@ export function ModelSelect(
   }
 
   const moveFocus = (offset: number): void => {
-    const items = itemRefs.current.filter(item => item !== null)
+    const items = itemRefs.current.filter(item => item !== null && !item.disabled)
     if (items.length === 0) return
     const active = items.findIndex(item => item === document.activeElement)
-    const next = (Math.max(active, 0) + offset + items.length) % items.length
+    const next = active < 0 ? offset > 0 ? 0 : items.length - 1 : (active + offset + items.length) % items.length
     items[next]?.focus()
   }
 
@@ -156,6 +157,12 @@ export function ModelSelect(
       return
     }
     if (!open) return
+    if ((event.key === 'Enter' || event.key === ' ') && event.target instanceof HTMLButtonElement
+      && itemRefs.current.includes(event.target) && !event.target.disabled) {
+      event.preventDefault()
+      event.target.click()
+      return
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       moveFocus(event.key === 'ArrowDown' ? 1 : -1)
@@ -302,14 +309,14 @@ export function ModelSelect(
                             aria-checked={selected}
                             className={clsx(css.option, selected && css.selected)}
                             key={model.id}
-                            title={model.name}
-                            disabled={busy}
+                            title={model.availability?.selectable === false ? model.availability.reason ?? model.name : model.name}
+                            disabled={busy || model.availability?.selectable === false}
                             onClick={() => { choose({ provider: group.id, model: model.id }) }}
                           >
                             <span className={css.optionCopy}>
                               <span className={css.modelName}>{model.name}</span>
-                              {model.description !== undefined && (
-                                <span className={css.description}>{model.description}</span>
+                              {(model.availability?.reason ?? model.description) !== undefined && (
+                                <span className={css.description}>{model.availability?.reason ?? model.description}</span>
                               )}
                             </span>
                             <span className={css.check}>
@@ -324,6 +331,25 @@ export function ModelSelect(
               </div>
               {state.status === 'ready' && choices.length === 0 && (
                 <div className={css.empty}>{t('empty.models')}</div>
+              )}
+              {availabilityActions.length > 0 && (
+                <div className={css.availabilityActions}>
+                  {availabilityActions.map(action => (
+                    <button
+                      ref={itemRef()}
+                      key={action.id}
+                      type="button"
+                      role="menuitem"
+                      className={css.option}
+                      disabled={busy}
+                      title={action.reason}
+                      onClick={() => { close(); requestAction(action.id) }}
+                    >
+                      <span className={css.optionCopy}><span className={css.modelName}>{action.label}</span></span>
+                      <IconChevronRightOutline14 className={css.cellChevron} />
+                    </button>
+                  ))}
+                </div>
               )}
             </>
           )}
@@ -346,7 +372,8 @@ export function ModelSelect(
                     aria-checked={effectiveEffort === level.effort}
                     className={clsx(css.option, effectiveEffort === level.effort && css.selected)}
                     key={level.key}
-                    disabled={busy}
+                    disabled={busy || currentChoice?.model.availability?.selectable === false}
+                    title={currentChoice?.model.availability?.reason}
                     onClick={() => { chooseEffort(level.effort) }}
                   >
                     <span className={css.optionCopy}>

@@ -32,6 +32,7 @@ import type { RpcRequest, RpcResponse } from '../src/api/rpc.ts'
 import { RpcId } from '../src/api/rpc.ts'
 import { AGENT_DEFAULT_MODEL_SETTINGS_NAMESPACE } from '@deepseek-ai/dsh-agent-default-model'
 import { createApiProxy } from '../src/api-proxy.ts'
+import { ApiAuthorizationError, type ApiAuthorizationOperation } from '../src/authorization.ts'
 
 const DEFAULTS = { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' }
 
@@ -268,6 +269,68 @@ function forwardedSettings(ns: string): HostFrame {
 }
 
 describe('settings domain', () => {
+  it('authorizes every settings write before persistence and omits secret values from policy metadata', async () => {
+    const ctx = await harness({ settings: { doc: { 'llm-deepseek': { apiKey: 'kept-key', baseURL: 'https://before.invalid' } } } })
+    ctx.settings.register(NS, AdapterConfig)
+    const before = ctx.settings.get(NS)
+    const seen: ApiAuthorizationOperation[] = []
+    ctx.on('api/authorize-operation', (operation) => {
+      seen.push(operation)
+      throw new ApiAuthorizationError({ code: 'DENIED_BY_POLICY', message: 'Not authorized.', details: { action: 'configure' } })
+    })
+    const api = createApiProxy(ctx, DEFAULTS)
+    const responses = [
+      await api.settings.update(request({ ns: NS, patch: { apiKey: 'new-key', baseURL: 'https://after.invalid' } })),
+      await api.settings.replace(request({ ns: NS, section: { apiKey: 'new-key', baseURL: 'https://after.invalid' } })),
+      await api.settings.mutate(request({ ns: NS, ops: [
+        { op: 'set' as const, path: ['apiKey'], value: 'new-key' },
+        { op: 'set' as const, path: ['baseURL'], value: 'https://after.invalid' },
+      ] })),
+    ]
+    for (const response of responses) expect(expectErr(response)).toEqual({
+      code: 'operation-denied', message: 'Not authorized.',
+      details: { reasonCode: 'DENIED_BY_POLICY', retryable: false, reasonDetails: { action: 'configure' } },
+    })
+    expect(ctx.settings.get(NS)).toEqual(before)
+    expect(JSON.stringify(seen)).not.toContain('new-key')
+    expect(JSON.stringify(seen)).not.toContain('kept-key')
+    expect(seen).toMatchObject([
+      { method: 'settings.update', payload: { patch: { baseURL: 'https://after.invalid' } } },
+      { method: 'settings.replace', payload: { section: { baseURL: 'https://after.invalid' } } },
+      { method: 'settings.mutate', payload: { ops: [
+        { op: 'set', path: ['apiKey'] }, { op: 'set', path: ['baseURL'], value: 'https://after.invalid' },
+      ] } },
+    ])
+    await ctx.fiber.dispose()
+  })
+
+  it('refuses credential replacement, deletion, and model discovery before their executors run', async () => {
+    const ctx = await harness()
+    const ref = 'EXISTING_KEY' as CredentialRef
+    await ctx.credentials.set(ref, 'kept-key')
+    const discover = vi.fn().mockResolvedValue([{ id: 'candidate' }])
+    ctx.llm.registerModelDiscovery('llm-pi-ai', discover)
+    const seen: ApiAuthorizationOperation[] = []
+    ctx.on('api/authorize-operation', (operation) => {
+      seen.push(operation)
+      throw new ApiAuthorizationError({ code: 'MEMBERSHIP_REQUIRED', message: 'Membership required.' })
+    })
+    const api = createApiProxy(ctx, DEFAULTS)
+    for (const response of [
+      await api.credentials.set(request({ ref, value: 'new-key' })),
+      await api.credentials.unset(request({ ref })),
+      await api.llm.discoverModels(request({ settingsNs: 'llm-pi-ai', baseURL: 'https://fixture.invalid/v1', apiKey: 'probe-key' })),
+    ]) expect(expectErr(response)).toMatchObject({ code: 'operation-denied', details: { retryable: false } })
+    expect(await ctx.credentials.resolve(ref)).toMatchObject({ value: 'kept-key' })
+    expect(discover).not.toHaveBeenCalled()
+    expect(seen).toEqual([
+      { method: 'credentials.set', payload: { ref } },
+      { method: 'credentials.unset', payload: { ref } },
+      { method: 'llm.discoverModels', payload: { settingsNs: 'llm-pi-ai', baseURL: 'https://fixture.invalid/v1' } },
+    ])
+    await ctx.fiber.dispose()
+  })
+
   it('reports an actionable error when no settings provider is mounted', async () => {
     const ctx = await harness({ settings: false })
     const api = createApiProxy(ctx, DEFAULTS)

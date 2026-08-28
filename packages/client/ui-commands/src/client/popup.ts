@@ -36,6 +36,8 @@ export interface PopupSpec<TCtx> {
   options(context: TCtx, signal: AbortSignal): Promise<readonly SelectOption[]>
   /** Settle the picked option against the open-time context. */
   onSelect(option: SelectOption, context: TCtx): void | Promise<void>
+  /** Open a disabled row's help after dismissing; selection and command consumption do not run. */
+  onAction?(actionId: string, context: TCtx): void
 }
 
 /** Injected session-wiring callbacks of one controller (tests pass fakes). */
@@ -91,6 +93,21 @@ export function filterOptions(options: readonly SelectOption[], search: string):
   const query = search.trim().toLowerCase()
   if (query === '') return options
   return options.filter(o => o.label.toLowerCase().includes(query) || (o.detail?.toLowerCase().includes(query) ?? false))
+}
+
+/**
+ * Deduplicate help controls for the visible disabled options.
+ * @param options - already-filtered popup rows.
+ * @returns help actions in row order, separate from selectable options.
+ */
+export function optionActions(options: readonly SelectOption[]): NonNullable<SelectOption['action']>[] {
+  const actions = new Map<string, NonNullable<SelectOption['action']>>()
+  for (const option of options) {
+    if (option.disabled === true && option.action !== undefined && !actions.has(option.action.id)) {
+      actions.set(option.action.id, option.action)
+    }
+  }
+  return [...actions.values()]
 }
 
 /** One open shell's bindings (spec + open-time context + segment snapshot + options-fetch abort). */
@@ -216,12 +233,26 @@ export class PopupSelectController<TCtx = unknown> {
     const s = this.state.getSnapshot()
     if (binding === null || !s.open || s.status !== 'ready' || s.submitting || s.confirming !== null) return
     const option = filterOptions(s.options, s.search)[index]
-    if (option === undefined) return
+    if (option === undefined || option.disabled === true) return
     if (option.confirmation !== undefined) {
       this.state.set({ ...s, confirming: option, acknowledged: false, error: null })
       return
     }
     await this.settle(binding, option)
+  }
+
+  /**
+   * Open an advertised disabled-row remedy without admitting that row's operation.
+   * @param actionId - opaque id of a help action in the currently filtered rows.
+   */
+  requestAction(actionId: string): void {
+    const binding = this.binding
+    const s = this.state.getSnapshot()
+    if (binding === null || !s.open || s.status !== 'ready' || s.submitting || s.confirming !== null) return
+    if (binding.spec.onAction === undefined
+      || !optionActions(filterOptions(s.options, s.search)).some(action => action.id === actionId)) return
+    this.dismiss()
+    binding.spec.onAction(actionId, binding.context)
   }
 
   /**
@@ -252,7 +283,7 @@ export class PopupSelectController<TCtx = unknown> {
   /** Run the business settlement for an already admitted option. */
   private async settle(binding: OpenBinding<TCtx>, option: SelectOption): Promise<void> {
     const s = this.state.getSnapshot()
-    if (this.binding !== binding || !s.open || s.submitting) return
+    if (this.binding !== binding || !s.open || s.submitting || option.disabled === true) return
     this.state.set({ ...s, submitting: true, confirming: null, acknowledged: false, error: null })
     try {
       await binding.spec.onSelect(option, binding.context)

@@ -110,6 +110,7 @@ import {
   inspectApiRemoteSession,
 } from '@deepseek-ai/dsh-api-remotes'
 import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
+import { authorizeApiOperation, redactSettingsOperation, type ApiModelCatalog } from './authorization.ts'
 
 /** Page size when history is called without maxMessages. */
 const DEFAULT_MAX_MESSAGES = 50
@@ -320,10 +321,12 @@ async function buildModelCatalog(ctx: Context): Promise<{
       return { kind: 'failure' as const, failure }
     }
   }))
-  return {
+  const result: ApiModelCatalog = {
     groups: catalog.flatMap(item => item.kind === 'group' ? [item.group] : []).filter(group => group.models.length > 0),
     failures: catalog.flatMap(item => item.kind === 'failure' ? [item.failure] : []),
   }
+  await ctx.serial('api/model-catalog', result)
+  return result
 }
 
 /** Wrap an error result echoing the request's rpcId. */
@@ -1966,6 +1969,15 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       return rejected(error)
     }
     try {
+      const descriptor = settings.describe({ redactSecrets: true }).find(candidate => candidate.ns === branded)
+      const revision = expectedRevision === undefined ? {} : { expectedRevision }
+      const operation = mode === 'update'
+        ? { method: 'settings.update' as const, payload: { ns, patch: section, ...revision } }
+        : mode === 'replace'
+          ? { method: 'settings.replace' as const, payload: { ns, section, ...revision } }
+          : { method: 'settings.mutate' as const, payload: { ns, ops: section as SettingsPathOp[], ...revision } }
+      const denied = await authorizeApiOperation(ctx, redactSettingsOperation(descriptor, operation))
+      if (denied !== undefined) return err(request, denied)
       if (mode === 'update') await settings.update(branded, section, expectedRevision)
       else if (mode === 'replace') await settings.replace(branded, section, expectedRevision)
       else await settings.mutate(branded, section as SettingsPathOp[], expectedRevision)
@@ -2257,6 +2269,10 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
                 ? {}
                 : { reasoningEffort: resolved.reasoningEffort },
             }
+            const denied = await authorizeApiOperation(ctx, {
+              method: 'sessions.selectModel', payload: { sessionId, ...selected },
+            })
+            if (denied !== undefined) return err(request, denied)
             selectionFor(found.agent).current = selected
             try {
               await defaults.saveDefaultModelSelection?.(selected)
@@ -3282,6 +3298,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const credentials = ctx.get('credentials')
         if (credentials === undefined) return err(request, credentialsAbsent())
         const { ref, value } = request.payload
+        const denied = await authorizeApiOperation(ctx, { method: 'credentials.set', payload: { ref } })
+        if (denied !== undefined) return err(request, denied)
         try {
           await credentials.set(credentialRef(ref), value)
         } catch (error: unknown) {
@@ -3298,6 +3316,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const credentials = ctx.get('credentials')
         if (credentials === undefined) return err(request, credentialsAbsent())
         const { ref } = request.payload
+        const denied = await authorizeApiOperation(ctx, { method: 'credentials.unset', payload: { ref } })
+        if (denied !== undefined) return err(request, denied)
         try {
           await credentials.unset(credentialRef(ref))
         } catch (error: unknown) {
@@ -3347,6 +3367,16 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
       async discoverModels(request, signal) {
         const { settingsNs, provider, baseURL, api, apiKey } = request.payload
+        const denied = await authorizeApiOperation(ctx, {
+          method: 'llm.discoverModels',
+          payload: {
+            settingsNs,
+            ...provider === undefined ? {} : { provider },
+            ...baseURL === undefined ? {} : { baseURL },
+            ...api === undefined ? {} : { api },
+          },
+        })
+        if (denied !== undefined) return err(request, denied)
         try {
           const models = await ctx.llm.discoverModels(settingsNs, {
             ...provider === undefined ? {} : { provider },

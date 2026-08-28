@@ -12,6 +12,10 @@ Directories are per-session, resolved lazily through `ctx.modelDirectories.direc
 
 Every resident directory refetches directly on forwarded `llm/adapters-updated` and `settings/document-updated` owner events. Provider topology, provider catalogs, and the default selection therefore converge without the Host or client runtime deriving a separate model-change alias.
 
+Host-supplied model `availability` keeps ineligible rows visible with their reason while disabling both the composer and `/model` selection paths. A directory also rejects a direct selection of a known disabled row before submitting its RPC; the Host remains responsible for execution authorization. Deployment clients call `ctx.modelDirectories.invalidateCatalogs()` after authorization changes to clear selectable rows and repull them without replacing the current model or synthesizing adapter-change events.
+
+An unavailable row may advertise `availability.action` with an opaque id and a label. Both entries show separate help buttons and emit local `model-selection/action(actionId)` after dismissing the menu; the deployment owns account dialogs and any subsequent purchase or login. Actions do not select a model, retry an operation, or grant permission. The `/model` footer derives its actions from the filtered rows and preserves the command text when opening help.
+
 The `/client` exports are the plugin body (`apply`/`inject`), `ModelDirectoryResolver`, `ModelDirectory` with its state fields, and the seat's injected face type.
 
 ## Model Experience

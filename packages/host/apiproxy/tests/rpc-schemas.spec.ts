@@ -38,6 +38,30 @@ import { askUserQuestionAnswerSchema, questionResponsePayloadSchema } from '../s
 import { goalEditRequestSchema } from '../src/api/goals.schema.ts'
 import { subagentPromptRequestSchema } from '../src/api/subagents.schema.ts'
 
+describe('model availability action schema', () => {
+  const catalog = (action: unknown) => ({
+    current: { provider: 'hub', model: 'premium' },
+    routable: true,
+    groups: [{
+      id: 'hub', name: 'Cloud', models: [{
+        id: 'premium', name: 'Premium', availability: { selectable: false, reason: 'Membership required.', action },
+      }],
+    }],
+    failures: [],
+  })
+
+  it('preserves opaque help ids and labels without changing model eligibility', () => {
+    const action = { id: 'deployment:help', label: 'Review membership' }
+    const parsed = sessionModelsValueSchema.parse(catalog(action))
+    expect(parsed.groups[0]?.models[0]?.availability).toEqual({ selectable: false, reason: 'Membership required.', action })
+  })
+
+  it.each([null, 'help', { id: 1, label: 'Help' }, { id: 'help' }, { id: 'help', label: 1 }])(
+    'rejects malformed action metadata crossing the wire (%j)',
+    (action) => { expect(() => sessionModelsValueSchema.parse(catalog(action))).toThrow() },
+  )
+})
+
 describe('RpcId', () => {
   it('brands a raw string at zero runtime cost', () => {
     expect(RpcId('abc')).toBe('abc')

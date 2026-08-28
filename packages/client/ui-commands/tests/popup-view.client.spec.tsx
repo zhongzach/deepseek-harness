@@ -77,6 +77,19 @@ function rowLabels(): string[] {
 }
 
 describe('PopupSelectView', () => {
+  it('labels disabled rows and blocks both click and keyboard submission', async () => {
+    const onSelect = vi.fn()
+    const { search } = await mountOpen({
+      options: async () => [{ id: 'locked', label: 'Locked', disabled: true, disabledReason: 'Not authorized.' }], onSelect,
+    })
+    const row = screen.getByRole('option', { name: 'Locked' })
+    expect(row.getAttribute('aria-disabled')).toBe('true')
+    expect(row.title).toBe('Not authorized.')
+    fireEvent.click(row)
+    fireEvent.keyDown(search, { key: 'Enter' })
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
   it('renders null while closed, opens with focus in the search input', async () => {
     const popup = new PopupSelectController<string>({ consume: () => true, focusComposer: () => {} })
     const view = render(<PopupSelectView popup={popup} t={t} />)

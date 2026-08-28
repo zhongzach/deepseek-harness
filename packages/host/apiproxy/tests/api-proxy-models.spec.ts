@@ -23,6 +23,9 @@ import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import type { RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
 import { createApiProxy } from '../src/api-proxy.ts'
+import { ApiAuthorizationError } from '../src/authorization.ts'
+import { InProcessApiClient } from '../src/fetch/client.ts'
+import { toFetchHandler } from '../src/fetch/handler.ts'
 
 let nextRpc = 1
 function request<P>(payload: P): RpcRequest<P> {
@@ -137,6 +140,76 @@ function registerTextOnly(ctx: Context): void {
 }
 
 describe('Web session model selection', () => {
+  it('refuses a selection through the real RPC carrier before changing the session or its default', async () => {
+    const { ctx, sessionId } = await harness()
+    const saved = vi.fn().mockResolvedValue(undefined)
+    const api = createApiProxy(ctx, {
+      defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }),
+      saveDefaultModelSelection: saved,
+      cwd: '/tmp',
+    })
+    const client = new InProcessApiClient(toFetchHandler(api))
+    const reject = ctx.on('api/authorize-operation', (operation) => {
+      if (operation.method !== 'sessions.selectModel') return
+      expect(operation.payload).toMatchObject({ sessionId, provider: 'deepseek-official', model: 'deepseek-reasoner', reasoningEffort: 'high' })
+      throw new ApiAuthorizationError({ code: 'MEMBERSHIP_REQUIRED', message: 'Membership required.' })
+    })
+    expect((await client.sessions.selectModel({ sessionId, provider: 'deepseek-official', model: 'deepseek-reasoner' })).result)
+      .toEqual({ ok: false, error: {
+        code: 'operation-denied', message: 'Membership required.',
+        details: { reasonCode: 'MEMBERSHIP_REQUIRED', retryable: false },
+      } })
+    expect(expectValue(await api.sessions.models(request({ sessionId }))).current)
+      .toEqual({ provider: 'deepseek-official', model: 'deepseek-chat' })
+    expect(saved).not.toHaveBeenCalled()
+    reject()
+    expect((await client.sessions.selectModel({ sessionId, provider: 'deepseek-official', model: 'deepseek-reasoner' })).result.ok).toBe(true)
+    expect(saved).toHaveBeenCalledOnce()
+    await ctx.fiber.dispose()
+  })
+
+  it('does not convert an authorization outage into model unavailability or apply a partial selection', async () => {
+    const { ctx, sessionId } = await harness()
+    const saved = vi.fn()
+    const api = createApiProxy(ctx, {
+      defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }),
+      saveDefaultModelSelection: saved,
+      cwd: '/tmp',
+    })
+    ctx.on('api/authorize-operation', () => { throw new Error('private authorization failure') })
+    const response = await api.sessions.selectModel(request({ sessionId, provider: 'deepseek-official', model: 'deepseek-reasoner' }))
+    expect(response.result).toMatchObject({ ok: false, error: {
+      code: 'operation-denied', details: { reasonCode: 'AUTHORIZATION_UNAVAILABLE', retryable: false },
+    } })
+    expect(JSON.stringify(response)).not.toContain('private authorization failure')
+    expect(saved).not.toHaveBeenCalled()
+    expect(expectValue(await api.sessions.models(request({ sessionId }))).current.model).toBe('deepseek-chat')
+    await ctx.fiber.dispose()
+  })
+
+  it('publishes deployment availability for both model catalogs without filtering locked rows', async () => {
+    const { ctx, sessionId } = await harness()
+    ctx.on('api/model-catalog', ({ groups }) => {
+      for (const group of groups) {
+        for (const model of group.models) {
+          model.availability = model.id === 'deepseek-chat'
+            ? { selectable: true }
+            : { selectable: false, reason: 'Membership required.', action: { id: 'deployment:membership', label: 'Review membership' } }
+        }
+      }
+    })
+    const client = new InProcessApiClient(toFetchHandler(createApiProxy(ctx, {
+      defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }), cwd: '/tmp',
+    })))
+    for (const catalog of [expectValue(await client.sessions.models({ sessionId })), expectValue(await client.llm.models({}))]) {
+      expect(catalog.groups[0]?.models.map(model => ({ id: model.id, availability: model.availability }))).toEqual([
+        { id: 'deepseek-chat', availability: { selectable: true } },
+        { id: 'deepseek-reasoner', availability: { selectable: false, reason: 'Membership required.', action: { id: 'deployment:membership', label: 'Review membership' } } },
+      ])
+    }
+    await ctx.fiber.dispose()
+  })
+
   it('validates an ordered image batch before persisting any member', async () => {
     const { ctx, agent, sessionId } = await harness()
     const validateImage = vi.fn((_input: { data: Uint8Array }) => Promise.resolve())

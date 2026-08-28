@@ -229,6 +229,12 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     return controller
   }
 
+  dismissPopups(commandName: string): void {
+    for (const popup of this.live.popups.values()) {
+      if (popup.state.getSnapshot().command === commandName) popup.dismiss()
+    }
+  }
+
   /** Composer focus hooks by session (the overlay wiring binds the textarea focus here). */
   private readonly focusHooks = new Map<SessionId, () => void>()
 

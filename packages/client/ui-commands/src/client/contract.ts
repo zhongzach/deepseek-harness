@@ -1,7 +1,7 @@
 /**
- * Frozen contract of the client command surface. Types only. The
- * CommandUiRuntime (`ctx.commandUi`) implements this face; business packages
- * consume `register` alone.
+ * Business contract of the client command surface. Types only. The
+ * CommandUiRuntime (`ctx.commandUi`) implements command registration and
+ * dismissal of stale popup choices without exposing the shell component.
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ClientSessionContext } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
@@ -21,6 +21,12 @@ export interface SelectOption {
   readonly label: string
   readonly detail?: string
   readonly active?: boolean
+  /** An informational row that remains visible but cannot invoke onSelect. */
+  readonly disabled?: boolean
+  /** Public-safe explanation shown for a disabled row. */
+  readonly disabledReason?: string
+  /** Optional help for a disabled row, rendered as a separate enabled button. */
+  readonly action?: { readonly id: string; readonly label: string }
   /** Optional in-page risk gate owned by the shared popup shell. */
   readonly confirmation?: SelectConfirmation
 }
@@ -35,6 +41,8 @@ export type CommandUiSpec = {
   readonly kind: 'popupSelect'
   options(session: ClientSessionContext, signal: AbortSignal): Promise<readonly SelectOption[]>
   onSelect(option: SelectOption, session: ClientSessionContext): void | Promise<void>
+  /** Open help after dismissing the popup; never invokes onSelect or consumes the command. */
+  onAction?(actionId: string, session: ClientSessionContext): void
 }
 
 /**
@@ -84,6 +92,12 @@ export interface CommandUiContract {
    * Duplicate names throw at registration.
    */
   decorate(decoration: CommandDecoration): () => void
+  /**
+   * Close existing popups for one command and discard pending option results.
+   * Creates no session controllers and leaves command text and focus unchanged.
+   * @param commandName - command name without the leading slash.
+   */
+  dismissPopups(commandName: string): void
   /** Resolve the per-session popup controller for one session scope (wiring/overlay layer). */
   popupFor(actx: ClientContext): unknown
 }

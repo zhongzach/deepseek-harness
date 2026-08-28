@@ -179,6 +179,11 @@ export const modelCatalogModelSchema = z.object({
   description: z.string().optional(),
   presentation: modelCatalogPresentationSchema.optional(),
   reasoning: modelReasoningSchema.optional(),
+  availability: z.object({
+    selectable: z.boolean(),
+    reason: z.string().optional(),
+    action: z.object({ id: z.string(), label: z.string() }).optional(),
+  }).optional(),
 }) satisfies z.ZodType<Wire<ModelCatalogModel>>
 
 /** One successfully loaded provider group. */

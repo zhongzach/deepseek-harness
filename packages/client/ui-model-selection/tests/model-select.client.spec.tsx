@@ -59,6 +59,25 @@ function presentedModel(
 afterEach(cleanup)
 
 describe('ModelSelect reasoning effort', () => {
+  it('keeps locked model rows visible with their reason but cannot select them', () => {
+    const directory = createSnapshotStore(state({ groups: [{
+      id: 'hub', name: 'WriterX', models: [
+        { id: 'free', name: '免费模型', availability: { selectable: true } },
+        { id: 'premium', name: '专供模型', availability: { selectable: false, reason: '请先开通会员' } },
+      ],
+    }], current: { provider: 'hub', model: 'free' } }))
+    const select = vi.fn().mockResolvedValue(true)
+    render(<ModelSelect requestAction={vi.fn()} locked={false} available directory={directory} load={vi.fn()} select={select} t={t} />)
+    fireEvent.click(screen.getByRole('button', { name: '选择模型，当前 免费模型' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /模型/ }))
+    const locked = screen.getByRole('menuitemradio', { name: /专供模型/ }) as HTMLButtonElement
+    expect(locked.disabled).toBe(true)
+    expect(locked.title).toBe('请先开通会员')
+    fireEvent.click(locked)
+    expect(select).not.toHaveBeenCalled()
+    expect(screen.getByRole<HTMLButtonElement>('menuitemradio', { name: '免费模型' }).disabled).toBe(false)
+  })
+
   it('keeps an unmarked provider as the existing single group', () => {
     const group = state().groups[0]!
     const sections = modelPresentationSections(group)
@@ -87,6 +106,7 @@ describe('ModelSelect reasoning effort', () => {
     }))
     const select = vi.fn().mockResolvedValue(true)
     render(<ModelSelect
+      requestAction={vi.fn()}
       locked={false}
       available
       directory={directory}
@@ -127,6 +147,7 @@ describe('ModelSelect reasoning effort', () => {
       return true
     })
     render(<ModelSelect
+      requestAction={vi.fn()}
       locked={false}
       available
       directory={directory}
@@ -168,6 +189,7 @@ describe('ModelSelect reasoning effort', () => {
       current: { provider: 'provider', model: 'model' },
     }))
     render(<ModelSelect
+      requestAction={vi.fn()}
       locked={false}
       available
       directory={directory}
@@ -190,6 +212,7 @@ describe('ModelSelect reasoning effort', () => {
     }))
     const select = vi.fn().mockResolvedValue(true)
     render(<ModelSelect
+      requestAction={vi.fn()}
       locked={false}
       available
       directory={directory}
@@ -222,6 +245,7 @@ describe('ModelSelect reasoning effort', () => {
       return false
     })
     render(<ModelSelect
+      requestAction={vi.fn()}
       locked={false}
       available
       directory={directory}
@@ -242,6 +266,7 @@ describe('ModelSelect reasoning effort', () => {
   it('renders no Agent-bound control for an addressed subagent session', () => {
     const load = vi.fn()
     render(<ModelSelect
+      requestAction={vi.fn()}
       locked={false}
       available={false}
       directory={createSnapshotStore(state())}

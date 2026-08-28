@@ -333,4 +333,43 @@ async invoke(request: InvokeRemoteRequest): Promise<unknown>
 ```
 
 Source: [`packages/api/gateway/src/index.ts`](../../packages/api/gateway/src/index.ts)
+
+<a id="api-events"></a>
+
+### `api/*` events
+
+<a id="apiauthorize-operation--serial"></a>
+
+#### `api/authorize-operation` — serial
+
+Authorize an operation before selection, persistence, or provider discovery starts. A listener returns void to continue and throws to refuse; deployments own all policy.
+
+```ts cordis-catalog
+/**
+ * Authorize an operation before selection, persistence, or provider discovery starts.
+ * A listener returns void to continue and throws to refuse; deployments own all policy.
+ * @mode serial
+ * @param operation - detached request metadata with credential and schema-secret values omitted.
+ */
+'api/authorize-operation'(operation: ApiAuthorizationOperation): void | Promise<void>
+```
+
+Source: [`packages/host/apiproxy/src/authorization.ts`](../../packages/host/apiproxy/src/authorization.ts)
+
+<a id="apimodel-catalog--serial"></a>
+
+#### `api/model-catalog` — serial
+
+Decorate selectable model rows without changing model routing or executing a request.
+
+```ts cordis-catalog
+/**
+ * Decorate selectable model rows without changing model routing or executing a request.
+ * @mode serial
+ * @param catalog - detached catalog whose availability fields may be populated by deployment policy.
+ */
+'api/model-catalog'(catalog: ApiModelCatalog): void | Promise<void>
+```
+
+Source: [`packages/host/apiproxy/src/authorization.ts`](../../packages/host/apiproxy/src/authorization.ts)
 <!-- END GENERATED cordis-surface -->

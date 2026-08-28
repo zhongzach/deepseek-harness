@@ -22,4 +22,6 @@ export interface ModelSelectInjected {
    * @returns whether the host accepted the selection.
    */
   select: (selection: ModelSelection) => Promise<boolean>
+  /** Open the deployment-owned help for an advertised, unavailable model; never selects it. */
+  requestAction: (actionId: string) => void
 }

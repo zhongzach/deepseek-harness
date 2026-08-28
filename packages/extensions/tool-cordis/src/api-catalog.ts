@@ -2478,6 +2478,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'payload', description: '.signal - the current turn\'s explicit abort signal. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.' }],
   },
   {
+    name: 'api/authorize-operation',
+    mode: 'serial',
+    signature: '\'api/authorize-operation\'(operation: ApiAuthorizationOperation): void | Promise<void>',
+    summary: 'Authorize an operation before selection, persistence, or provider discovery starts.',
+    description: 'Authorize an operation before selection, persistence, or provider discovery starts. A listener returns void to continue and throws to refuse; deployments own all policy.',
+    parameters: [{ name: 'operation', description: 'detached request metadata with credential and schema-secret values omitted.' }],
+  },
+  {
+    name: 'api/model-catalog',
+    mode: 'serial',
+    signature: '\'api/model-catalog\'(catalog: ApiModelCatalog): void | Promise<void>',
+    summary: 'Decorate selectable model rows without changing model routing or executing a request.',
+    description: 'Decorate selectable model rows without changing model routing or executing a request.',
+    parameters: [{ name: 'catalog', description: 'detached catalog whose availability fields may be populated by deployment policy.' }],
+  },
+  {
     name: 'approval/request',
     mode: 'waterfall',
     signature: '\'approval/request\'(this: Scoped<ApprovalService>, req: ApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>',
@@ -2890,8 +2906,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type AgentStatus = \'idle\' | \'running\';',
   },
   {
+    name: 'ApiAuthorizationOperation',
+    declaration: 'export type ApiAuthorizationOperation = {\n    [K in keyof ApiAuthorizationOperationMap]: {\n        method: K;\n        payload: ApiAuthorizationOperationMap[K];\n    };\n}[keyof ApiAuthorizationOperationMap];',
+  },
+  {
+    name: 'ApiAuthorizationOperationMap',
+    declaration: 'export interface ApiAuthorizationOperationMap {\n    \'sessions.selectModel\': ModelSelection & {\n        sessionId: SessionId;\n    };\n    \'settings.update\': {\n        ns: string;\n        patch: object;\n        expectedRevision?: number;\n    };\n    \'settings.replace\': {\n        ns: string;\n        section: object;\n        expectedRevision?: number;\n    };\n    \'settings.mutate\': {\n        ns: string;\n        ops: SettingsAuthorizationPathOp[];\n        expectedRevision?: number;\n    };\n    \'credentials.set\': {\n        ref: string;\n    };\n    \'credentials.unset\': {\n        ref: string;\n    };\n    \'llm.discoverModels\': {\n        settingsNs: string;\n        provider?: string;\n        baseURL?: string;\n        api?: string;\n    };\n}',
+  },
+  {
     name: 'ApiKeyRecord',
     declaration: 'export interface ApiKeyRecord {\n    readonly kind: \'api-key\';\n    readonly key?: string;\n    readonly env?: Readonly<Record<string, string>>;\n}',
+  },
+  {
+    name: 'ApiModelCatalog',
+    declaration: 'export interface ApiModelCatalog {\n    groups: ModelProviderGroup[];\n    failures: ModelCatalogFailure[];\n}',
   },
   {
     name: 'ApprovalOutcome',
@@ -3635,7 +3663,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'LlmModelInfo',
-    declaration: 'export interface LlmModelInfo {\n    provider: string;\n    id: string;\n    name: string;\n    description?: string;\n    inputModalities?: readonly ModelModality[];\n}',
+    declaration: 'export interface LlmModelInfo {\n    provider: string;\n    id: string;\n    name: string;\n    description?: string;\n    inputModalities?: readonly ModelModality[];\n    presentation?: LlmModelPresentation;\n}',
+  },
+  {
+    name: 'LlmModelPresentation',
+    declaration: 'export interface LlmModelPresentation {\n    sectionId: string;\n    sectionName: string;\n    sectionOrder?: number;\n}',
   },
   {
     name: 'LlmModelReasoningInfo',
@@ -3798,6 +3830,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface MessageSourceMap {\n    user: {\n        kind: \'user\';\n    };\n    plugin: {\n        kind: \'plugin\';\n        plugin: string;\n    } & ContextFormed;\n    model: ModelMessageSource;\n    tool: ToolMessageSource;\n}',
   },
   {
+    name: 'ModelCatalogAvailability',
+    declaration: 'export interface ModelCatalogAvailability {\n    selectable: boolean;\n    reason?: string;\n}',
+  },
+  {
+    name: 'ModelCatalogFailure',
+    declaration: 'export interface ModelCatalogFailure {\n    id: string;\n    name: string;\n    message: string;\n}',
+  },
+  {
+    name: 'ModelCatalogModel',
+    declaration: 'export interface ModelCatalogModel {\n    id: string;\n    name: string;\n    description?: string;\n    presentation?: ModelCatalogPresentation;\n    reasoning?: ModelReasoning;\n    availability?: ModelCatalogAvailability;\n}',
+  },
+  {
+    name: 'ModelCatalogPresentation',
+    declaration: 'export type ModelCatalogPresentation = LlmModelPresentation;',
+  },
+  {
     name: 'ModelMessageSource',
     declaration: 'export interface ModelMessageSource extends AssistantProvenance {\n    kind: \'model\';\n}',
   },
@@ -3808,6 +3856,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ModelModalityMap',
     declaration: 'export interface ModelModalityMap {\n    text: \'text\';\n    image: \'image\';\n}',
+  },
+  {
+    name: 'ModelProviderGroup',
+    declaration: 'export interface ModelProviderGroup {\n    id: string;\n    name: string;\n    models: ModelCatalogModel[];\n}',
+  },
+  {
+    name: 'ModelReasoning',
+    declaration: 'export interface ModelReasoning {\n    efforts: ModelReasoningEffort[];\n    defaultEffort?: string;\n}',
+  },
+  {
+    name: 'ModelReasoningEffort',
+    declaration: 'export interface ModelReasoningEffort {\n    id: string;\n    name: string;\n    description?: string;\n}',
   },
   {
     name: 'ObjectJsonSchema',
@@ -3991,7 +4051,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RpcErrorDetailsMap',
-    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        name: string;\n    };\n    \'workspace-move-invalid\': {\n        workspaceId: string;\n        sessionId: SessionId;\n        beforeSessionId?: SessionId;\n    };\n    \'directory-unreadable\': {\n        path: string;\n    };\n    \'directory-exists\': {\n        path: string;\n    };\n    \'directory-create-failed\': {\n        path: string;\n    };\n    \'directory-picker-unavailable\': {\n        capability: string;\n    };\n    \'agent-preset-read-only\': {\n        agentPreset: string;\n        reason: string;\n    };\n    \'agent-preset-locked\': {\n        sessionId: SessionId;\n        agentPreset: string;\n    };\n    \'agent-preset-conflict\': {\n        sessionId: SessionId;\n        requestedPreset: string;\n        existingPreset?: string;\n    };\n    \'agent-preset-not-found\': {\n        agentPreset: string;\n      /* …truncated — full shape in source */',
+    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'operation-denied\': {\n        reasonCode: string;\n        retryable: false;\n        reasonDetails?: Record<string, unknown>;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        name: string;\n    };\n    \'workspace-move-invalid\': {\n        workspaceId: string;\n        sessionId: SessionId;\n        beforeSessionId?: SessionId;\n    };\n    \'directory-unreadable\': {\n        path: string;\n    };\n    \'directory-exists\': {\n        path: string;\n    };\n    \'directory-create-failed\': {\n        path: string;\n    };\n    \'directory-picker-unavailable\': {\n        capability: string;\n    };\n    \'agent-preset-read-only\': {\n        agentPreset: string;\n        reason: string;\n    };\n    \'agent-preset-locked\': {\n        sessionId: SessionId;\n        agentPreset: string;\n    };\n    \'agent-preset-conflict\': {\n        sessionId: SessionId;\n    /* …truncated — full shape in source */',
   },
   {
     name: 'RpcId',
@@ -4328,6 +4388,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SettingsApplies',
     declaration: 'export type SettingsApplies = \'live\' | \'restart\';',
+  },
+  {
+    name: 'SettingsAuthorizationPathOp',
+    declaration: 'export type SettingsAuthorizationPathOp = {\n    op: \'set\';\n    path: readonly string[];\n    value?: unknown;\n} | {\n    op: \'unset\';\n    path: readonly string[];\n};',
   },
   {
     name: 'SettingsDescribeOptions',

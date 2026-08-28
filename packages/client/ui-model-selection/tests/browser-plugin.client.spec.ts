@@ -149,6 +149,52 @@ function presentedModel(id: string, name: string, sectionId: string, sectionName
 }
 
 describe('ui-model-selection dual entry', () => {
+  it('exposes disabled popup rows and refuses direct directory selection before the RPC', async () => {
+    const b = await bench()
+    b.mint('s1')
+    b.setGroups([{ id: 'hub', name: 'WriterX', models: [
+      { id: 'premium', name: '专供模型', availability: { selectable: false, reason: 'Membership required.' } },
+    ] }])
+    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
+    expect(options[0]).toMatchObject({ disabled: true, disabledReason: 'Membership required.' })
+    await expect(b.ctx.modelDirectories.directoryFor(sid('s1')).select({ provider: 'hub', model: 'premium' }))
+      .rejects.toThrow('Membership required.')
+    expect(b.calls.select).toBe(0)
+    b.ctx.modelDirectories.invalidateCatalogs()
+    expect(b.ctx.modelDirectories.directoryFor(sid('s1')).store.getSnapshot().groups).toEqual([])
+    expect(b.hostCurrent()).toEqual({ provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+    await b.ctx.fiber.dispose()
+  })
+
+  it('forwards only a currently advertised help action and never selects through that callback', async () => {
+    const b = await bench()
+    b.mint('s1')
+    const calls: string[] = []
+    b.ctx.on('model-selection/action', (id) => { calls.push(id) })
+    b.setGroups([{ id: 'hub', name: 'WriterX', models: [
+      { id: 'premium', name: '专供模型', availability: {
+        selectable: false, reason: 'Membership required.', action: { id: 'deployment:membership', label: 'Review membership' },
+      } },
+    ] }])
+    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
+    expect(options[0]).toMatchObject({ disabled: true, action: { id: 'deployment:membership', label: 'Review membership' } })
+    const face = b.seat().inject!(sid('s1'))
+    face.requestAction('unadvertised')
+    b.contribution().ui.onAction?.('unadvertised', projection('s1'))
+    expect(calls).toEqual([])
+    face.requestAction('deployment:membership')
+    b.contribution().ui.onAction?.('deployment:membership', projection('s1'))
+    expect(calls).toEqual(['deployment:membership', 'deployment:membership'])
+    expect(b.calls.select).toBe(0)
+    b.ctx.modelDirectories.invalidateCatalogs()
+    face.requestAction('deployment:membership')
+    expect(calls).toHaveLength(2)
+    b.address(sid('s1'))
+    b.contribution().ui.onAction?.('deployment:membership', projection('s1'))
+    expect(calls).toHaveLength(2)
+    await b.ctx.fiber.dispose()
+  })
+
   it('ranks Hub then DeepSeek, preserving every other Host group and the input array', () => {
     const others = [
       { id: 'zhipu', name: '智谱', models: [] },

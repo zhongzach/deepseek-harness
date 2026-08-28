@@ -757,6 +757,90 @@ describe('popupFor', () => {
   })
 })
 
+describe('dismissPopups', () => {
+  it('closes only matching resident popups without creating controllers, consuming drafts, or moving focus', async () => {
+    const { ctx, command, source, mint } = await bench()
+    try {
+      const onSelect = vi.fn()
+      command.register(themeContribution({ name: 'model', ui: themeUi({ onSelect }) }))
+      command.register(themeContribution())
+      const firstScope = mint('s1')
+      const secondScope = mint('s2')
+      const otherScope = mint('s3')
+      mint('unopened')
+      const consume = vi.fn(() => true as const)
+      const focus = vi.fn()
+      for (const [id, scope] of [['s1', firstScope], ['s2', secondScope], ['s3', otherScope]] as const) {
+        scope.ctx.on('slash/input-consume-token', consume)
+        command.bindComposerFocus(sid(id), focus)
+      }
+      menuPick(source, 'model', proj('s1'))
+      menuPick(source, 'model', proj('s2'))
+      menuPick(source, 'theme', proj('s3'))
+      const first = command.popupFor(firstScope.ctx)
+      const second = command.popupFor(secondScope.ctx)
+      const other = command.popupFor(otherScope.ctx)
+      await Promise.resolve()
+      const firstState = first.state.getSnapshot()
+      const otherState = other.state.getSnapshot()
+      const popupFor = vi.spyOn(command, 'popupFor')
+
+      command.dismissPopups('unregistered')
+      expect(first.state.getSnapshot()).toBe(firstState)
+      command.dismissPopups('model')
+
+      expect(first.state.getSnapshot()).toMatchObject({ open: false, command: null, options: [] })
+      expect(second.state.getSnapshot()).toMatchObject({ open: false, command: null, options: [] })
+      expect(other.state.getSnapshot()).toBe(otherState)
+      expect(otherState).toMatchObject({ open: true, command: 'theme', status: 'ready' })
+      expect(popupFor).not.toHaveBeenCalled()
+      await first.select(0)
+      expect(onSelect).not.toHaveBeenCalled()
+      expect(consume).not.toHaveBeenCalled()
+      expect(focus).not.toHaveBeenCalled()
+      popupFor.mockRestore()
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it.each(['resolve', 'reject'] as const)('aborts a pending matching popup and ignores its late %s', async (outcome) => {
+    const { ctx, command, source, mint } = await bench()
+    try {
+      let resolve!: (options: readonly SelectOption[]) => void
+      let reject!: (error: Error) => void
+      const pending = new Promise<readonly SelectOption[]>((accept, refuse) => { resolve = accept; reject = refuse })
+      let optionsSignal: AbortSignal | undefined
+      const onSelect = vi.fn()
+      command.register(themeContribution({ name: 'model', ui: themeUi({
+        options: (_session, signal) => { optionsSignal = signal; return pending },
+        onSelect,
+      }) }))
+      const scope = mint('s1')
+      const consume = vi.fn(() => true as const)
+      const focus = vi.fn()
+      scope.ctx.on('slash/input-consume-token', consume)
+      command.bindComposerFocus(sid('s1'), focus)
+      menuPick(source, 'model', proj('s1'))
+      const popup = command.popupFor(scope.ctx)
+      expect(popup.state.getSnapshot()).toMatchObject({ open: true, command: 'model', status: 'pending' })
+
+      command.dismissPopups('model')
+      expect(optionsSignal?.aborted).toBe(true)
+      if (outcome === 'resolve') resolve([{ id: 'premium', label: 'Premium from the old account' }])
+      else reject(new Error('old account catalog failed'))
+      await Promise.resolve()
+
+      expect(popup.state.getSnapshot()).toMatchObject({ open: false, command: null, options: [], error: null })
+      expect(onSelect).not.toHaveBeenCalled()
+      expect(consume).not.toHaveBeenCalled()
+      expect(focus).not.toHaveBeenCalled()
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+})
+
 describe('directory invalidation events', () => {
   it('commands/change repulls in the background while the old snapshot serves', async () => {
     let round = 0

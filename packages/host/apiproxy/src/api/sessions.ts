@@ -123,6 +123,21 @@ export interface ModelReasoning {
 /** Optional model-selector grouping metadata; never used as a provider route. */
 export type ModelCatalogPresentation = LlmModelPresentation
 
+/** Deployment-supplied selection eligibility; the executor authorizes each operation independently. */
+export interface ModelCatalogAvailability {
+  /** Whether this model can be selected with the current account or deployment policy. */
+  selectable: boolean
+  /** Public-safe reason shown on an unavailable row. */
+  reason?: string
+  /** Optional deployment-owned help action. Its opaque id never identifies a model or grants selection. */
+  action?: {
+    /** Passed unchanged to the client deployment's action listener. */
+    id: string
+    /** Public-safe label for a separate, enabled help control. */
+    label: string
+  }
+}
+
 /** One model displayed inside its provider group. */
 export interface ModelCatalogModel {
   /** Provider-owned model id. */
@@ -135,6 +150,8 @@ export interface ModelCatalogModel {
   presentation?: ModelCatalogPresentation
   /** Exact-route reasoning metadata when the adapter exposes it. */
   reasoning?: ModelReasoning
+  /** Selection eligibility when the deployment supplies operation policy. */
+  availability?: ModelCatalogAvailability
 }
 
 /** One provider and the models it advertised successfully. */

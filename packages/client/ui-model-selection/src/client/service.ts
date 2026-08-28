@@ -22,6 +22,15 @@ declare module '@deepseek-ai/cordis' {
   interface Context {
     modelDirectories: ModelDirectoryResolver
   }
+  interface Events {
+    /**
+     * A user activated a deployment-owned help action advertised on an unavailable model.
+     * This event does not select a model or retry a denied operation.
+     * @mode emit
+     * @param actionId - opaque id supplied by the model catalog.
+     */
+    'model-selection/action'(actionId: string): void
+  }
 }
 
 /** Live mutable state in one holder (service methods run behind the caller-ctx tracker). */
@@ -107,5 +116,10 @@ export class ModelDirectoryResolver extends Service {
       live.directories.delete(sessionId)
     }, 'ui-model-selection: session directory')
     return directory
+  }
+
+  /** Invalidate selectable rows after deployment authorization changes; current selections remain unchanged. */
+  invalidateCatalogs(): void {
+    for (const directory of this.live.directories.values()) directory.invalidateCatalog()
   }
 }

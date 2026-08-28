@@ -25,7 +25,7 @@ import { ModelDirectoryResolver } from './service.ts'
 import type { ModelSelectInjected } from './slots.ts'
 import { ModelSelect } from './ModelSelect.tsx'
 import { en, zh, type ModelKey } from './locales.ts'
-import { modelPresentationSections } from './presentation.ts'
+import { modelAvailabilityActions, modelPresentationSections } from './presentation.ts'
 
 export { ModelDirectory } from './directory.ts'
 export type { ModelDirectoryState } from './directory.ts'
@@ -58,6 +58,14 @@ function optionsOf(directory: SessionModels, t: TranslateNS<'model'>): SelectOpt
           id: rowId(group.id, model.id),
           label: model.name,
           detail: model.description !== undefined ? `${groupDetail} · ${model.description}` : groupDetail,
+          ...model.availability?.selectable === false ? {
+            disabled: true,
+            ...model.availability.action === undefined ? {} : { action: model.availability.action },
+            ...model.availability.reason === undefined ? {} : {
+              disabledReason: model.availability.reason,
+              detail: `${groupDetail} · ${model.availability.reason}`,
+            },
+          } : {},
           ...(directory.current.provider === group.id && directory.current.model === model.id
             ? { active: true } : {}),
         })
@@ -85,6 +93,7 @@ function selectionOf(state: ModelDirectoryState, id: string): ModelSelection | u
   for (const group of state.groups) {
     for (const model of group.models) {
       if (rowId(group.id, model.id) !== id) continue
+      if (model.availability?.selectable === false) return undefined
       const sameRoute = state.current?.provider === group.id && state.current.model === model.id
       const reasoningEffort = sameRoute
         ? state.current?.reasoningEffort ?? model.reasoning?.defaultEffort
@@ -152,6 +161,13 @@ export function apply(ctx: ClientContext): void {
           }
           await directory.select(selection)
         },
+        onAction: (actionId, session) => {
+          if (sessions.subagentAddress(session.sessionId) !== undefined) return
+          const state = models.directoryFor(session.sessionId).store.getSnapshot()
+          if (modelAvailabilityActions(state.groups).some(action => action.id === actionId)) {
+            scope.emit('model-selection/action', actionId)
+          }
+        },
       },
     }), 'ui-model-selection: /model contribution')
   })
@@ -175,6 +191,11 @@ export function apply(ctx: ClientContext): void {
           select: (selection: ModelSelection) => available
             ? directory.select(selection).then(() => true, () => false)
             : Promise.resolve(false),
+          requestAction: (actionId: string) => {
+            if (available && modelAvailabilityActions(directory.store.getSnapshot().groups).some(action => action.id === actionId)) {
+              scope.emit('model-selection/action', actionId)
+            }
+          },
         }
       },
     }, ModelSelect))

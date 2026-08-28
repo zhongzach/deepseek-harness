@@ -4,7 +4,7 @@
 
 客户端命令 API（`ctx.commandUi`）：以会话为 key 的命令目录缓存、带 `matchSpace`／`matchEnter` 决策钩子的 `/` 命令 source、三类派发（`execute`／`popupSelect`／`leadingInput`），以及面向业务包的 popupSelect 注册。[Web 命令 Agent Note](../../../.agents/notes/implemented/architecture/2026-07-25-web-command-surfaces-and-assembly.zh.md) 记录了这项决策。
 
-`src/client/contract.ts` 是固定的业务 API 约定：`CommandUiContract.register(name, spec)` 与 `decorate(name, spec)` 是业务包消费的全部内容；`CommandUiSpec{options, onSelect}` 自己提供 popup 数据——外层组件归本包所有，业务包永远见不到它。贡献项是客户端自有命令（与 host 命令同名时会明确报错）；装饰项则为**已存在的** host 命令添加裸调用 popup。host 保留目录行、带参 claim（空格／带参数的 Enter）与生命周期记账，被装饰的名字若在会话目录中无 host 行，则永不触发。命令类型按每次派发派生，绝不在注册时定型：带 `input` 的 host descriptor 是 `leadingInput`，注册了 `CommandUiSpec` 的是 `popupSelect`，其余全部是 `execute`。
+`src/client/contract.ts` 是业务 API 约定：`CommandUiContract.register` 与 `decorate` 注册命令行为；`CommandUiSpec{options, onSelect}` 自己提供 popup 数据——外层组件归本包所有，业务包永远见不到它。贡献项是客户端自有命令（与 host 命令同名时会明确报错）；装饰项则为**已存在的** host 命令添加裸调用 popup。host 保留目录行、带参 claim（空格／带参数的 Enter）与生命周期记账，被装饰的名字若在会话目录中无 host 行，则永不触发。命令类型按每次派发派生，绝不在注册时定型：带 `input` 的 host descriptor 是 `leadingInput`，注册了 `CommandUiSpec` 的是 `popupSelect`，其余全部是 `execute`。
 
 `CommandDirectory`（`src/client/directory.ts`）是唯一的 wire 派生缓存，以会话为 key。普通会话通过 `command.list({sessionId})` 拉取，source 的 scope 出生 `warm` 钩子会预热该会话的缓存项。由目录寻址的可继续子代理会在客户端解析为空命令目录：`command.list` 绑定 Agent，若预热它，就会仅因查看持久化历史而激活子代理。缓存项由转发的 owner 事件 `commands/change` 软失效（重拉在途期间旧快照继续服务），也由转发的 `agent-preset/selected` 对该会话单独软失效（重组 agent 不产生任何注册，注册表级信号不会为它触发），由 `connection/reset` 硬失效，并以 epoch 把关，被取代的旧拉取永远无法覆盖更新的结果。`matchSpace` 只凭该缓存同步应答；`matchEnter` 在 SubmitAttempt 信号上强等缓存，预热失败即拒绝——`/` 开头的一行绝不会被静默降级为普通提示词。
 
@@ -15,6 +15,12 @@
 菜单查询会按顺序且不区分大小写地模糊匹配命令名的子序列。前缀排名最高；其余匹配项按分隔符边界优先、相邻字符优先、间隔越短越优先的规则排序，若仍同分，则以目录顺序和贡献项顺序打破平局。此行为只影响命令发现：space 和 Enter 仍要求命令名精确匹配。原理：[Web 斜杠命令模糊发现](../../../.agents/notes/implemented/feature/2026-08-04-web-slash-command-fuzzy-discovery.zh.md)。
 
 `PopupSelectController`（`src/client/popup.ts`）是不含界面的外壳状态：`PopupSelectView` 自行注册进 `conversation.input.overlay`（SlotMap key 归 ui-conversation 所有；本包只以 type-only 导入引入该声明——没有运行时依赖边）。壳是打开期间持有焦点的瞬态层；onSelect 之后的 token 片段消费在两条分支上都经 `consumeTokenSegment` 执行（菜单路径做 span CAS，回车路径做裸 token 相等比较），作用于接线层经 `bindDraft` 绑定的草稿表层。
+
+`CommandUiContract.dismissPopups(commandName)` 在选项陈旧时关闭该命令的现有弹窗。它会中止进行中的选项读取并忽略迟到结果，不会创建会话控制器、消耗命令文本、改变焦点或关闭其他命令的弹窗。
+
+Popup 选项可以用 `disabled` 与 `disabledReason` 声明可见的信息行。外壳会在提示中展示原因，并在调用 `onSelect` 或消耗命令输入之前拒绝指针、键盘和控制器直接选择。禁用行只是 UI 提示；操作归属方仍须在执行时检查权限。
+
+禁用选项的可选 `action` 为独立的底部按钮提供不透明 id 和标签；注册方通过 `onAction` 打开相应帮助。底部区域对当前筛选行的动作去重。激活帮助时，弹窗先关闭，再调用 `onAction`；不会调用 `onSelect`、消耗命令文本，或将焦点从帮助弹窗抢回 composer。可用选项不会提供禁用行帮助动作。
 
 `/client` 入口导出插件主体（`apply`／`inject`）、`CommandUiRuntime`、目录类和 popup 类及其状态类型，以及固定的约定类型；外层组件本身是 overlay 注册的内部实现。
 
