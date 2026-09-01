@@ -169,7 +169,7 @@ export const modelReasoningSchema = z.object({
 export const modelCatalogPresentationSchema = z.object({
   sectionId: z.string().min(1),
   sectionName: z.string().min(1),
-  sectionOrder: z.number().finite().optional(),
+  sectionOrder: z.number().optional(),
 }) satisfies z.ZodType<Wire<ModelCatalogPresentation>>
 
 /** One advisory model entry inside a provider group. */

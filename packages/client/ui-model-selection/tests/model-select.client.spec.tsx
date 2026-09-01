@@ -53,7 +53,7 @@ function presentedModel(
   sectionName: string,
   sectionOrder: number,
 ): ModelProviderGroup['models'][number] {
-  return { id, name, presentation: { sectionId, sectionName, sectionOrder } } as never
+  return { id, name, presentation: { sectionId, sectionName, sectionOrder } }
 }
 
 afterEach(cleanup)

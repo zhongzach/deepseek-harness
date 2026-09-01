@@ -426,6 +426,20 @@ interface LlmConfigurableProvider {
 }
 ```
 
+Selector placement is optional model metadata and does not alter the provider/model route used for requests. Deployments may divide one provider into ordered selector sections while adapters and stored configurations continue to use the same route identity.
+
+```ts type-equiv
+/** Optional selector-only placement for one model without changing its route identity. */
+interface LlmModelPresentation {
+  /** Stable section identity used only by presentation consumers. */
+  sectionId: string
+  /** Human-readable section heading. */
+  sectionName: string
+  /** Optional ascending placement among sections; omission preserves provider order. */
+  sectionOrder?: number
+}
+```
+
 ```ts type-equiv
 /** One adapter-discovered model; catalog membership is advisory, not request validation. */
 interface LlmModelInfo {
@@ -439,6 +453,8 @@ interface LlmModelInfo {
   description?: string
   /** Accepted request modalities; absent means unknown, while an explicit omission is negative capability. */
   inputModalities?: readonly ModelModality[]
+  /** Optional selector-only placement; never part of provider/model request identity. */
+  presentation?: LlmModelPresentation
 }
 ```
 

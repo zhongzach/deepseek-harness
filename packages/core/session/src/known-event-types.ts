@@ -6,30 +6,17 @@
  */
 
 /**
- * Every `SessionEventMap` member declared in this repository — the event
- * vocabulary this build understands. The persistence read path refuses to
- * interpret a log containing a type outside this set unless the event
- * carries the envelope's `ignorable` marker (see `SessionEvent.ignorable`
- * in `./types.ts`): such a log was likely written by a newer harness, and
- * silently skipping a required event would reconstruct a wrong session.
- * Downstream (out-of-repo) plugin events are outside this list by
- * construction; a registration surface for them is deferred until such a
- * consumer exists.
- */
-/**
- * Event types a DEPLOYMENT registered at runtime (a product plugin's own
- * log-only records). The resume support check consults this beside the static
- * set, so a session written by the same composition loads even when an event
- * predates the writer stamping `ignorable: true`. Registration is
- * process-wide and additive on purpose: the composition that appends a type
- * is the composition that mounts the registering plugin.
+ * Deployment-owned event types registered by the running composition.
+ * The persistence read path consults this set beside the static vocabulary
+ * so the same composition can reopen records that predate an `ignorable`
+ * marker. Registration lifetime follows the plugin that owns the event.
  */
 const RUNTIME_SESSION_EVENT_TYPES = new Set<string>()
 
 /**
  * Teach this process one deployment-owned session event type.
- * @param type - the event type (e.g. `writerx/charge`).
- * @returns an unregister function (plugin unload).
+ * @param type - the event type (for example, `writerx/charge`).
+ * @returns a disposer that removes the runtime registration.
  */
 export function registerSessionEventType(type: string): () => void {
   RUNTIME_SESSION_EVENT_TYPES.add(type)
@@ -37,15 +24,21 @@ export function registerSessionEventType(type: string): () => void {
 }
 
 /**
- * Whether this process can interpret `type` — statically known, or registered
- * by the running composition.
- * @param type - the event type.
- * @returns true when a log carrying it may be reconstructed.
+ * Return whether this process can interpret a statically declared or runtime-registered event type.
+ * @param type - the event type to inspect.
+ * @returns whether a log carrying the type may be reconstructed.
  */
 export function isKnownSessionEventType(type: string): boolean {
   return KNOWN_SESSION_EVENT_TYPES.has(type) || RUNTIME_SESSION_EVENT_TYPES.has(type)
 }
 
+/**
+ * Every `SessionEventMap` member declared in this repository — the static
+ * event vocabulary this build understands. The persistence read path
+ * refuses a type outside this set and the runtime registry unless the event
+ * carries the envelope's `ignorable` marker; silently skipping a required
+ * event could reconstruct the wrong session.
+ */
 export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'agent-preset/selected',
   'agent/inbox/spliced',

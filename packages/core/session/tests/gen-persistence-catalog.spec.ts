@@ -13,6 +13,7 @@ import {
   collectLogEvents,
   collectSurfaceEventTypes,
   render,
+  renderKnownEventTypes,
 } from '../../../../scripts/gen-persistence-catalog.ts'
 
 /** Create a fixture scan root; `files` maps `packages/…`-relative paths to source. */
@@ -283,5 +284,14 @@ describe('gen-persistence-catalog annotateSurface + render', () => {
     expect(out).toContain('#### `fix/message` — surface')
     expect(out).toContain('#### `fix/marker` — log-only')
     expect(out).toContain('```ts persistence-catalog\n/** Records fix/marker. */\n\'fix/marker\': { turn: number }\n```')
+  })
+
+  it('generates runtime registration beside the static known-event vocabulary', () => {
+    const output = renderKnownEventTypes(annotateSurface([entry('fix/message'), entry('fix/marker')], ['fix/message']))
+    expect(output).toContain('const RUNTIME_SESSION_EVENT_TYPES = new Set<string>()')
+    expect(output).toContain('export function registerSessionEventType(type: string): () => void')
+    expect(output).toContain('return KNOWN_SESSION_EVENT_TYPES.has(type) || RUNTIME_SESSION_EVENT_TYPES.has(type)')
+    expect(output).toContain('export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([')
+    expect(output).toContain("  'fix/marker',\n  'fix/message',")
   })
 })

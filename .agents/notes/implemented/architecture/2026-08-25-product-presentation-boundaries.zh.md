@@ -6,20 +6,13 @@
 
 ## 问题
 
-Web 客户端为了可重建性会持久化实现身份：Loader 条目 id 是包名，上下文消息的
-source 会记录生产插件。包装产品不能改写这些持久身份，也不应该为了替换一个技术
-来源的展示而复制整套上下文渲染器。React 插件挂载前的无框架启动页也有同样问题。
+Web 客户端为了可重建性会持久化实现身份：Loader 条目 id 是包名，上下文消息的 source 会记录生产插件。包装产品不能改写这些持久身份，也不应该为了替换一个技术来源的展示而复制整套上下文渲染器。React 插件挂载前的无框架启动页也有同样问题。
 
 ## 决定
 
-`context` Chat Node 声明 session 作用域的 chain
-`conversation.chat.context.presentation`。它把引用稳定的上下文数据作为统一 owner
-currency 分发，并把 `ContextInjectionRow` 保留为全员拒绝时的 fallback。产品条目用
-纯 `select` 只认领自己负责展示的来源；未被认领的上下文继续使用内置的分 form 富展示。
+`context` Chat Node 声明 session 作用域的 chain `conversation.chat.context.presentation`。它把引用稳定的上下文数据作为统一 owner currency 分发，并把 `ContextInjectionRow` 保留为全员拒绝时的 fallback。产品条目用纯 `select` 只认领自己负责展示的来源；未被认领的上下文继续使用内置的分 form 富展示。
 
-无框架 `BootPage` 另行接受可选的预注入 `BootPresentation` 文案。命名空间别名只在
-显示失败信息时替换完整 scoped-package token。Loader id、原始异常、会话事件、上下文
-source 与模型可见字节全部保持不变。
+无框架 `BootPage` 另行接受可选的预注入 `BootPresentation` 文案。命名空间别名只在显示失败信息时替换完整 scoped-package token。Loader id、原始异常、会话事件、上下文 source 与模型可见字节全部保持不变。
 
 ## 不变量
 
@@ -31,14 +24,11 @@ source 与模型可见字节全部保持不变。
 
 ## 验证
 
-客户端测试覆盖全拒绝 fallback、产品接管、无障碍名称、source 不变、默认/品牌化预启动
-文案，以及失败条目 id 和汇总失败报告中的命名空间脱敏。
+客户端测试覆盖全拒绝 fallback、产品接管、无障碍名称、source 不变、默认/品牌化预启动文案，以及失败条目 id 和汇总失败报告中的命名空间脱敏。
 
 ## 结果
 
-包装产品可以接管技术上下文和预启动文案，而不用修改回放身份或复制整套上下文渲染器。
-代价是每个 context 节点多一次 chain 分发，品牌化 index 多一个很小的阻塞式展示对象；
-未包装部署的可见行为不变。
+包装产品可以接管技术上下文和预启动文案，而不用修改回放身份或复制整套上下文渲染器。代价是每个 context 节点多一次 chain 分发，品牌化 index 多一个很小的阻塞式展示对象；未包装部署的可见行为不变。
 
 ## 考虑过的替代方案
 

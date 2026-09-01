@@ -16,6 +16,10 @@ The web shell frame is a three-column grid: sidebar | center | details. A produc
 - **Concession chain**: keep center >= `CENTER_MIN` by shrinking the shelf first, then details, then auto-closing details. The shelf never auto-closes — it is a primary product panel, treated like the sidebar. With the shelf preference 0 (the dev default) the chain reduces exactly to the previous three-column behavior, so the development GUI is bit-for-bit unchanged: the extra track renders at 0px and the collapsed column paints no border.
 - **Occupancy**: no shipped row occupies `shelf`. A product composition (e.g. the NovelStudio shell's `--patch` overlay) inserts its own client plugin into it. The dev web-app bundle does not register the shelf plugin, keeping the development surface untouched.
 
+## Alternatives considered
+
+**Reuse the `details` slot.** Rejected because ui-conversation already occupies that single slot with `DetailsPanel`; making the product shelf compete for it would turn a required product column into a load-order conflict.
+
 ## Consequences
 
 - The dev GUI is visually unchanged: fresh store state has `shelf: 0`, the fourth grid track is 0px, and `data-shelf-collapsed` suppresses the border seam.

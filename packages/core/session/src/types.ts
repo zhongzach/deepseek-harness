@@ -377,10 +377,6 @@ export type SurfaceOp =
   | 'append'
   | { op: 'replace'; start: number; end: number }
 
-/**
- * Surface placement and cited source-event seqs for {@link Session.append}. Required on
- * message-producing events and forbidden on log-only events.
- */
 /** Append-time envelope options every event kind may carry. */
 export interface AppendIntent {
   /**
@@ -392,6 +388,10 @@ export interface AppendIntent {
   ignorable?: true
 }
 
+/**
+ * Surface placement and cited source-event seqs for {@link Session.append}. Required on
+ * message-producing events and forbidden on log-only events.
+ */
 export interface SurfaceIntent {
   surfaceOp: SurfaceOp
   /**

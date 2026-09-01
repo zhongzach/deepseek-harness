@@ -22,7 +22,12 @@ const DEFAULT_PRESENTATION = {
   failureTitle: 'Failed to load plugins',
 } as const
 
-/** Replace complete scoped-package tokens without mutating the underlying error. */
+/**
+ * Replace complete scoped-package tokens without mutating the underlying error.
+ * @param text - the original boot or failure text.
+ * @param presentation - deployment-owned namespace labels.
+ * @returns presentation-safe text with configured package tokens replaced.
+ */
 export function presentBootText(text: string, presentation: BootPresentation): string {
   let output = text
   for (const [prefix, label] of Object.entries(presentation.namespaceLabels ?? {})) {

@@ -579,14 +579,11 @@ export class Session {
    *
    * @param type - The event type (key of {@link SessionEventMap}).
    * @param data - The event payload; must be JSON-serializable.
-   * @param opts - Surface metadata: `surfaceOp` controls how the event enters
-   *   the ordered surface; `sourceEventSeqs` lists the seq numbers of earlier
-   *   events this one derives from. REQUIRED for
-   *   {@link SurfaceEventType} events (every message-producing event must
-   *   declare how it joins the surface, the sole source of derived model
-   *   history) and
-   *   rejected by the compiler for non-surface types like `turn/start` or
-   *   `assistant/chunk`.
+   * @param opts - Append envelope metadata. `ignorable` marks a purely
+   *   informational deployment event that an older reader may skip. Surface
+   *   events additionally require `surfaceOp`, which controls how the event
+   *   enters the ordered surface, and may cite earlier event seqs through
+   *   `sourceEventSeqs`; non-surface events reject those surface fields.
    * @returns the logged event — its assigned `seq`/`time` plus the SNAPSHOT of
    *   `data` that entered the log, so reading `event.data` back sees the logged
    *   value, never the caller's still-mutable input.
@@ -609,10 +606,10 @@ export class Session {
     data: SessionEventMap[T],
     ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent & AppendIntent] : [opts?: AppendIntent]
   ): SessionEvent<T> {
-    const surfaceOpts = opts[0] as (SurfaceIntent & AppendIntent) | AppendIntent | undefined
+    const surfaceOpts = opts[0]
     const surfaceMetadata = {
-      ...surfaceOpts !== undefined && 'sourceEventSeqs' in surfaceOpts && surfaceOpts.sourceEventSeqs !== undefined ? { sourceEventSeqs: surfaceOpts.sourceEventSeqs } : {},
-      ...surfaceOpts !== undefined && 'surfaceOp' in surfaceOpts && surfaceOpts.surfaceOp !== undefined ? { surfaceOp: surfaceOpts.surfaceOp } : {},
+      ...surfaceOpts !== undefined && 'sourceEventSeqs' in surfaceOpts ? { sourceEventSeqs: surfaceOpts.sourceEventSeqs } : {},
+      ...surfaceOpts !== undefined && 'surfaceOp' in surfaceOpts ? { surfaceOp: surfaceOpts.surfaceOp } : {},
     }
     const dataSnapshot = snapshotJsonValue(data)
     if (dataSnapshot === undefined) {
@@ -1036,7 +1033,6 @@ export class SessionStore extends Service {
       } catch (error: unknown) {
         // Preserve the listener's exact rejection value; flush is a caller-owned
         // failure boundary, and Cordis listeners may throw arbitrary values.
-        // oxlint-disable-next-line typescript/prefer-promise-reject-errors
         return Promise.reject(error)
       }
     }))

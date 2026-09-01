@@ -3831,7 +3831,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ModelCatalogAvailability',
-    declaration: 'export interface ModelCatalogAvailability {\n    selectable: boolean;\n    reason?: string;\n}',
+    declaration: 'export interface ModelCatalogAvailability {\n    selectable: boolean;\n    reason?: string;\n    action?: {\n        id: string;\n        label: string;\n    };\n}',
   },
   {
     name: 'ModelCatalogFailure',

@@ -47,7 +47,7 @@ export interface ModelPresentationSection {
 }
 
 function presentationOf(model: CatalogModel): ModelPresentation | undefined {
-  const value = (model as CatalogModel & { presentation?: unknown }).presentation
+  const value: unknown = model.presentation
   if (value === null || typeof value !== 'object') return undefined
   const row = value as { sectionId?: unknown; sectionName?: unknown; sectionOrder?: unknown }
   if (typeof row.sectionId !== 'string' || row.sectionId.length === 0
@@ -62,7 +62,12 @@ function presentationOf(model: CatalogModel): ModelPresentation | undefined {
   }
 }
 
-/** Stable React/DOM identity scoped by the real provider route. */
+/**
+ * Build a stable React/DOM identity scoped by the real provider route.
+ * @param provider - the provider route that owns the rendered section.
+ * @param sectionId - the provider-local section identity.
+ * @returns a stable identity unique to this provider and section.
+ */
 export function modelSectionKey(provider: string, sectionId: string): string {
   return `${provider}\u0000section\u0000${sectionId}`
 }
@@ -71,6 +76,8 @@ export function modelSectionKey(provider: string, sectionId: string): string {
  * Partition one provider without changing its route identity. With no valid
  * metadata this returns the existing single group unchanged. Section order is
  * numeric first, then first occurrence; models retain provider order.
+ * @param group - one provider's advertised models and presentation metadata.
+ * @returns rendered sections in presentation order.
  */
 export function modelPresentationSections(group: ModelProviderGroup): ModelPresentationSection[] {
   const presented = group.models.some(model => presentationOf(model) !== undefined)
