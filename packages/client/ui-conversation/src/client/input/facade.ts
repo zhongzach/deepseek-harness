@@ -354,9 +354,9 @@ export class SessionInputShell implements SessionInput {
 
   /**
    * Enter adjudication + submit transaction + default sink. Effects fan out
-   * from the machine; this method only feeds the event. Lock entry
-   * (adjudicating/submitting) force-closes the transient layers: the popup
-   * dismisses and the menu tracks frozen.
+   * from the machine; this method only feeds the event. Entering a submit
+   * lock closes existing transient layers before command effects can open
+   * their own selector.
    */
   submit(mode: InputSubmitMode = 'queue'): void {
     if (this.snapshot.draft.trim() === '' && this.attachmentIds.length > 0) {
@@ -390,11 +390,6 @@ export class SessionInputShell implements SessionInput {
       return
     }
     this.dispatchRun(({ type: 'enter', mode, draft: this.projection.clipboardText }))
-    const phase = this.snapshot.phase
-    if (phase === 'adjudicating' || phase === 'submitting') {
-      this.deps.popup?.()?.dismiss()
-      this.deps.inputTriggers?.()?.track(this.projection.detectText, 0, { tier: 'frozen' }, this.rev)
-    }
   }
 
   /**
@@ -620,7 +615,16 @@ export class SessionInputShell implements SessionInput {
   /** Dispatch + execute, refreshing the claim decoration when the styled token flips. */
   private dispatchRun(ev: Parameters<SubmitMachine['dispatch']>[0]): void {
     const beforeToken = this.activeClaimToken()
-    this.run(this.core.dispatch(ev))
+    const beforePhase = this.core.state.phase
+    const effects = this.core.dispatch(ev)
+    const phase = this.core.state.phase
+    // A command contribution can open its popup synchronously during
+    // adjudication. Retire old transient UI before executing that effect.
+    if (ev.type === 'enter' && phase !== beforePhase && guardOf(phase) === 'frozen') {
+      this.deps.popup?.()?.dismiss()
+      this.deps.inputTriggers?.()?.track(this.projection.detectText, 0, { tier: 'frozen' }, this.rev)
+    }
+    this.run(effects)
     if (this.activeClaimToken() !== beforeToken) refreshClaimDecoration(this.editor)
   }
 

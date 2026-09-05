@@ -50,6 +50,8 @@ Session 首次绑定或缓存的 Session 成为 current 时，shell 会在渲染
 
 普通 composer 运行时，如果草稿为空或输入不可用，主指针操作保持为 Stop。可提交的文字或附件会把同一位置切换为 Queue Send；清空或成功提交草稿后恢复 Stop。繁忙态 Enter 设置继续选择 Queue 或 Steer 键盘操作。Plan Mode 与 active goal 不改变附件入口。continuable 子代理保留独立的 Send 与 Stop 操作，但不提供回形针、粘贴或拖放入口（[决策](../../../.agents/notes/implemented/bug-fix/2026-08-20-running-draft-primary-send.zh.md)）。
 
+Enter 开始命令裁决或提交时，会先关闭已有的瞬态选择器，再执行命令 effect。该 effect 同步打开的新选择器仍可使用；空输入、被拒绝或已经锁定的提交不会清空已有草稿或选择器。
+
 <a id="temporary-composer-entries"></a>
 ## 临时 composer entry
 

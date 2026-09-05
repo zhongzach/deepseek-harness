@@ -50,6 +50,8 @@ Default sends commit optimistically: Enter clears the draft, occurrence table, a
 
 While a normal composer is running, its primary pointer action remains Stop when the draft is empty or input is unavailable. Actionable text or attachments switch the same seat to Queue Send; clearing or successfully submitting the draft restores Stop. The busy-Enter setting continues to select the Queue or Steer keyboard action. Plan mode and active goals do not change attachment intake. Continuable subagents keep separate Send and Stop actions but expose no paperclip, paste, or drop intake ([decision](../../../.agents/notes/implemented/bug-fix/2026-08-20-running-draft-primary-send.md)).
 
+An Enter gesture that starts command adjudication or submission closes existing transient selectors before executing the command effect. A selector opened synchronously by that effect remains available; empty, refused, or already-locked submissions do not clear the existing draft or selector.
+
 <a id="temporary-composer-entries"></a>
 ## Temporary composer entries
 
