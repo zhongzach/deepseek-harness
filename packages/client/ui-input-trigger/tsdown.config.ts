@@ -1,6 +1,6 @@
 import { clientBundle } from '../tsdown.client.ts'
 
-export default clientBundle('@deepseek-ai/dsh-client-ui-input-trigger', ['lib/types/index.js', 'lib/types/invariant.js'], {
+export default clientBundle('@deepseek-ai/dsh-client-ui-input-trigger', ['lib/types/index.js'], {
   companions: [{
     name: '@deepseek-ai/dsh-client-ui-input-trigger/client/controller',
     entry: { controller: 'lib/types/controller.js' },
@@ -11,10 +11,8 @@ export default clientBundle('@deepseek-ai/dsh-client-ui-input-trigger', ['lib/ty
     dts: false,
     clean: false,
     deps: {
-      // A replacement provider owns controller instances; only the shared
-      // runtime identity remains external when this helper is inlined.
-      neverBundle: specifier => specifier === '@deepseek-ai/dsh-client-runtime/client',
-      alwaysBundle: specifier => specifier !== '@deepseek-ai/dsh-client-runtime/client',
+      neverBundle: specifier => specifier === '@deepseek-ai/dsh-client-store',
+      alwaysBundle: specifier => specifier !== '@deepseek-ai/dsh-client-store',
     },
   }],
 })

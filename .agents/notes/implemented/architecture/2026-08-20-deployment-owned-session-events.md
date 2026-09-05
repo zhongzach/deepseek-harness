@@ -14,7 +14,7 @@ A deployment plugin can merge a product-owned, log-only event into `SessionEvent
 
 **Portable product records also carry `ignorable: true`.** `Session.append` accepts `AppendIntent` for log-only events and combines it with `SurfaceIntent` for surface events. A product-owned informational record uses the marker so another same-version composition that lacks its plugin can skip that record safely. Explicit registration remains necessary for records written before the marker existed.
 
-**The persistence generator owns both compatibility paths.** `gen-persistence-catalog` emits the static event set together with the runtime registry, registration function, and combined lookup. The generated file is never patched by hand, so catalog freshness protects the runtime API as well as the event names.
+**The persistence generator owns the static event vocabulary.** Runtime registrations live in the Session package's `deployment-event-types.ts`, and current restoration snapshots the combined vocabulary. Historical format compatibility requires the separate payload-validated registration described in [deployment event migration](2026-09-05-deployment-event-format-migration.md).
 
 ## Alternatives considered
 
@@ -25,4 +25,4 @@ A deployment plugin can merge a product-owned, log-only event into `SessionEvent
 
 ## Consequences
 
-The same product composition can reconstruct legacy product records, while portable informational records remain readable by a stock composition. Registration is process-local and follows plugin lifetime, so each deployment-owned type has an explicit owner and must be registered before session loading. A missing registration fails closed instead of silently changing the reconstructed session. Generator tests pin the runtime API, and persistence catalog freshness pins both generated artifacts.
+The same product composition can reconstruct same-format legacy product records, while portable informational records remain readable by a stock composition of the same format version. Registration is process-local and follows plugin lifetime, so each deployment-owned type has an explicit owner and must be registered before session loading. A missing registration fails closed instead of silently changing the reconstructed session. Runtime tests pin overlapping registration disposal, and persistence catalog freshness pins the static vocabulary.

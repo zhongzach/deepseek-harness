@@ -3,7 +3,7 @@
  * CommandUiRuntime (`ctx.commandUi`) implements command registration and
  * dismissal of stale popup choices without exposing the shell component.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { ClientSessionContext } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 
 /** Copy for an option that must be acknowledged before onSelect can run. */

@@ -180,16 +180,13 @@ describe('loadWin32DialogBindings over the fake COM world', () => {
     expect(world.uninitialized).toBe(1)
   })
 
-  it('reads a path whole when a code unit of the path ends in 0x00 (开 U+5F00, 一 U+4E00)', async () => {
-    // Regression: the terminator scan tested only the low byte, so `D:\\开局`
-    // came back as `D:\` and a workspace picked under such a name landed on
-    // its parent.
-    const world = comWorld({ path: 'D:\\开局时停当大师\\一号书\\稀有' })
+  it('reads a UTF-16 path whose BMP code unit has a zero low byte (U+5F00 开)', async () => {
+    // 开 = U+5F00 → UTF-16LE bytes 00 5F. A scan that treats any zero low
+    // byte as NUL truncates here and returns the nonexistent ...\安卓.
+    const world = comWorld({ path: 'C:\\fixture\\安卓开发' })
     installFakeKoffi(world)
-    const { loadWin32DialogBindings } = await loadBindingsModule()
-    const bindings = await loadWin32DialogBindings()
-
-    expect(runFolderDialog(bindings, 't', vi.fn())).toBe('D:\\开局时停当大师\\一号书\\稀有')
+    const bindings = await (await loadBindingsModule()).loadWin32DialogBindings()
+    expect(runFolderDialog(bindings, 'Pick', vi.fn())).toBe('C:\\fixture\\安卓开发')
   })
 
   it('maps dismissal and the S_FALSE CoInitializeEx', async () => {

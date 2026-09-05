@@ -2,8 +2,8 @@
  * Shared profile boot for every `dsh` surface: resolve the profile, stack its
  * patch layers (bundle layers in `dsh.profile.bundles` order, the profile's
  * own `cordis.patch.yml`, `--patch` overlays, the telemetry switch), mount the
- * tree over the profile's empty root config, keep the profile patch layer
- * live, and wire fail-loud plus bounded shutdown.
+ * tree over the profile's empty root config, apply its selected patch-reload
+ * lifecycle, and wire fail-loud plus bounded shutdown.
  *
  * App flags are not the launcher's business: the invocation's inner arguments
  * are provided to the tree through `ctx.cmdlineArgs`, where any injected app
@@ -30,15 +30,36 @@ import {
   type Profile,
 } from '@deepseek-ai/dsh-app-boot'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-
-/** Shipped agent-preset root: beside this app's own config, in both source and built layouts. */
-const SHIPPED_PRESET_ROOT = fileURLToPath(new URL('../config/agent-presets/', import.meta.url))
-
+import { installProxyFromEnvironment } from '@deepseek-ai/dsh-http-proxy'
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
-import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
+import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
 
 const NAME = 'dsh'
+
+/** Launcher-owned readiness signal committed only after boot and host setup succeed. */
+function createAppReady(): { service: AppReady; commit(): void } {
+  let ready = false
+  const listeners = new Set<() => void>()
+  return {
+    service: {
+      onReady(listener) {
+        if (ready) {
+          listener()
+          return () => {}
+        }
+        listeners.add(listener)
+        return () => { listeners.delete(listener) }
+      },
+    },
+    commit() {
+      if (ready) return
+      ready = true
+      for (const listener of [...listeners]) listener()
+      listeners.clear()
+    },
+  }
+}
 
 /**
  * The home-level user patch layer (`$DSH_HOME/cordis.patch.yml`), applied
@@ -82,75 +103,26 @@ export function resolveTelemetryPatch(disabledEnv: string | undefined, hasRow: b
   return { id: TELEMETRY_ROW_ID, disabled: true }
 }
 
-/** The agent-preset roster row the launcher completes with the shipped root. */
-const AGENT_PRESETS_ROW_ID = 'agent-presets'
-
 /**
- * Launcher-only key on the roster row's config: whether the shipped root is
- * appended after the configured roots. Consumed here and stripped before the
- * config reaches `dsh-agent-presets`, which knows nothing of shipped roots.
- */
-const INCLUDE_SHIPPED_ROOT_KEY = 'includeShippedRoot'
-
-/**
- * Whether one composed `roots` entry is a root object at all. Entries are
- * carried VERBATIM otherwise: the composition may write a root's `path` as a
- * `!!js` expression (a bundle deriving its own preset directory from
- * `dshHomePath` or `baseUrl`), which the Loader evaluates only when the row
- * mounts, and the roster's own schema is the authority on shape and defaults.
- * @param entry - a value from the row's `roots` array.
- * @returns whether the entry is an object the roster can judge.
- */
-function isRootEntry(entry: unknown): entry is Record<string, unknown> {
-  return typeof entry === 'object' && entry !== null && !Array.isArray(entry)
-}
-
-/**
- * Complete the composed roster row with the shipped preset root: the roots the
- * composition configured stay, in order, and the shipped root is APPENDED
- * after them (unless the row opts out with `includeShippedRoot: false`); the
- * roster itself appends the harness-home user root last. Precedence is
- * therefore composition roots > shipped root > user root — an earlier root
- * wins a duplicate id, so a deployment's own preset directory can supply or
- * shadow presets without touching the installation, and the shipped
- * `standard` still shadows a home directory that claimed its name.
- *
- * A composition that configures no roots (the shipped bundles) gets exactly
- * the roster it always did: the shipped root, then the user root.
- * @param row - the composed `agent-presets` row, or `undefined` when the composition has none.
- * @param shippedRoot - absolute path of the installation's shipped preset root.
- * @returns the overlay patch completing the row, or `undefined` when there is no row to complete.
- */
-export function resolveAgentPresetsPatch(row: EntryOptions | undefined, shippedRoot: string): PatchOptions | undefined {
-  if (row === undefined) return undefined
-  const { [INCLUDE_SHIPPED_ROOT_KEY]: includeShipped, roots: configuredRoots, ...rest } = (row.config ?? {}) as Record<string, unknown>
-  const roots: Record<string, unknown>[] = Array.isArray(configuredRoots) ? configuredRoots.filter(isRootEntry) : []
-  const namesShipped = roots.some(root => typeof root.path === 'string' && resolve(root.path) === resolve(shippedRoot))
-  if (includeShipped !== false && !namesShipped) roots.push({ path: shippedRoot, trust: 'system' })
-  return { id: AGENT_PRESETS_ROW_ID, config: { ...rest, roots } }
-}
-
-/**
- * Load a resolved profile for `name`: heal the shared module fallback, then
- * (re)write the empty root config. The root is always rewritten: the whole
- * composition is patch layers, and the vendored Loader's tree write-back (a
- * plugin self-disposing persists the current tree) can bake composed rows
- * into this file — which would duplicate every bundle insert on the next
- * boot. The file exists on disk only because the Loader needs a real include
- * root to anchor `baseUrl` at the profile directory (the config dump anchors
- * on the same file, so both compose over the identical base).
+ * Load a resolved profile for `name` and (re)write the empty root config. The
+ * root is always rewritten: the whole composition is patch layers, and the
+ * vendored Loader's tree write-back (a plugin self-disposing persists the
+ * current tree) can bake composed rows into this file — which would duplicate
+ * every bundle insert on the next boot. The file exists on disk only because
+ * the Loader needs a real include root to anchor `baseUrl` at the profile
+ * directory (the config dump anchors on the same file, so both compose over
+ * the identical base).
  * @param name - the profile name.
  * @param userLayer - `false` skips parsing `cordis.patch.yml` (the default dump).
  * @returns the loaded profile.
  */
 export function prepareProfile(name: string, userLayer = true): Profile {
-  healProfilesModuleFallback(INSTALL_ANCHOR)
   const profile = loadProfile(NAME, name, INSTALL_ANCHOR, undefined, { userLayer })
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG)
   return profile
 }
 
-/** One profile's patch layers (application order) and the row index of its pre-flag composition. */
+/** One profile's patch layers, in application order. */
 interface ComposedProfile {
   profile: Profile
   /** Bundle layers concatenated — the part below the user layers on a live reload. */
@@ -159,11 +131,6 @@ interface ComposedProfile {
   homePatches: PatchOptions[]
   /** Layers above the user layers on a live reload: `--patch` overlays and the telemetry switch. */
   overlays: PatchOptions[]
-  /**
-   * id → row of the composed tree (bundles + user layers + overlays), for the
-   * launcher's own row checks.
-   */
-  rows: ReadonlyMap<string, EntryOptions>
 }
 
 /** The full patch stack of one composed profile, in application order. */
@@ -178,20 +145,21 @@ function allPatches(composed: ComposedProfile): PatchOptions[] {
 
 /**
  * Load `name` and compose its effective patch stack: bundle layers in
- * `dsh.profile.bundles` order (the base bundle gates the shell stacks by
- * platform on its own rows), the profile's user layer, the home-level user
+ * `dsh.profile.bundles` order (a base-backed profile gets the base bundle's
+ * platform-gated shell rows), the profile's user layer, the home-level user
  * layer (`$DSH_HOME/cordis.patch.yml` — machine-local preferences that apply
  * to every profile, so it outranks the per-profile layer), `--patch` overlays,
  * then the telemetry switch.
  * @param name - the profile name.
  * @param patchFiles - `--patch` overlay paths, in argv order.
- * @returns the profile, its patch layers, and the composed row index.
+ * @returns the profile and its patch layers.
  */
-function composeProfile(
+async function composeProfile(
   name: string,
   patchFiles: readonly string[],
-): ComposedProfile {
+): Promise<ComposedProfile> {
   const profile = prepareProfile(name)
+  await healProfilesModuleFallback({ installAnchor: INSTALL_ANCHOR, profile })
   const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? []
   const overlays = patchFiles.flatMap(file => loadOverlayPatches(NAME, resolve(file)))
   const bundlePatches = profile.layers.flatMap(layer => layer.patches)
@@ -200,17 +168,9 @@ function composeProfile(
     if (typeof row.id === 'string') rows.set(row.id, row)
   }
   const composedOverlays = [...overlays]
-  // The SHIPPED root is the part of the roster only this app can resolve: it
-  // sits beside this app's own config, in both the source and built layouts.
-  // It is appended after whatever roots the composition configured (see
-  // `resolveAgentPresetsPatch`). The writable root the roster appends is
-  // `dsh-agent-presets`' own, so a launcher that never reaches this patch
-  // still finds a person's presets.
-  const presetsPatch = resolveAgentPresetsPatch(rows.get(AGENT_PRESETS_ROW_ID), SHIPPED_PRESET_ROOT)
-  if (presetsPatch !== undefined) composedOverlays.push(presetsPatch)
   const telemetryPatch = resolveTelemetryPatch(process.env.DSH_TELEMETRY_DISABLED, rows.has(TELEMETRY_ROW_ID))
   if (telemetryPatch !== undefined) composedOverlays.push(telemetryPatch)
-  return { profile, bundlePatches, homePatches, overlays: composedOverlays, rows }
+  return { profile, bundlePatches, homePatches, overlays: composedOverlays }
 }
 
 /** Options for {@link runProfile}. */
@@ -248,9 +208,22 @@ function suppressShutdownError(ctx: Context, signal: AbortSignal, error: unknown
  * @returns the settled root context and the shutdown controller.
  */
 export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Context; shutdown: ProcessShutdown }> {
-  const composed = composeProfile(options.profile, options.patchFiles)
+  // Before the first plugin mounts and before anything can issue a request: Node's fetch ignores the
+  // proxy environment on its own, so every profile would otherwise connect directly. Resolving from
+  // the launcher's snapshot — not `process.env` — is what lets a proxy declared in a `.env` layer
+  // work, which the NODE_USE_ENV_PROXY flag cannot do because Node samples the environment at start.
+  const disposeProxy = await installProxyFromEnvironment(
+    options.environment,
+    (message) => { process.stderr.write(`${NAME}: ${message}\n`) },
+  )
+
+  const composed = await composeProfile(options.profile, options.patchFiles)
   const app: { current?: Context } = {}
-  const shutdown = createProcessShutdown(async () => { await app.current?.fiber.dispose() })
+  const appReady = createAppReady()
+  const shutdown = createProcessShutdown(async () => {
+    await app.current?.fiber.dispose()
+    await disposeProxy()
+  })
   const signalShutdown = new AbortController()
   const interrupt = (code: number): void => {
     signalShutdown.abort()
@@ -298,27 +271,26 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     provideCmdline(hostCtx, {
       args: options.args,
       exit: code => void shutdown.shutdown(code),
+      ready: appReady.service,
     })
   })
   app.current = ctx
-  // A surface can dispose the whole tree while boot or this post-boot watcher
-  // setup is still in flight — a signal, or a fast one-shot's appExit. Loader
-  // presence and fiber state own liveness; the initial check skips a tree
-  // that already exited, and the catch below re-checks for an exit that
-  // landed mid-setup. Watching is unconditional: a one-shot surface exits
-  // through its bounded shutdown, which disposes the watchers before the
-  // loop drains.
-  if (!signalShutdown.signal.aborted
+  // A live-reload profile can dispose the whole tree while post-boot watcher
+  // setup is in flight — a signal or appExit. Loader presence and fiber state
+  // own liveness; the initial check skips a tree that already exited, and the
+  // catch below re-checks for an exit that landed mid-setup. Startup-frozen
+  // profiles apply every user layer above but install no HMR fallback or watcher.
+  if (composed.profile.patchReload === 'live'
+    && !signalShutdown.signal.aborted
     && ctx.fiber.state === FiberState.ACTIVE
     && ctx.get('loader') !== undefined) {
     try {
-      // Config-only HMR for the live profile patch layer: the web bundle
-      // disables the shared module-reload `hmr` row (its reload lifecycle is
-      // untested), so when the composition leaves no HMR service, mount a
-      // watch-only instance with no module roots — cordis.patch.yml edits stay
-      // live on every long-lived surface. A silent skip would break the
-      // documented hot-reload contract. HMR injects the timer service, which a
-      // bare custom profile may not mount either.
+      // Config-only HMR for the live profile patch layer: dsh-base disables
+      // module reload by default, so when no profile explicitly enabled that
+      // service, mount a watch-only instance with no module roots —
+      // cordis.patch.yml edits stay live without replacing source modules. A
+      // silent skip would break the documented reload contract. HMR injects
+      // the timer service, which a bare custom profile may not mount either.
       if (ctx.get('hmr') === undefined) {
         if (ctx.get('timer') === undefined) {
           await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-timer' })
@@ -338,6 +310,11 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     } catch (error) {
       suppressShutdownError(ctx, signalShutdown.signal, error)
     }
+  }
+  if (!signalShutdown.signal.aborted
+    && ctx.fiber.state === FiberState.ACTIVE
+    && ctx.get('loader') !== undefined) {
+    appReady.commit()
   }
   return { ctx, shutdown }
 }

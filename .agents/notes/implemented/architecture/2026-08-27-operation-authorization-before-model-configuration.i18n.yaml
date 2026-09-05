@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-27-operation-authorization-before-model-configuration.md
-2026-08-27-operation-authorization-before-model-configuration.md: 543cb4a4c42f293b92ed5c12d016a3066d70a754
-2026-08-27-operation-authorization-before-model-configuration.zh.md: f59ae1eb76385931401cc41e22d1f50a17152f3b
+2026-08-27-operation-authorization-before-model-configuration.md: a4c32f02b6db98dc2244e10f56a44317c6d18438
+2026-08-27-operation-authorization-before-model-configuration.zh.md: 53df08193031f077382c39b93cafb99be3608a36

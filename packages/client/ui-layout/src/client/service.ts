@@ -33,7 +33,10 @@ export interface ILayout {
   closeShelf(): void
   /** Toggle the shelf panel (closed ⟷ contract default width). */
   toggleShelf(): void
-  /** Open the shelf panel at a requested width in px (clamped to the contract range). */
+  /**
+   * Open the shelf panel at a requested width, clamped to the panel range.
+   * @param px - requested width in pixels.
+   */
   resizeShelf(px: number): void
   /** Open the details panel (no-op when already open). */
   openDetails(): void

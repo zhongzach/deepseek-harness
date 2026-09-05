@@ -37,10 +37,9 @@ interface Koffi {
 function readUtf16(koffi: Koffi, address: unknown): string {
   const bytes = Buffer.from(koffi.view(address, 32768))
   let end = 0
-  // The terminator is a whole zero code unit. Testing only the low byte cut
-  // the path at the first character whose code unit ends in 0x00 — U+5F00
-  // 开, U+4E00 一, U+7A00 稀 … — so `D:\\开局` came back as `D:\\`.
-  while (end + 1 < bytes.length && (bytes[end] !== 0 || bytes[end + 1] !== 0)) end += 2
+  // UTF-16LE NUL is two zero bytes. A single zero low byte is a valid BMP
+  // code unit (U+XX00, e.g. 开 = U+5F00) and must not terminate the scan.
+  while (end + 1 < bytes.length && !(bytes[end] === 0 && bytes[end + 1] === 0)) end += 2
   return bytes.toString('utf16le', 0, end)
 }
 

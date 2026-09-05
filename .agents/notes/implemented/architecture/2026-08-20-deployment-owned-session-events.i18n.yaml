@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-20-deployment-owned-session-events.md
-2026-08-20-deployment-owned-session-events.md: 40a179868c06ad79b07f532ea1e303e36ae12985
-2026-08-20-deployment-owned-session-events.zh.md: 9bf3722a68466bc1b489e959a3b551dbf3218aa0
+2026-08-20-deployment-owned-session-events.md: 0ffad1baa75969352f753d2560762887d98bf847
+2026-08-20-deployment-owned-session-events.zh.md: d292105281bcac19acd734939bb7b358f781cd8b

@@ -12,8 +12,11 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+import type {
+  PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
+} from '@deepseek-ai/dsh-client-ui-slots'
 import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
+import { DocumentTitle } from './DocumentTitle.tsx'
 import type { createLayoutStore } from './stores.ts'
 import css from './AppFrame.module.css'
 
@@ -22,6 +25,7 @@ export type AppFrameProps =
   & PropsRuntime<'root'>
   & PropsRenderSlots<'sidebar' | 'conversation' | 'shelf' | 'details' | 'shell.overlay' | 'titlebar'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
+  & PropsLocale<'common'>
 
 /** Center column grid item (session-body building block). */
 function CenterColumn(props: { children?: ReactNode }) {
@@ -94,11 +98,17 @@ export function AppFrame({
   useSessions,
   actions,
   renderSlot,
+  SessionProvider,
+  t,
 }: AppFrameProps) {
   const panels = useStore(s => s)
   const detailsSession = useSessions((s) => {
     const current = s.current
     return current !== undefined && s.byId[current]?.blank === false ? current : undefined
+  })
+  const documentTitle = useSessions((s) => {
+    const current = s.current
+    return current === undefined ? undefined : s.byId[current]?.title
   })
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
@@ -172,9 +182,14 @@ export function AppFrame({
   const onDetailsDrag = useCallback((dx: number) => {
     actions.setDetails(detailsBase.current - dx)
   }, [actions])
+  const injectedTitle = (globalThis as { __DSH_BOOT_PRESENTATION__?: { documentTitle?: unknown } }).__DSH_BOOT_PRESENTATION__?.documentTitle
+  const productTitle = typeof injectedTitle === 'string' && injectedTitle !== ''
+    ? injectedTitle
+    : process.env.DSH_CLIENT_TITLE ?? t('brand.localBuild')
 
   return (
     <div className={css.shell}>
+      <DocumentTitle productTitle={productTitle} {...documentTitle === undefined ? {} : { title: documentTitle }} />
       {/* The titlebar hole: a frameless product shell registers its window
           chrome here; unregistered, the row is empty and takes no height. */}
       <div className={css.titlebar}>{renderSlot('titlebar', {})}</div>
@@ -206,7 +221,7 @@ export function AppFrame({
               render empty while no session is current. */}
           <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
           <ShelfColumn>{renderSlot('shelf', {})}</ShelfColumn>
-          <DetailsColumn>{renderSlot('details', {})}</DetailsColumn>
+          <DetailsColumn><SessionProvider>{renderSlot('details', {})}</SessionProvider></DetailsColumn>
         </>
         <div className={css.overlayLayer} data-shell-overlay>
           {renderSlot('shell.overlay', {})}

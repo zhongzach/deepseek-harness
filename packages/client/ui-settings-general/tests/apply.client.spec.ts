@@ -2,7 +2,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -33,25 +33,25 @@ async function bench(isLoopback = true) {
   locale.setLocale('zh')
   ctx.provide('locale', locale)
   const settingsDescribe = vi.fn(() => Promise.resolve({
-    rpcId: 'settings-general' as never,
-    result: {
-      ok: true as const,
-      value: {
-        writable: true,
-        hasDocument: true,
-        namespaces: [],
-      },
+    ok: true as const,
+    value: {
+      writable: true,
+      hasDocument: true,
+      namespaces: [],
     },
   }))
   const settingsOpenDocument = vi.fn(() => Promise.resolve({
-    rpcId: 'settings-open' as never,
-    result: { ok: true as const, value: { opened: true as const } },
+    ok: true as const, value: { opened: true as const },
   }))
+  const remote = new TestRemote(ctx, {
+    settings: { describe: settingsDescribe, openSettingsDocument: settingsOpenDocument },
+  })
+  // The fixed Host facts the shell reads its loopback-only action from.
+  remote.$host = { home: undefined, isLoopback }
   ctx.provide('connection', {
-    api: { settings: { describe: settingsDescribe, openDocument: settingsOpenDocument } },
-    isLoopback,
+    state: { getSnapshot: () => 'connected', subscribe: () => () => {} },
+    reconnect: () => {},
   } as never)
-  new TestRemote(ctx)
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
   return { ctx, slots: ctx.get('slots') as SlotRegistry, locale, settingsDescribe, settingsOpenDocument }
 }
@@ -79,8 +79,31 @@ function generalEntry(slots: SlotRegistry) {
 }
 
 describe('ui-settings-general apply', () => {
+  it('projects nav rows and onboarding steps from the shadowing winners: a same-id lower-priority entry replaces, not adds', async () => {
+    const b = await bench()
+    // The sidebar seat alone: the shell root registers into it and declares
+    // the settings.* children itself (as it does in the app).
+    b.slots.register({ name: 'root', children: { 'sidebar.settings': { kind: 'single', scope: 'root' } } } as never, () => null)
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const root = b.slots.entries('sidebar.settings')[0]!
+    const { hooks } = (root.inject as unknown as () => SettingsRootInjected)()
+    expect(hooks.sections.getSnapshot().map(row => row.id)).toEqual(['general'])
+    // A downstream product shadows the General page (same id, lower priority).
+    const off = b.slots.register(
+      { name: 'settings.section', id: 'general', order: 0, priority: -1, label: 'Mine', inject: () => ({}) } as never,
+      (() => null) as never,
+    )
+    expect(hooks.sections.getSnapshot()).toEqual([{ id: 'general', order: 0, label: 'Mine' }])
+    // Onboarding steps project the same way.
+    b.slots.register({ name: 'settings.onboarding', id: 'step', order: 0, inject: () => ({}) } as never, (() => null) as never)
+    b.slots.register({ name: 'settings.onboarding', id: 'step', order: 0, priority: -1, inject: () => ({}) } as never, (() => null) as never)
+    expect(hooks.onboardingSteps.getSnapshot()).toEqual([{ id: 'step', order: 0 }])
+    off()
+    expect(hooks.sections.getSnapshot().map(row => row.label)).toEqual(['通用设置'])
+  })
+
   it('declares the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'settingsScope'])
+    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'remote.settings', 'settingsScope'])
   })
 
   it('fills all five seats for declarations before or after apply', async () => {
@@ -128,8 +151,12 @@ describe('ui-settings-general apply', () => {
     const fiber = b.ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     expect(b.locale.bind('settings')('title')).toBe('设置')
+    expect(b.locale.bind('settings')('connection.error')).toBe('连接异常')
+    expect(b.locale.bind('settings')('connection.connecting')).toBe('连接中')
+    expect(b.locale.bind('settings')('connection.connected')).toBe('连接成功')
     b.locale.setLocale('en')
     expect(b.locale.bind('settings')('close')).toBe('Close')
+    expect(b.locale.bind('settings')('connection.reconnect')).toBe('Disconnected, reconnect now')
     b.locale.setLocale('zh')
     await fiber.dispose()
     // The (ns, locale) seats are free again — the dictionary disposer ran.
@@ -169,30 +196,7 @@ describe('ui-settings-general apply', () => {
     await vi.waitFor(() => { expect(b.settingsDescribe).toHaveBeenCalledTimes(2) })
   })
 
-  it('projects nav rows and onboarding steps from the shadowing winners: a same-id lower-priority entry replaces, not adds', async () => {
-    const b = await bench()
-    // The sidebar seat alone: the shell root registers into it and declares
-    // the settings.* children itself (as it does in the app).
-    b.slots.register({ name: 'root', children: { 'sidebar.settings': { kind: 'single', scope: 'root' } } } as never, () => null)
-    await b.ctx.plugin({ inject: [...inject], apply }).await()
-    const root = b.slots.entries('sidebar.settings')[0]!
-    const { hooks } = (root.inject as unknown as () => SettingsRootInjected)()
-    expect(hooks.sections.getSnapshot().map(row => row.id)).toEqual(['general'])
-    // A downstream product shadows the General page (same id, lower priority).
-    const off = b.slots.register(
-      { name: 'settings.section', id: 'general', order: 0, priority: -1, label: 'Mine', inject: () => ({}) } as never,
-      (() => null) as never,
-    )
-    expect(hooks.sections.getSnapshot()).toEqual([{ id: 'general', order: 0, label: 'Mine' }])
-    // Onboarding steps project the same way.
-    b.slots.register({ name: 'settings.onboarding', id: 'step', order: 0, inject: () => ({}) } as never, (() => null) as never)
-    b.slots.register({ name: 'settings.onboarding', id: 'step', order: 0, priority: -1, inject: () => ({}) } as never, (() => null) as never)
-    expect(hooks.onboardingSteps.getSnapshot()).toEqual([{ id: 'step', order: 0 }])
-    off()
-    expect(hooks.sections.getSnapshot().map(row => row.label)).toEqual(['通用设置'])
-  })
-
-  it('withholds the loopback-only document action off-loopback', async () => {
+  it('withholds the Host document action off-loopback', async () => {
     const b = await bench(false)
     declare(b.slots)
     const fiber = b.ctx.plugin({ inject: [...inject], apply })

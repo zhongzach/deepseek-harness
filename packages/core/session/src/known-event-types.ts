@@ -6,38 +6,15 @@
  */
 
 /**
- * Deployment-owned event types registered by the running composition.
- * The persistence read path consults this set beside the static vocabulary
- * so the same composition can reopen records that predate an `ignorable`
- * marker. Registration lifetime follows the plugin that owns the event.
- */
-const RUNTIME_SESSION_EVENT_TYPES = new Set<string>()
-
-/**
- * Teach this process one deployment-owned session event type.
- * @param type - the event type (for example, `writerx/charge`).
- * @returns a disposer that removes the runtime registration.
- */
-export function registerSessionEventType(type: string): () => void {
-  RUNTIME_SESSION_EVENT_TYPES.add(type)
-  return () => { RUNTIME_SESSION_EVENT_TYPES.delete(type) }
-}
-
-/**
- * Return whether this process can interpret a statically declared or runtime-registered event type.
- * @param type - the event type to inspect.
- * @returns whether a log carrying the type may be reconstructed.
- */
-export function isKnownSessionEventType(type: string): boolean {
-  return KNOWN_SESSION_EVENT_TYPES.has(type) || RUNTIME_SESSION_EVENT_TYPES.has(type)
-}
-
-/**
- * Every `SessionEventMap` member declared in this repository — the static
- * event vocabulary this build understands. The persistence read path
- * refuses a type outside this set and the runtime registry unless the event
- * carries the envelope's `ignorable` marker; silently skipping a required
- * event could reconstruct the wrong session.
+ * Every `SessionEventMap` member declared in this repository — the event
+ * vocabulary this build understands. The persistence read path refuses to
+ * interpret a log containing a type outside this set unless the event
+ * carries the envelope's `ignorable` marker (see `SessionEvent.ignorable`
+ * in `./types.ts`): such a log was likely written by a newer harness, and
+ * silently skipping a required event would reconstruct a wrong session.
+ * Downstream (out-of-repo) plugin events are outside this list by
+ * construction. Deployment registrations live in deployment-event-types.ts;
+ * historical events require an explicit validated format registration.
  */
 export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'agent-preset/selected',
@@ -45,7 +22,7 @@ export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'approval/asked',
   'approval/decided',
   'approval/policy',
-  'assistant/chunk',
+  'assistant/attempt',
   'assistant/message',
   'command/done',
   'command/run',
@@ -59,18 +36,21 @@ export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'hook/result',
   'llm/retry',
   'llm/retry-started',
+  'model/selection',
   'permission/preset',
   'plan/mode',
   'request/context',
   'request/header',
   'sandbox/mode',
   'schedule/change',
+  'session-log-deepseek/delivery-accepted',
   'session/end-seed',
   'session/title',
   'session/title-llm-request',
   'step/end',
   'step/start',
   'subagent/descriptor',
+  'subagent/model-selection-policy',
   'team/member',
   'team/message/delivered',
   'team/message/queued',

@@ -2,7 +2,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-settings'
 import {
   CONVERSATION_SETTINGS_NAMESPACE, ConversationSettingsSchema, LocalizedPlaceholderSchema,
   type LocalizedPlaceholder,
@@ -35,7 +35,7 @@ export const Config: z<Config> = z.object({
 export function apply(ctx: Context, config: Config = {}): void {
   ctx.inject(['settings'], (settingsCtx) => {
     settingsCtx.settings.register(
-      settingsNamespace(CONVERSATION_SETTINGS_NAMESPACE),
+      CONVERSATION_SETTINGS_NAMESPACE,
       ConversationSettingsSchema,
       { base: config },
     )

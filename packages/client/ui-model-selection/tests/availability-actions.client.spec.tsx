@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Context } from '@deepseek-ai/cordis'
 import type { ModelProviderGroup, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
-import { createScope } from '@deepseek-ai/dsh-client-runtime/client'
+import { createScope } from '@deepseek-ai/dsh-api-session-controller/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { TestRemote, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { CommandContribution } from '@deepseek-ai/dsh-client-ui-commands/client'
@@ -45,11 +46,15 @@ async function boot() {
   roots.add(ctx)
   const sessionId = 'model-actions-session' as SessionId
   const current = { provider: 'hub', model: 'free' }
-  const selectModel = vi.fn(async () => ({ result: { ok: true, value: { selected: current } } }))
-  ctx.provide('connection', { api: { sessions: {
-    models: vi.fn(async () => ({ result: { ok: true, value: { current, routable: true, groups, failures: [] } } })),
+  const selectModel = vi.fn(async () => ({ ok: true, value: { selected: current } }))
+  const sessionRemote = {
+    modelCatalog: vi.fn(async () => ({ ok: true, value: {
+      default: current, routableProviders: ['hub'], groups, failures: [],
+    } })),
     selectModel,
-  } } })
+  }
+  Object.assign(new TestRemote(ctx), { session: sessionRemote })
+  ctx.reflect.provide('remote.session', sessionRemote)
   let contribution: CommandContribution | undefined
   ctx.provide('commandUi', {
     register(next: CommandContribution) { contribution = next; return () => { contribution = undefined } },
@@ -63,14 +68,17 @@ async function boot() {
     },
   })
   const sessionScope = createScope(ctx, sessionId)
+  const projection = createSnapshotStore({ lastUsed: null, next: null })
   ctx.provide('sessions', {
     scope: (id: SessionId) => id === sessionId ? sessionScope.ctx : undefined,
+    binding: (id: SessionId) => id === sessionId ? {
+      sessionId, ctx: sessionScope.ctx, session: { projections: { faceOf: () => projection } },
+    } : undefined,
     subagentAddress: () => undefined,
   })
   const locale = new LocaleRuntime(ctx)
   locale.setLocale('zh')
   ctx.provide('locale', locale)
-  new TestRemote(ctx)
   await ctx.plugin({ inject: [...inject], apply }).await()
   await ctx.plugin(function probe() {}).await()
   const guide = vi.fn()
