@@ -12,6 +12,7 @@ import type {
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { MarkdownFileMentions } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { MessageId } from '@deepseek-ai/dsh-client-connection/client'
+import type { ReferenceInsert, TriggerChar } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { ComposerBlock } from '../input/blocks.ts'
 import type {
@@ -260,6 +261,17 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * command face through its own inject.
      */
     'conversation.composer.bar': { kind: 'single'; scope: 'session-maybe'; owner: ComposerBarOwnerProps }
+    /**
+     * Single launcher at the leading edge of the composer tool row. The bar
+     * retains its command-plus fallback when no entry is registered. An
+     * occupant receives current-selection-safe verbs and never constructs a
+     * token span itself.
+     */
+    'conversation.input.launcher': {
+      kind: 'single'
+      scope: 'session-maybe'
+      owner: ComposerLauncherOwnerProps
+    }
     /** Optional draft-image rail, drop target, and preview surface inside the composer. */
     'conversation.input.attachments': {
       kind: 'single'
@@ -507,7 +519,11 @@ export interface ConversationInjected {
    * plugin raised one; the reason is the blocker's own localized copy, which
    * the root renders as the inert composer's placeholder.
    */
-  hooks: { composerBlock: ObservableSnapshot<ComposerBlock | undefined> }
+  hooks: {
+    composerBlock: ObservableSnapshot<ComposerBlock | undefined>
+    /** Composition-supplied hero copy in the active browser locale. */
+    heroPlaceholder: ObservableSnapshot<string | undefined>
+  }
 }
 
 /** Business callbacks injected into the strict Session body seat. */
@@ -593,6 +609,10 @@ export interface ComposerBarInjected {
   ) => InputSubmitMode
   /** Toggle the shared slash menu with only its command source; absent without ui-input-trigger or a session. */
   toggleCommandMenu: ((selection: EditSelection) => void) | undefined
+  /** Open one menu source with a selection captured by InputBar. */
+  openSource: ((source: string, trigger: TriggerChar, selection: EditSelection) => void) | undefined
+  /** Insert one structured reference with a selection captured by InputBar. */
+  insertReference: ((reference: ReferenceInsert, selection: EditSelection) => boolean) | undefined
   /** Cancel the in-flight turn; absent with the session. */
   stop: (() => void) | undefined
   /**
@@ -608,11 +628,13 @@ export interface ComposerBarInjected {
    * order stays constant).
    */
   hooks: {
+    /** Composition-supplied ordinary copy in the active browser locale. */
+    inputPlaceholder: ObservableSnapshot<string | undefined>
     /** Latest surfaced notice (null after none; seq keys re-render of repeats). */
     notices: ObservableSnapshot<InputNotice | null>
     /** Hot plain-text reference lexicon for the decoration scan (plain-text-reference decision;
      *  see .agents/notes/implemented/architecture/2026-07-25-web-input-machine-and-slash-pipeline.md). */
-    lexicon: ObservableSnapshot<ReadonlyMap<'/' | '@', readonly string[]>>
+    lexicon: ObservableSnapshot<ReadonlyMap<TriggerChar, readonly string[]>>
     /** Source name opened by the programmatic menu launcher, or null. */
     menuLauncher: ObservableSnapshot<string | null>
   }
@@ -627,11 +649,24 @@ export interface InputControlOwnerProps {
   locked: boolean
 }
 
+/** Owner share for a plugin replacing the composer's leading launcher. */
+export interface ComposerLauncherOwnerProps {
+  /** Whether the composer currently refuses launcher interaction. */
+  locked: boolean
+  /** Open one registered suggestion source at the textarea's current selection. */
+  openSource(source: string, trigger: TriggerChar): void
+  /** Insert one structured reference at the textarea's current selection. */
+  insertReference(reference: ReferenceInsert): boolean
+}
+
 /** Full composer-bar props: standard kit & owner share & control-seat render share & injected share (hooks bound) & locale seat. */
 export type ComposerBarProps =
   PropsRuntime<'conversation.composer.bar'>
   & PropsRenderSlots<
-    'conversation.input.attachments' | 'conversation.input.plan' | 'conversation.input.model'
+    | 'conversation.input.attachments'
+    | 'conversation.input.launcher'
+    | 'conversation.input.plan'
+    | 'conversation.input.model'
   >
   & InjectFace<ComposerBarInjected>
   & PropsLocale<'conversation'>

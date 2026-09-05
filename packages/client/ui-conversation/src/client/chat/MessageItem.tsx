@@ -149,7 +149,7 @@ function TurnMaxTokensItem({ t }: {
  * Display projection of reference forms in a user bubble (free geometry — no
  * textarea alignment constraint here); everything else stays plain text. The
  * logged model text remains the single truth; this is presentation only.
- * Plain-text `/name` / `@name` word-boundary tokens decorate (the sent text
+ * Plain-text `/name`, `@name`, and `#name` word-boundary tokens decorate (the sent text
  * IS the reference — the bubble uses the same plainest token
  * scan as the composer, minus the lexicon: sent tokens were validated at
  * compose time, so shape alone decorates).
@@ -164,7 +164,7 @@ function projectUserText(text: string, sessionLabels: readonly string[]): ReactN
       start = text.indexOf(label, start + label.length)
     }
   }
-  const re = /(^|\s)(\/[\w-]+|@"[^"\n]+"|@[^\s]+)/gu
+  const re = /(^|\s)(\/[\w-]+|(?:@|#)"[^"\n]+"|(?:@|#)[^\s]+)/gu
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
     const tokenStart = m.index + (m[1]?.length ?? 0)
@@ -185,11 +185,11 @@ function projectUserText(text: string, sessionLabels: readonly string[]): ReactN
     if (tokenStart > cursor) parts.push(<MessageText key={cursor} text={text.slice(cursor, tokenStart)} />)
     const referenceKind = kind === 'session'
       ? 'session'
-      : label.startsWith('@')
+      : label.startsWith('@') || label.startsWith('#')
         ? label.endsWith('/') ? 'folder' : 'file'
-        : undefined
-    const displayLabel = referenceKind === undefined
-      ? label
+        : 'skill'
+    const displayLabel = referenceKind === 'skill'
+      ? label.slice(1)
       : referenceKind === 'session'
         ? label.slice(1)
         : label.slice(1).replace(/^"|"$/gu, '').split(/[\\/]/u).filter(Boolean).at(-1) ?? label.slice(1)
@@ -197,12 +197,10 @@ function projectUserText(text: string, sessionLabels: readonly string[]): ReactN
       <span
         key={tokenStart}
         className={css.refChip}
-        data-ref-chip={referenceKind ?? 'skill'}
+        data-ref-chip={referenceKind}
         title={label}
       >
-        {referenceKind !== undefined && (
-          <ReferenceIcon kind={referenceKind} size={16} className={css.refIcon} />
-        )}
+        <ReferenceIcon kind={referenceKind} size={16} className={css.refIcon} />
         {displayLabel}
       </span>,
     )

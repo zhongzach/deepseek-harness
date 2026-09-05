@@ -438,6 +438,30 @@ export interface Config {
 
 来源：[`packages/client/hmr/src/index.ts:31`](../packages/client/hmr/src/index.ts)
 
+<a id="deepseek-aidsh-client-ui-conversation"></a>
+
+## `@deepseek-ai/dsh-client-ui-conversation`
+
+```ts config-catalog
+/** Composition-owned ordinary and blank-session composer copy. */
+export interface Config {
+  /** Localized ordinary placeholder, excluding blocked, plan, and steering states. */
+  inputPlaceholder?: LocalizedPlaceholder
+  /** Localized blank-session placeholder, excluding workspace and model prerequisites. */
+  heroPlaceholder?: LocalizedPlaceholder
+}
+
+/** Product-supplied placeholder text for each browser locale. */
+export interface LocalizedPlaceholder {
+  /** Chinese placeholder. */
+  zh: string
+  /** English placeholder. */
+  en: string
+}
+```
+
+来源：[`packages/client/ui-conversation/src/index.ts:17`](../packages/client/ui-conversation/src/index.ts)
+
 <a id="deepseek-aidsh-client-ui-settings-general"></a>
 
 ## `@deepseek-ai/dsh-client-ui-settings-general`
@@ -3261,7 +3285,6 @@ export interface Config {
 - `@deepseek-ai/dsh-client-ui-attachment`（[`packages/client/ui-attachment/src/index.ts`](../packages/client/ui-attachment/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-brand-official`（[`packages/client/ui-brand-official/src/index.ts`](../packages/client/ui-brand-official/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-commands`（[`packages/client/ui-commands/src/index.ts`](../packages/client/ui-commands/src/index.ts)）
-- `@deepseek-ai/dsh-client-ui-conversation`（[`packages/client/ui-conversation/src/index.ts`](../packages/client/ui-conversation/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-cordis`（[`packages/extensions/ui-cordis/src/index.ts`](../packages/extensions/ui-cordis/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-deliverables` — 需要 `systemPrompt`（[`packages/client/ui-deliverables/src/index.ts`](../packages/client/ui-deliverables/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-directory-picker-browse`（[`packages/client/ui-directory-picker-browse/src/index.ts`](../packages/client/ui-directory-picker-browse/src/index.ts)）

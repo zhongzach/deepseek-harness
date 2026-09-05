@@ -170,9 +170,24 @@ async function scopedBench(register?: (inputTriggers: InputTriggerService) => vo
         span: { ...selection, draftRev: snapshot.draftRev },
       })
     },
+    openSource: (source, trigger, selection) => {
+      const snapshot = shell.snapshot
+      controller.toggleSource(source, {
+        trigger,
+        query: '',
+        quoted: false,
+        position: snapshot.draft.slice(0, selection.start).trim() === '' ? 'leading' : 'inline',
+        span: { ...selection, draftRev: snapshot.draftRev },
+      })
+    },
+    insertReference: (reference, selection) => shell.insertReference(reference, {
+      ...selection,
+      draftRev: shell.snapshot.draftRev,
+    }),
     useNotices: bindSnapshotSelector(shell.notices),
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(controller.launcher),
+    useInputPlaceholder: bindSnapshotSelector(createSnapshotStore<string | undefined>(undefined)),
     renderSlot: (() => null) as InputBarProps['renderSlot'],
     stop: vi.fn(),
     command: () => Promise.resolve(true),

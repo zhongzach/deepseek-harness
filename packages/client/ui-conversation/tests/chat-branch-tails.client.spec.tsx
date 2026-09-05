@@ -153,6 +153,25 @@ describe('MessageItem arms', () => {
     expect(view.container.textContent).toContain('README.md, please.')
   })
 
+  it('renders # references as files and / references as skills without their prefixes', () => {
+    const view = render(
+      <MessageItem t={t} node={{
+        kind: 'user',
+        seq: 1,
+        time: 1_000,
+        content: [{ type: 'text', text: 'Use /outline with #"docs/story plan.md" and #README.md.' }] as never,
+        source: null,
+      }} />,
+    )
+    const skill = view.container.querySelector('[data-ref-chip="skill"]')
+    const files = [...view.container.querySelectorAll('[data-ref-chip="file"]')]
+    expect(skill?.textContent).toBe('outline')
+    expect(skill?.querySelector('svg')).not.toBeNull()
+    expect(files.map(file => file.textContent)).toEqual(['story plan.md', 'README.md'])
+    expect(files.every(file => file.querySelector('svg') !== null)).toBe(true)
+    expect(view.container.textContent).toContain('README.md.')
+  })
+
   it('user bubbles expose clock / copy and neither branch nor edit; copy writes the text', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {

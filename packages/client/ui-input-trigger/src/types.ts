@@ -91,8 +91,10 @@ export interface ReferenceInsert {
   readonly ref: string
   /** Inline display label (fallback-cached on the occurrence). */
   readonly label: string
+  /** Display marker; omitted keeps the default `@` projection. */
+  readonly marker?: '@' | '#'
   /** Optional domain glyph shown beside the label. */
-  readonly appearance?: 'session' | 'file' | 'folder'
+  readonly appearance?: 'session' | 'file' | 'folder' | 'skill'
   /** Clipboard / persistence projection, e.g. `/name` (never the model form). */
   readonly clipboardText: string
 }

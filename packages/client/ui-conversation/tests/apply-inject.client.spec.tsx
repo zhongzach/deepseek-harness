@@ -25,6 +25,7 @@ import type {
   ConversationSessionInjected, DetailsInjected,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { createChatStore } from '../src/client/stores.ts'
+import type { ConversationSettings } from '../src/submission-settings.ts'
 
 // The service reads its initial locale from the browser; these specs assert
 // the shipped Chinese copy, so they state the browser they assume.
@@ -50,7 +51,8 @@ async function bench() {
   runtime.provide('connection', { api: { settings: {} }, isLoopback: false })
   // The plugin injects both; these specs exercise no settings path.
   runtime.provide('remote', { $on: () => () => {} })
-  runtime.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+  const settings = stubSettingsScope<ConversationSettings>()
+  runtime.provide('settingsScope', { bind: () => settings.scope } as never)
   const sessionFake = sessionFakeFor()
   await runtime.sessions.add({
     id: ROOT,
@@ -124,11 +126,42 @@ async function bench() {
   return {
     runtime, feature, slots: runtime.slots, entryOf,
     conversationApi, conversationHeaderApi, residentApi, composerApi, chatViewApi, inputApi,
-    sessionFake, layoutFake,
+    sessionFake, layoutFake, settings, locale,
   }
 }
 
 describe('conversation slot inject API', () => {
+  it('updates localized placeholder sources from Host settings and locale changes', async () => {
+    const b = await bench()
+    const ordinary = b.composerApi(ROOT).hooks.inputPlaceholder
+    const hero = b.residentApi(ROOT).hooks.heroPlaceholder
+    const changed = vi.fn()
+    const off = ordinary.subscribe(changed)
+    expect(ordinary.getSnapshot()).toBeUndefined()
+    expect(hero.getSnapshot()).toBeUndefined()
+    b.settings.publish({
+      status: 'ready', revision: 1,
+      value: { busyEnter: 'queue', inputPlaceholder: { zh: '正文输入', en: 'Draft input' }, heroPlaceholder: { zh: '开始新作', en: 'Begin a book' } },
+    })
+    expect(ordinary.getSnapshot()).toBe('正文输入')
+    expect(hero.getSnapshot()).toBe('开始新作')
+    expect(changed).toHaveBeenCalled()
+    b.locale.setLocale('en')
+    expect(ordinary.getSnapshot()).toBe('Draft input')
+    expect(hero.getSnapshot()).toBe('Begin a book')
+    expect(b.composerApi(undefined).hooks.inputPlaceholder).toBe(ordinary)
+    expect(b.residentApi(undefined).hooks.heroPlaceholder).toBe(hero)
+    off()
+    changed.mockClear()
+    b.locale.setLocale('zh')
+    b.settings.publish({ value: { busyEnter: 'queue' }, revision: 2 })
+    expect(changed).not.toHaveBeenCalled()
+    expect(ordinary.getSnapshot()).toBeUndefined()
+    expect(hero.getSnapshot()).toBeUndefined()
+    await b.feature.dispose()
+    await b.runtime.dispose()
+  })
+
   it('assembles the thin API side-effect-free', async () => {
     const b = await bench()
     const { injected } = b.conversationApi(ROOT)
@@ -208,6 +241,8 @@ describe('conversation slot inject API', () => {
     const absent = injectFn(undefined)
     expect(absent.keyboard).toBeUndefined()
     expect(absent.toggleCommandMenu).toBeUndefined()
+    expect(absent.openSource).toBeUndefined()
+    expect(absent.insertReference).toBeUndefined()
     expect(absent.stop).toBeUndefined()
     expect(absent.hooks.notices.getSnapshot()).toBeNull()
     expect(absent.hooks.lexicon.getSnapshot().size).toBe(0)

@@ -5,7 +5,7 @@
 // decoration backdrop, error banners, status strips, and the focus-keeping mousedown.
 
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
-import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import {
   createSnapshotStore, EMPTY_CHAT_SNAPSHOT, EMPTY_CONVERSATION_VIEWS,
@@ -16,7 +16,7 @@ import type { ClientContext, ConversationSnapshot, SessionId } from '@deepseek-a
 import type { SubmitOutcome } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import { SessionInputShell } from '../src/client/input/facade.ts'
 import type {
-  ComposerAttachment, ComposerAttachmentsOwnerProps,
+  ComposerAttachment, ComposerAttachmentsOwnerProps, ComposerLauncherOwnerProps,
 } from '../src/client/contract/slots.ts'
 import type { DraftAttachmentId } from '../src/client/input/contract.ts'
 import { InputBar } from '../src/client/skeleton/InputBar.tsx'
@@ -57,7 +57,7 @@ interface BenchOptions {
   plan?: { active: boolean; pending: boolean }
   modelEntry?: React.ReactNode
   /** Hot text-ref lexicon (injects a minimal slash stub exposing only lexicon()). */
-  lexicon?: ReadonlyMap<'/' | '@', readonly string[]>
+  lexicon?: ReadonlyMap<'/' | '@' | '#', readonly string[]>
   permissions?: { options: { value: string; name: string; description?: string }[]; currentValue: string }
   /** The `imageLimits` projection value (absent = no attachment service). */
   imageLimits?: {
@@ -82,6 +82,7 @@ interface BenchOptions {
   steerQueue?: () => void
   variant?: 'hero' | 'composer'
   placeholder?: string
+  inputPlaceholder?: string
   t?: InputBarProps['t']
   command?: (line: string) => Promise<boolean>
   accessory?: React.ReactNode
@@ -93,6 +94,8 @@ interface BenchOptions {
   commandMenuOpen?: boolean
   busyEnter?: 'queue' | 'steer'
   toggleCommandMenu?: (selection: { start: number; end: number }) => void
+  openSource?: InputBarProps['openSource']
+  insertReference?: InputBarProps['insertReference']
 }
 
 /** One pending queue row (the runtime snapshot shape, as the dock tests build it). */
@@ -145,10 +148,11 @@ function bench(over?: BenchOptions) {
   const removeImage = vi.fn((id: DraftAttachmentId) => { shell.removeImage(id) })
   const menuLauncher = createSnapshotStore<string | null>(over?.commandMenuOpen === true ? 'command' : null)
   const slotCalls: { key: string; owner: unknown }[] = []
-  const renderSlot = ((key: string, owner: object) => {
+  const renderSlot = ((key: string, owner: object, opts?: { fallback?: React.ReactNode }) => {
     slotCalls.push({ key, owner })
     if (key === 'conversation.input.plan') return over?.planEntry ?? null
     if (key === 'conversation.input.model') return over?.modelEntry ?? null
+    if (key === 'conversation.input.launcher') return opts?.fallback ?? null
     return null
   }) as InputBarProps['renderSlot']
   const props: InputBarProps = {
@@ -182,9 +186,15 @@ function bench(over?: BenchOptions) {
       return gesture === 'enter' ? preferred : preferred === 'queue' ? 'steer' : 'queue'
     },
     toggleCommandMenu: over?.toggleCommandMenu ?? vi.fn(),
+    openSource: over?.openSource ?? vi.fn(),
+    insertReference: over?.insertReference ?? ((reference, selection) => shell.insertReference(reference, {
+      ...selection,
+      draftRev: shell.snapshot.draftRev,
+    })),
     useNotices: bindSnapshotSelector(shell.notices),
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(menuLauncher),
+    useInputPlaceholder: bindSnapshotSelector(createSnapshotStore(over?.inputPlaceholder)),
     stop,
     command: over?.command ?? (() => Promise.resolve(true)),
     // Mirrors the real lookup chain (conversation namespace, then common).
@@ -231,6 +241,14 @@ function attachmentOwner(slotCalls: readonly { key: string; owner: unknown }[]):
     if (call?.key === 'conversation.input.attachments') return call.owner as ComposerAttachmentsOwnerProps
   }
   throw new Error('attachment slot was not rendered')
+}
+
+function launcherOwner(slotCalls: readonly { key: string; owner: unknown }[]): ComposerLauncherOwnerProps {
+  for (let i = slotCalls.length - 1; i >= 0; i -= 1) {
+    const call = slotCalls[i]
+    if (call?.key === 'conversation.input.launcher') return call.owner as ComposerLauncherOwnerProps
+  }
+  throw new Error('launcher slot was not rendered')
 }
 
 describe('image draft rail', () => {
@@ -414,15 +432,36 @@ describe('image draft rail', () => {
 })
 
 describe('Enter semantics', () => {
+  it('uses configured ordinary copy without masking prerequisite, plan, or steering guidance', () => {
+    const inputPlaceholder = '写作输入，@ 技能、# 文件'
+    expect(bench({ inputPlaceholder }).textarea.placeholder).toBe(inputPlaceholder)
+    cleanup()
+    expect(bench({ inputPlaceholder, placeholder: '先选择工作区' }).textarea.placeholder).toBe('先选择工作区')
+    cleanup()
+    expect(bench({ inputPlaceholder, disabled: true }).textarea.placeholder).toBe(zh['placeholder.unavailable'])
+    cleanup()
+    expect(bench({ inputPlaceholder, plan: { active: true, pending: false } }).textarea.placeholder).toBe(zh['placeholder.plan'])
+    cleanup()
+    expect(bench({ inputPlaceholder, running: true, queue: [row('queued')] }).textarea.placeholder).toBe(zh['placeholder.steerQueue'])
+    cleanup()
+    expect(bench({
+      inputPlaceholder,
+      subagent: {
+        address: { parentSessionId: 'parent' as SessionId, childSessionId: SID, mode: 'continuable' },
+        parentAvailable: false,
+      },
+    }).textarea.placeholder).toBe(zh['placeholder.parentOffline'])
+  })
+
   it('advertises the empty-draft whole-queue steering gesture when it is available', () => {
     const { textarea } = bench({ running: true, queue: [row('q-1')], steerQueue: vi.fn() })
     expect(textarea.placeholder).toBe('Cmd/Ctrl+Enter 插话发送全部排队消息')
   })
 
   it('keeps the owning placeholder or ordinary guidance when whole-queue steering is unavailable', () => {
-    expect(bench({ running: true }).textarea.placeholder).toBe('告诉 WriterX 你想做什么')
-    expect(bench({ queue: [row('q-1')] }).textarea.placeholder).toBe('告诉 WriterX 你想做什么')
-    expect(bench({ running: true, queue: [row('q-1')], draft: '消息' }).textarea.placeholder).toBe('告诉 WriterX 你想做什么')
+    expect(bench({ running: true }).textarea.placeholder).toBe('给智能体发消息')
+    expect(bench({ queue: [row('q-1')] }).textarea.placeholder).toBe('给智能体发消息')
+    expect(bench({ running: true, queue: [row('q-1')], draft: '消息' }).textarea.placeholder).toBe('给智能体发消息')
     expect(bench({
       running: true,
       queue: [row('q-1')],
@@ -430,7 +469,7 @@ describe('Enter semantics', () => {
         address: { parentSessionId: 'parent' as SessionId, childSessionId: SID, mode: 'continuable' },
         parentAvailable: true,
       },
-    }).textarea.placeholder).toBe('告诉 WriterX 你想做什么')
+    }).textarea.placeholder).toBe('给智能体发消息')
     expect(bench({
       running: true,
       queue: [row('q-1')],
@@ -442,7 +481,7 @@ describe('Enter semantics', () => {
       running: true,
       queue: [row('q-1')],
       commandMenuOpen: true,
-    }).textarea.placeholder).toBe('告诉 WriterX 你想做什么')
+    }).textarea.placeholder).toBe('给智能体发消息')
     // The steer hint intentionally outranks the plan placeholder: while it
     // shows, the whole-queue gesture is genuinely available in plan mode.
     expect(bench({
@@ -1064,7 +1103,7 @@ describe('running and lock semantics', () => {
     const { textarea } = bench({ disabled: true })
     expect(textarea.placeholder).toBe('会话不可用')
     const live = bench()
-    expect(live.textarea.placeholder).toBe('告诉 WriterX 你想做什么')
+    expect(live.textarea.placeholder).toBe('给智能体发消息')
     const custom = bench({ placeholder: 'Custom placeholder' })
     expect(custom.textarea.placeholder).toBe('Custom placeholder')
   })
@@ -1111,7 +1150,7 @@ describe('running and lock semantics', () => {
     expect(entering.textarea.placeholder).toBe('描述你的任务以生成计划')
     // Pending exit: target is default again.
     const leaving = bench({ plan: { active: true, pending: true } })
-    expect(leaving.textarea.placeholder).toBe('告诉 WriterX 你想做什么')
+    expect(leaving.textarea.placeholder).toBe('给智能体发消息')
     // Owner placeholder outranks the plan swap.
     const custom = bench({ plan: { active: true, pending: false }, placeholder: 'Custom placeholder' })
     expect(custom.textarea.placeholder).toBe('Custom placeholder')
@@ -1137,6 +1176,29 @@ describe('machine pending lock', () => {
     const textarea = view.container.querySelector('textarea')!
     expect(textarea.readOnly).toBe(true)
     expect(view.container.querySelector<HTMLButtonElement>('button[aria-label="发送消息"]')!.disabled).toBe(true)
+  })
+
+  it('locks launcher opens and inserts while the input machine is submitting', () => {
+    const openSource = vi.fn()
+    const insertReference = vi.fn(() => true)
+    const result = bench({ openSource, insertReference })
+    act(() => {
+      result.shell.setDraft('/goal ')
+      result.shell.beginCommand(
+        { token: '/goal ', submit: () => new Promise<never>(() => {}) },
+        { start: 0, end: 6, draftRev: result.shell.snapshot.draftRev },
+      )
+      result.shell.submit()
+    })
+    expect(result.shell.snapshot.phase).toBe('submitting')
+    const owner = launcherOwner(result.slotCalls)
+    expect(owner.locked).toBe(true)
+    owner.openSource('skills', '@')
+    expect(owner.insertReference({
+      source: 'skills', ref: 'review', label: 'review', appearance: 'skill', clipboardText: '/review',
+    })).toBe(false)
+    expect(openSource).not.toHaveBeenCalled()
+    expect(insertReference).not.toHaveBeenCalled()
   })
 })
 
@@ -1476,7 +1538,8 @@ describe('command launcher chrome and control seats', () => {
     expect(view.queryByLabelText(/^访问模式/)).toBeNull()
     // Every seat dispatched, nothing rendered.
     expect(slotCalls.map(c => c.key)).toEqual([
-      'conversation.input.attachments', 'conversation.input.plan', 'conversation.input.model',
+      'conversation.input.attachments', 'conversation.input.launcher',
+      'conversation.input.plan', 'conversation.input.model',
     ])
     expect(view.queryByLabelText('Plan mode')).toBeNull()
     expect(view.queryByLabelText('Model')).toBeNull()
@@ -1492,6 +1555,49 @@ describe('command launcher chrome and control seats', () => {
     expect(toggleCommandMenu).toHaveBeenCalledExactlyOnceWith({ start: 2, end: 7 })
     act(() => { menuLauncher.set('command') })
     expect(launcher.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('gives a launcher current-selection-safe open and reference insertion verbs', async () => {
+    const openSource = vi.fn()
+    const result = bench({ draft: 'before old after', openSource })
+    result.textarea.setSelectionRange(7, 10)
+    const owner = launcherOwner(result.slotCalls)
+    const launcherButton = document.createElement('button')
+    document.body.append(launcherButton)
+    launcherButton.focus()
+
+    owner.openSource('files', '@')
+    expect(openSource).toHaveBeenCalledExactlyOnceWith('files', '@', { start: 7, end: 10 })
+    expect(document.activeElement).toBe(result.textarea)
+    expect([result.textarea.selectionStart, result.textarea.selectionEnd]).toEqual([7, 10])
+    launcherButton.remove()
+    expect(owner.insertReference({
+      source: 'files',
+      ref: 'src/a.ts',
+      label: 'a.ts',
+      marker: '#',
+      appearance: 'file',
+      clipboardText: '#src/a.ts',
+    })).toBe(true)
+    expect(result.shell.snapshot.draft).toBe('before #a.ts after')
+    expect(document.activeElement).toBe(result.textarea)
+    await waitFor(() => {
+      expect(result.textarea.selectionStart).toBe(12)
+      expect(result.textarea.selectionEnd).toBe(12)
+    })
+  })
+
+  it('refuses launcher verbs while locked without calling their injected faces', () => {
+    const openSource = vi.fn()
+    const insertReference = vi.fn(() => true)
+    const result = bench({ draft: 'draft', disabled: true, openSource, insertReference })
+    const owner = launcherOwner(result.slotCalls)
+    owner.openSource('skills', '@')
+    expect(owner.insertReference({
+      source: 'skills', ref: 'review', label: 'review', appearance: 'skill', clipboardText: '/review',
+    })).toBe(false)
+    expect(openSource).not.toHaveBeenCalled()
+    expect(insertReference).not.toHaveBeenCalled()
   })
 
   it('the Access chip renders the projection value and submits a non-Full-access pick directly', async () => {

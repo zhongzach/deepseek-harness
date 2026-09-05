@@ -31,8 +31,8 @@ const REFERENCE_PLACEHOLDER_RE = /[\uE100-\uE11D\uFFFC]/gu
  * @param reference - reference insertion with its cached display projection.
  * @returns display text with one marker glyph followed by the complete label.
  */
-export function referenceDraftText(reference: Pick<ReferenceInsert, 'label'>): string {
-  return `@${reference.label}`
+export function referenceDraftText(reference: Pick<ReferenceInsert, 'label' | 'marker'>): string {
+  return `${reference.marker ?? '@'}${reference.label}`
 }
 
 /** The machine never writes the queue; the wiring layer overlays the queue store's projection. */

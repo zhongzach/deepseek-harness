@@ -254,6 +254,11 @@ describe('input-machine: begin-command CAS', () => {
 })
 
 describe('input-machine: insert-ref and the occurrence table', () => {
+  it('uses an explicit marker and keeps @ as the legacy default', () => {
+    expect(referenceDraftText(refOf('review'))).toBe('@review')
+    expect(referenceDraftText({ ...refOf('README.md', 'files'), marker: '#' })).toBe('#README.md')
+  })
+
   it('valid span becomes one inline display range + one occurrence with cached projections', () => {
     const m = new InputMachine()
     m.dispatch({ type: 'draft-changed', draft: 'see @wor now' })
@@ -713,9 +718,12 @@ describe('decorations: scanTextRefs', () => {
   })
 
   it('recognizes directory paths independently of the dynamic lexicon', () => {
-    expect(scanTextRefs('open @src/components/ or @"docs/design notes/', new Map())).toEqual([
+    expect(scanTextRefs('open @src/components/ or #drafts/', new Map())).toEqual([
       { start: 5, end: 21, trigger: '@', appearance: 'folder' },
-      { start: 25, end: 45, trigger: '@', appearance: 'folder' },
+      { start: 25, end: 33, trigger: '#', appearance: 'folder' },
+    ])
+    expect(scanTextRefs('open @"docs/design notes/', new Map())).toEqual([
+      { start: 5, end: 25, trigger: '@', appearance: 'folder' },
     ])
   })
 

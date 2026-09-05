@@ -101,6 +101,7 @@ function mount(
     nestedSubagent?: boolean
     /** A composer block another plugin raised for this session. */
     composerBlock?: { reason: string }
+    heroPlaceholder?: string
     /** Mutable view ledger used by registration-order regressions. */
     viewTabs?: ViewTab[]
   } = {},
@@ -226,9 +227,12 @@ function mount(
           draftImages={() => []}
           resolveSubmitMode={() => 'queue'}
           toggleCommandMenu={vi.fn()}
+          openSource={vi.fn()}
+          insertReference={vi.fn(() => false)}
           useNotices={bindSnapshotSelector(wiring.notices)}
           useLexicon={bindSnapshotSelector(wiring.lexicon)}
           useMenuLauncher={bindSnapshotSelector(createSnapshotStore<string | null>(null))}
+          useInputPlaceholder={bindSnapshotSelector(createSnapshotStore<string | undefined>(undefined))}
           stop={stop}
           command={() => Promise.resolve(true)}
           t={t}
@@ -264,6 +268,7 @@ function mount(
     useWorkspaces: bindSnapshotSelector(workspaces),
     useProjection: (() => undefined),
     useComposerBlock: select => select(options.composerBlock),
+    useHeroPlaceholder: select => select(options.heroPlaceholder),
     useInput,
     inputActions,
     renderSlot,
@@ -310,6 +315,20 @@ describe('Hero chrome', () => {
 })
 
 describe('ConversationRoot resident composer', () => {
+  it('uses configured hero copy after workspace and model prerequisites are satisfied', () => {
+    const heroPlaceholder = '开始创作，@ 技能、# 文件'
+    const b = mount(conversationSnapshot({ composerPhase: 'blank' }), undefined, undefined, { heroPlaceholder })
+    expect((b.view.getByRole('textbox') as HTMLTextAreaElement).placeholder).toBe(heroPlaceholder)
+    cleanup()
+    const blocked = mount(conversationSnapshot({ composerPhase: 'blank' }), undefined, undefined, {
+      heroPlaceholder, composerBlock: { reason: 'select a model first' },
+    })
+    expect((blocked.view.getByRole('textbox') as HTMLTextAreaElement).placeholder).toBe('select a model first')
+    cleanup()
+    const noWorkspace = mount(conversationSnapshot({ composerPhase: 'blank' }), [], undefined, { heroPlaceholder })
+    expect((noWorkspace.view.getByRole('textbox') as HTMLTextAreaElement).placeholder).toBe(zh['placeholder.workspace'])
+  })
+
   it('renders the composer inert with the blocker\u2019s own reason', () => {
     const b = mount(conversationSnapshot(), undefined, undefined, {
       composerBlock: { reason: 'select a model first' },

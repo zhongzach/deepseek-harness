@@ -99,6 +99,7 @@ describe('apply wiring', () => {
     expect(b.slots.spec('conversation.chat.context.presentation'))
       .toEqual({ kind: 'chain', scope: 'session' })
     expect(b.slots.spec('conversation.hero.headline')).toEqual({ kind: 'single', scope: 'root' })
+    expect(b.slots.spec('conversation.input.launcher')).toEqual({ kind: 'single', scope: 'session-maybe' })
     expect(b.slots.entries('settings.general.item').map(entry => entry.options.id)).toEqual(['composer-enter'])
     await b.runtime.dispose()
   })

@@ -10,6 +10,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type { TriggerChar } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { ViewTab } from './contract/views.ts'
 import type {
   ApprovalWait, ChatNodeTurnDataInjected, ChatScrollPosition, ChatViewInjected, ComposerBarInjected,
@@ -65,7 +66,7 @@ const ABSENT_BLOCK = {
   getSnapshot: (): ComposerBlock | undefined => undefined,
   subscribe: () => () => {},
 }
-const EMPTY_LEXICON: ReadonlyMap<'/' | '@', readonly string[]> = new Map()
+const EMPTY_LEXICON: ReadonlyMap<TriggerChar, readonly string[]> = new Map()
 const ABSENT_LEXICON = {
   getSnapshot: () => EMPTY_LEXICON,
   subscribe: () => () => {},
@@ -130,9 +131,19 @@ export function apply(ctx: Context): void {
 
   // Apply-time construction keeps store identity bound to this fiber.
   const chatStore = createChatStore()
-  const submissionPolicy = new ComposerSubmissionPolicy(
-    ctx.settingsScope.bind<ConversationSettings>({ namespace: CONVERSATION_SETTINGS_NAMESPACE }),
-  )
+  const conversationSettings = ctx.settingsScope.bind<ConversationSettings>({ namespace: CONVERSATION_SETTINGS_NAMESPACE })
+  const submissionPolicy = new ComposerSubmissionPolicy(conversationSettings)
+  const placeholderSource = (field: 'inputPlaceholder' | 'heroPlaceholder') => ({
+    getSnapshot: (): string | undefined =>
+      conversationSettings.getSnapshot().value?.[field]?.[ctx.locale.getLocale().active],
+    subscribe: (listener: () => void): (() => void) => {
+      const offSettings = conversationSettings.subscribe(listener)
+      const offLocale = ctx.locale.subscribe(listener)
+      return () => { offSettings(); offLocale() }
+    },
+  })
+  const inputPlaceholder = placeholderSource('inputPlaceholder')
+  const heroPlaceholder = placeholderSource('heroPlaceholder')
 
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item',
@@ -212,7 +223,10 @@ export function apply(ctx: Context): void {
       'conversation.hero.headline': { kind: 'single', scope: 'root' },
     },
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
-      hooks: { composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId) },
+      hooks: {
+        composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
+        heroPlaceholder,
+      },
       selectWorkspace: async (workspaceId) => {
         const nextId = await workspaces.connectWorkspace(workspaceId)
         if (sessionId !== undefined && nextId !== sessionId) {
@@ -286,6 +300,7 @@ export function apply(ctx: Context): void {
     // register.
     children: {
       'conversation.input.attachments': { kind: 'single', scope: 'session-maybe' },
+      'conversation.input.launcher': { kind: 'single', scope: 'session-maybe' },
       'conversation.input.plan': { kind: 'single', scope: 'session' },
       'conversation.input.model': { kind: 'single', scope: 'session' },
     },
@@ -299,14 +314,29 @@ export function apply(ctx: Context): void {
           resolveSubmitMode: (running, gesture, steeringAvailable) =>
             submissionPolicy.resolve(running, gesture, steeringAvailable),
           toggleCommandMenu: undefined,
+          openSource: undefined,
+          insertReference: undefined,
           stop: undefined,
           command: undefined,
-          hooks: { notices: ABSENT_NOTICES, lexicon: ABSENT_LEXICON, menuLauncher: ABSENT_MENU_LAUNCHER },
+          hooks: { notices: ABSENT_NOTICES, lexicon: ABSENT_LEXICON, menuLauncher: ABSENT_MENU_LAUNCHER, inputPlaceholder },
         }
       }
       const conversation = concreteConversation(ctx)
       const shell = inputHub.shell(sessionId)
       const inputTriggers = inputHub.inputTriggers(sessionId)
+      const openSource = inputTriggers === undefined
+        ? undefined
+        : (source: string, trigger: TriggerChar, selection: import('./input/contract.ts').EditSelection) => {
+          shell.dismissPopup()
+          const snapshot = shell.snapshot
+          inputTriggers.toggleSource(source, {
+            trigger,
+            query: '',
+            quoted: false,
+            position: snapshot.draft.slice(0, selection.start).trim() === '' ? 'leading' : 'inline',
+            span: { ...selection, draftRev: snapshot.draftRev },
+          })
+        }
       return {
         keyboard: shell,
         addImages: (files) => {
@@ -332,19 +362,15 @@ export function apply(ctx: Context): void {
         draftImages: ids => conversation.draftImages(ids),
         resolveSubmitMode: (running, gesture, steeringAvailable) =>
           submissionPolicy.resolve(running, gesture, steeringAvailable),
-        toggleCommandMenu: inputTriggers === undefined
+        toggleCommandMenu: openSource === undefined
           ? undefined
-          : (selection) => {
-            shell.dismissPopup()
-            const snapshot = shell.snapshot
-            inputTriggers.toggleSource('command', {
-              trigger: '/',
-              query: '',
-              quoted: false,
-              position: snapshot.draft.slice(0, selection.start).trim() === '' ? 'leading' : 'inline',
-              span: { ...selection, draftRev: snapshot.draftRev },
-            })
-          },
+          : (selection) => { openSource('command', '/', selection) },
+        openSource,
+        insertReference: (reference, selection) => {
+          shell.dismissPopup()
+          inputTriggers?.dismiss()
+          return shell.insertReference(reference, { ...selection, draftRev: shell.snapshot.draftRev })
+        },
         stop: () => {
           scopedConversation(sessions, sessionId).cancel().catch(() => {
             // Stop failure surfaces via snapshot.promptError; nothing to restore.
@@ -357,6 +383,7 @@ export function apply(ctx: Context): void {
           return result.ok && result.value.matched
         },
         hooks: {
+          inputPlaceholder,
           notices: shell.notices,
           lexicon: shell.lexicon,
           menuLauncher: inputTriggers?.launcher ?? ABSENT_MENU_LAUNCHER,

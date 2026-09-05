@@ -496,6 +496,9 @@ function clientConfig(id: string, entry: string): UserConfig {
         if (isRequested(source)) return null // requested module-table row: external wins
         if (VENDORED_LIBRARY.test(source)) return null // vendored library: inline, no shared identity
         if (INLINE_SAFE.test(source) || GENERATED_REMOTE.test(source)) return null // wire contribution: inline is the point
+        // This library exports only a caller-owned controller class, not a
+        // plugin/service/singleton. Its runtime dependency stays baseline-shared.
+        if (source === '@deepseek-ai/dsh-client-ui-input-trigger/client/controller') return null
         throw new Error(
           `client bundle purity: "${source}" is not in the default client externals or ${id}'s dsh.client.external, an inline-safe wire layer, or a generated /remote contribution — `
           + 'cross-plugin value imports are forbidden; declare a non-default module request or collaborate through cordis services '

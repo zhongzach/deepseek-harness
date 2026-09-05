@@ -21,6 +21,7 @@ import type {} from '@deepseek-ai/dsh-goal/client'
 // wire types: apiproxy's sessions contract declares it, and client-runtime's
 // api-remotes import already places it in every client program.
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ReferenceInsert, TriggerChar } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { ComposerBarProps } from '../contract/slots.ts'
 import { deriveDecorations } from '../input/decorations.ts'
 import type { DraftDecorations } from '../input/decorations.ts'
@@ -78,14 +79,15 @@ export type InputBarProps = ComposerBarProps
 
 export function InputBar({
   useSession, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
-  resolveSubmitMode, toggleCommandMenu, stop, command, t,
-  renderSlot, useNotices, useLexicon, useMenuLauncher,
+  resolveSubmitMode, toggleCommandMenu, openSource, insertReference, stop, command, t,
+  renderSlot, useNotices, useLexicon, useMenuLauncher, useInputPlaceholder,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
   placeholder, accessory, overlay, leftItems, rightItems, footer,
 }: InputBarProps) {
   const input = useInput(s => s)
   const notice = useNotices(s => s)
+  const inputPlaceholder = useInputPlaceholder(value => value)
   const lexicon = useLexicon(s => s)
   const commandMenuOpen = useMenuLauncher(source => source === 'command')
   const promptError = useSession(s => s.promptError) ?? null
@@ -557,6 +559,31 @@ export function InputBar({
     if (el !== null) toggleCommandMenu?.(selectionOf(el))
   }
 
+  const openLauncherSource = (source: string, trigger: TriggerChar): void => {
+    const el = inputRef.current
+    if (el === null || locked || machineBusy) return
+    const selection = selectionOf(el)
+    el.focus({ preventScroll: true })
+    el.setSelectionRange(selection.start, selection.end)
+    openSource?.(source, trigger, selection)
+    el.focus({ preventScroll: true })
+    el.setSelectionRange(selection.start, selection.end)
+  }
+
+  const insertLauncherReference = (reference: ReferenceInsert): boolean => {
+    const el = inputRef.current
+    if (el === null || keyboard === undefined || locked || machineBusy || insertReference === undefined) return false
+    const selection = selectionOf(el)
+    const snapshot = keyboard.snapshot
+    const gap = snapshot.draft.charAt(selection.end) === ' ' ? 0 : 1
+    if (!insertReference(reference, selection)) return false
+    const caret = selection.start + (reference.marker ?? '@').length + reference.label.length + gap
+    el.focus({ preventScroll: true })
+    restoreCaret(el, caret)
+    keyboard.track(keyboard.snapshot.draft, caret)
+    return true
+  }
+
   // Ordinary sessions retain their primary Send/Stop toggle. A continuable
   // child keeps Send as the primary action and exposes Stop independently so
   // pointer users can queue follow-ups while its current turn is running.
@@ -753,7 +780,7 @@ export function InputBar({
                   // (the gate never consults plan mode), so the actionable hint wins.
                   : canSteerQueue
                     ? t('placeholder.steerQueue')
-                    : planActive ? t('placeholder.plan') : t('placeholder.default'))}
+                    : planActive ? t('placeholder.plan') : inputPlaceholder ?? t('placeholder.default'))}
               rows={2}
               onChange={onChange}
               onKeyDown={onKeyDown}
@@ -769,20 +796,28 @@ export function InputBar({
         </div>
         <div className={css.row}>
           <div className={css.tools}>
-            <Tooltip label={t('input.commands')} side="top" delayMs={500}>
-              <button
-                type="button"
-                className={css.add}
-                aria-label={t('input.commands')}
-                aria-haspopup="listbox"
-                aria-expanded={commandMenuOpen}
-                disabled={locked || toggleCommandMenu === undefined}
-                onMouseDown={keepFocus}
-                onClick={onToggleCommandMenu}
-              >
-                <IconPlusOutline16 size={14} />
-              </button>
-            </Tooltip>
+            {renderSlot('conversation.input.launcher', {
+              locked: locked || machineBusy,
+              openSource: openLauncherSource,
+              insertReference: insertLauncherReference,
+            }, {
+              fallback: (
+                <Tooltip label={t('input.commands')} side="top" delayMs={500}>
+                  <button
+                    type="button"
+                    className={css.add}
+                    aria-label={t('input.commands')}
+                    aria-haspopup="listbox"
+                    aria-expanded={commandMenuOpen}
+                    disabled={locked || toggleCommandMenu === undefined}
+                    onMouseDown={keepFocus}
+                    onClick={onToggleCommandMenu}
+                  >
+                    <IconPlusOutline16 size={14} />
+                  </button>
+                </Tooltip>
+              ),
+            })}
             <div className={css.modes}>
               {accessSelect}
               {renderSlot('conversation.input.plan', { locked })}

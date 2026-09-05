@@ -93,6 +93,18 @@ describe('client bundle purity gate', () => {
     expect(() => resolveId('@deepseek-ai/dsh-client-web')).toThrow(/purity/)
   })
 
+  it('inlines the exact standalone controller entry without allowing the owning plugin or nested paths', () => {
+    expect(resolveId('@deepseek-ai/dsh-client-ui-input-trigger/client/controller')).toBeNull()
+    expect(() => resolveId('@deepseek-ai/dsh-client-ui-input-trigger')).toThrow(/purity/)
+    expect(() => resolveId('@deepseek-ai/dsh-client-ui-input-trigger/client')).toThrow(/purity/)
+    expect(() => resolveId('@deepseek-ai/dsh-client-ui-input-trigger/controller/nested')).toThrow(/purity/)
+    expect(() => resolveId('@deepseek-ai/dsh-client-ui-input-trigger/controller')).toThrow(/purity/)
+    expect(() => resolveId('@deepseek-ai/dsh-client-ui-input-trigger/client/controller/nested')).toThrow(/purity/)
+    const deps = clientConfigs()[0]?.deps as { neverBundle: (specifier: string) => boolean }
+    expect(deps.neverBundle('@deepseek-ai/dsh-client-ui-input-trigger/client/controller')).toBe(false)
+    expect(deps.neverBundle('@deepseek-ai/dsh-client-runtime/client')).toBe(true)
+  })
+
   it('throws on cross-plugin value imports — bare plugin names and /client subpaths alike', () => {
     expect(() => resolveId('@deepseek-ai/dsh-client-connection')).toThrow(/purity/)
     expect(() => resolveId('@deepseek-ai/dsh-client-runtime')).toThrow(/purity/)
