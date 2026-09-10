@@ -49,6 +49,20 @@ function rowId(providerId: string, modelId: string): string {
   return `${providerId}/${modelId}`
 }
 
+const BUILTIN_DESCRIPTION_KEYS: Readonly<Record<string, ModelKey>> = {
+  'deepseek-official/deepseek-v4-flash': 'option.deepseekV4Flash.description',
+  'deepseek-official/deepseek-v4-pro': 'option.deepseekV4Pro.description',
+}
+
+function descriptionOf(
+  providerId: string,
+  model: ModelDirectoryState['groups'][number]['models'][number],
+  t: TranslateNS<'model'>,
+): string | undefined {
+  const key = BUILTIN_DESCRIPTION_KEYS[rowId(providerId, model.id)]
+  return key !== undefined && model.description === en[key] ? t(key) : model.description
+}
+
 /** Flatten the directory into popup rows; failure rows are listed for visibility but never selectable. */
 function optionsOf(directory: ModelDirectoryState, t: TranslateNS<'model'>): SelectOption[] {
   const rows: SelectOption[] = []
@@ -56,10 +70,11 @@ function optionsOf(directory: ModelDirectoryState, t: TranslateNS<'model'>): Sel
     for (const section of modelPresentationSections(group)) {
       const groupDetail = section.presented ? `${group.name} · ${section.name}` : group.name
       for (const model of section.models) {
+        const description = descriptionOf(group.id, model, t)
         rows.push({
           id: rowId(group.id, model.id),
           label: model.name,
-          detail: model.description !== undefined ? `${groupDetail} · ${model.description}` : groupDetail,
+          detail: description !== undefined ? `${groupDetail} · ${description}` : groupDetail,
           ...model.availability?.selectable === false ? {
             disabled: true,
             ...model.availability.action === undefined ? {} : { action: model.availability.action },
@@ -131,18 +146,19 @@ export function apply(ctx: ClientContext): void {
 
   // The composer-block reason is this plugin's own copy, read at raise time so
   // a locale change reaches the next publish.
-  ctx.plugin(ModelDirectoryResolver, { blockReason: () => t('blocked.composer') })
+  ctx.plugin(ModelDirectoryResolver, {
+    blockReason: () => t('blocked.composer'),
+    notSelectableReason: () => t('error.notSelectable'),
+  })
 
-  // Entry 1: the /model popupSelect over the shared directory. The command
-  // description is registry-held text: it reads t() once at registration and
-  // refreshes only on re-registration, not on locale change.
+  // Entry 1: the /model popupSelect over the shared directory.
   ctx.inject(['commandUi', 'modelDirectories'], (scope: ClientContext) => {
     const command = scope.get('commandUi') as CommandUiContract
     const models = scope.modelDirectories
     const sessions = scope.sessions
     scope.effect(() => command.register({
       name: 'model',
-      description: t('command.description'),
+      description: () => t('command.description'),
       available: session => sessions.subagentAddress(session.sessionId) === undefined,
       ui: {
         kind: 'popupSelect',

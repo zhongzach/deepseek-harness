@@ -75,6 +75,7 @@ export class ModelDirectory {
    * @param available - whether this session may use Agent-bound model RPCs.
    * @param catalog - Host-generation catalog shared by every Session.
    * @param projected - durable model selection projected from Session history.
+   * @param notSelectableReason - localized fallback when a disabled catalog row has no provider reason.
    */
   constructor(
     private readonly sessions: Pick<TypertClientRemote['session'], 'selectModel'>,
@@ -82,6 +83,7 @@ export class ModelDirectory {
     private readonly available: () => boolean,
     private readonly catalog: ModelCatalogDirectory,
     private readonly projected: ObservableSnapshot<unknown>,
+    private readonly notSelectableReason: () => string,
   ) {
     this.unsubscribeCatalog = catalog.store.subscribe(() => { this.syncInputs() })
     this.unsubscribeSelection = projected.subscribe(() => { this.syncInputs() })
@@ -110,7 +112,7 @@ export class ModelDirectory {
     const availability = this.store.getSnapshot().groups.find(group => group.id === selection.provider)
       ?.models.find(model => model.id === selection.model)?.availability
     if (availability?.selectable === false) {
-      const message = availability.reason ?? 'This model cannot be selected.'
+      const message = availability.reason ?? this.notSelectableReason()
       this.store.update((s) => { s.status = 'error'; s.error = message })
       throw new Error(message)
     }

@@ -123,7 +123,9 @@ describe('unavailable model help', () => {
     const focusComposer = vi.fn()
     const popup = new PopupSelectController({ consume, focusComposer })
     render(<PopupSelectView popup={popup} t={makeTranslate(commandZh, commonZh)} />)
-    act(() => { popup.open('model', b.contribution.ui, { sessionId: b.sessionId }, { via: 'enter', token: '/model' }) })
+    const ui = b.contribution.ui
+    if (ui.kind !== 'popupSelect') throw new Error('model command must present a popupSelect')
+    act(() => { popup.open('model', ui, { sessionId: b.sessionId }, { via: 'enter', token: '/model' }) })
     await screen.findByRole('option', { name: /^专供模型/ })
     const search = screen.getByRole('textbox', { name: '筛选选项' })
     fireEvent.change(search, { target: { value: '专供模型' } })

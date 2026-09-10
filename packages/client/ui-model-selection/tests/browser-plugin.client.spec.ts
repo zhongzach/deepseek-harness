@@ -16,7 +16,7 @@ import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import type { ModelProviderGroup, ModelSelection, ModelSelectionProjection } from '@deepseek-ai/dsh-api-session-controller/types'
-import type { CommandContribution, SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
+import type { CommandContribution, PopupSelectSpec, SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import type { ModelSelectInjected } from '../src/client/slots.ts'
 import { orderModelGroups } from '../src/client/directory.ts'
 import { apply, inject } from '../src/client/index.ts'
@@ -31,6 +31,7 @@ const GROUPS: ModelProviderGroup[] = [{
     {
       id: 'deepseek-v4-flash',
       name: 'DeepSeek-V4-Flash',
+      description: 'Fast, efficient, and economical; suited to focused, routine, or parallel tasks.',
       reasoning: {
         efforts: [
           { id: 'off', name: 'Off' },
@@ -43,6 +44,7 @@ const GROUPS: ModelProviderGroup[] = [{
     {
       id: 'deepseek-v4-pro',
       name: 'DeepSeek-V4-Pro',
+      description: 'Stronger agentic coding, knowledge, and difficult reasoning; suited to complex or quality-critical tasks at higher cost.',
       reasoning: {
         efforts: [
           { id: 'off', name: 'Off' },
@@ -53,10 +55,18 @@ const GROUPS: ModelProviderGroup[] = [{
       },
     },
   ],
+}, {
+  id: 'external',
+  name: 'External Provider',
+  models: [{
+    id: 'deepseek-v4-flash',
+    name: 'External Flash',
+    description: 'Provider-authored description.',
+  }],
 }]
 
 /** Boot the plugin over fake faces + a stateful fake host (current moves on selectModel). */
-async function bench() {
+async function bench(locale: 'zh' | 'en' = 'zh') {
   const ctx = new Context()
   let defaultSelection: ModelSelection = { provider: 'deepseek-official', model: 'deepseek-v4-flash' }
   let selected = defaultSelection
@@ -119,10 +129,9 @@ async function bench() {
     },
   })
   const localeRuntime = new LocaleRuntime(ctx)
-  // This spec asserts the shipped Chinese copy. There is no jsdom `window` in
-  // this lane, so browser-language detection never runs and the locale comes
-  // from FALLBACK_LOCALE (en): state the asserted locale explicitly.
-  localeRuntime.setLocale('zh')
+  // There is no jsdom `window` in this lane, so browser-language detection
+  // never runs. Each bench states the locale its assertions require.
+  localeRuntime.setLocale(locale)
   ctx.provide('locale', localeRuntime)
   const scopes = new Map<SessionId, Context>()
   const addressed = new Set<SessionId>()
@@ -159,6 +168,11 @@ async function bench() {
   return {
     ctx, fiber, mint, calls, remote,
     contribution: () => contribution!,
+    popup: (): PopupSelectSpec => {
+      const ui = contribution!.ui
+      if (ui.kind !== 'popupSelect') throw new Error('expected the popupSelect kind')
+      return ui
+    },
     seat: () => seats.get('conversation.input.model')!,
     hostCurrent: () => selected,
     setHostCurrent: (selection: ModelSelection) => { defaultSelection = selection },
@@ -177,13 +191,32 @@ function presentedModel(id: string, name: string, sectionId: string, sectionName
 }
 
 describe('ui-model-selection dual entry', () => {
+  it('localizes a disabled model without a provider reason at selection time', async () => {
+    const b = await bench('zh')
+    b.mint('s1')
+    b.setGroups([{ id: 'hub', name: 'WriterX', models: [
+      { id: 'premium', name: '专供模型', availability: { selectable: false } },
+    ] }])
+    const directory = b.ctx.modelDirectories.directoryFor(sid('s1'))
+    await directory.load()
+    await expect(directory.select({ provider: 'hub', model: 'premium' }))
+      .rejects.toThrow('当前模型不可选择。')
+    expect(directory.store.getSnapshot().error).toBe('当前模型不可选择。')
+    b.ctx.locale.setLocale('en')
+    await expect(directory.select({ provider: 'hub', model: 'premium' }))
+      .rejects.toThrow('This model cannot be selected.')
+    expect(directory.store.getSnapshot().error).toBe('This model cannot be selected.')
+    expect(b.calls.select).toBe(0)
+    await b.ctx.fiber.dispose()
+  })
+
   it('exposes disabled popup rows and refuses direct directory selection before the RPC', async () => {
     const b = await bench()
     b.mint('s1')
     b.setGroups([{ id: 'hub', name: 'WriterX', models: [
       { id: 'premium', name: '专供模型', availability: { selectable: false, reason: 'Membership required.' } },
     ] }])
-    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
+    const options = await b.popup().options(projection('s1'), new AbortController().signal)
     expect(options[0]).toMatchObject({ disabled: true, disabledReason: 'Membership required.' })
     await expect(b.ctx.modelDirectories.directoryFor(sid('s1')).select({ provider: 'hub', model: 'premium' }))
       .rejects.toThrow('Membership required.')
@@ -204,21 +237,21 @@ describe('ui-model-selection dual entry', () => {
         selectable: false, reason: 'Membership required.', action: { id: 'deployment:membership', label: 'Review membership' },
       } },
     ] }])
-    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
+    const options = await b.popup().options(projection('s1'), new AbortController().signal)
     expect(options[0]).toMatchObject({ disabled: true, action: { id: 'deployment:membership', label: 'Review membership' } })
     const face = b.seat().inject!(sid('s1'))
     face.requestAction('unadvertised')
-    b.contribution().ui.onAction?.('unadvertised', projection('s1'))
+    b.popup().onAction?.('unadvertised', projection('s1'))
     expect(calls).toEqual([])
     face.requestAction('deployment:membership')
-    b.contribution().ui.onAction?.('deployment:membership', projection('s1'))
+    b.popup().onAction?.('deployment:membership', projection('s1'))
     expect(calls).toEqual(['deployment:membership', 'deployment:membership'])
     expect(b.calls.select).toBe(0)
     b.ctx.modelDirectories.invalidateCatalogs()
     face.requestAction('deployment:membership')
     expect(calls).toHaveLength(2)
     b.address(sid('s1'))
-    b.contribution().ui.onAction?.('deployment:membership', projection('s1'))
+    b.popup().onAction?.('deployment:membership', projection('s1'))
     expect(calls).toHaveLength(2)
     await b.ctx.fiber.dispose()
   })
@@ -244,12 +277,20 @@ describe('ui-model-selection dual entry', () => {
     expect(b.seat().locale).toBe('model')
   })
 
-  it('popup options mark the host current active with the provider group in the detail', async () => {
+  it('localizes built-in descriptions and preserves external provider descriptions', async () => {
     const b = await bench()
     b.mint('s1')
-    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
-    expect(options.map((o: SelectOption) => o.label)).toEqual(['DeepSeek-V4-Flash', 'DeepSeek-V4-Pro'])
-    expect(options[0]).toMatchObject({ active: true, detail: 'DeepSeek' })
+    const options = await b.popup().options(projection('s1'), new AbortController().signal)
+    expect(options.map((o: SelectOption) => o.label)).toEqual([
+      'DeepSeek-V4-Flash', 'DeepSeek-V4-Pro', 'External Flash',
+    ])
+    expect(options[0]).toMatchObject({
+      active: true,
+      detail: 'DeepSeek · 快速、高效且经济；适合目标明确、常规或并行任务。',
+    })
+    expect(options[1]?.detail)
+      .toBe('DeepSeek · 更强的自主编码、知识与复杂推理能力；适合复杂或质量优先的任务，但成本更高。')
+    expect(options[2]?.detail).toBe('External Provider · Provider-authored description.')
     expect(options[1]?.active).toBeUndefined()
   })
 
@@ -265,13 +306,13 @@ describe('ui-model-selection dual entry', () => {
     b.setGroups(hostGroups)
     const face = b.seat().inject!(sid('s1'))
     const loaded = await b.ctx.modelDirectories.directoryFor(sid('s1')).load()
-    expect(loaded.groups.map(group => group.id)).toEqual(['hub', 'deepseek-official', 'zhipu', 'custom'])
-    expect(face.directory.getSnapshot().groups.map(group => group.id)).toEqual(['hub', 'deepseek-official', 'zhipu', 'custom'])
-    expect(hostGroups.map(group => group.id)).toEqual(['zhipu', 'deepseek-official', 'hub', 'custom'])
+    expect(loaded.groups.map(group => group.id)).toEqual(['hub', 'deepseek-official', 'zhipu', 'external', 'custom'])
+    expect(face.directory.getSnapshot().groups.map(group => group.id)).toEqual(['hub', 'deepseek-official', 'zhipu', 'external', 'custom'])
+    expect(hostGroups.map(group => group.id)).toEqual(['zhipu', 'deepseek-official', 'external', 'hub', 'custom'])
 
-    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
-    expect(options.map((option: SelectOption) => option.detail)).toEqual([
-      'WriterX', 'DeepSeek', 'DeepSeek', '智谱', '自定义',
+    const options = await b.popup().options(projection('s1'), new AbortController().signal)
+    expect(options.map((option: SelectOption) => option.detail?.split(' · ')[0])).toEqual([
+      'WriterX', 'DeepSeek', 'DeepSeek', '智谱', 'External Provider', '自定义',
     ])
   })
 
@@ -287,13 +328,23 @@ describe('ui-model-selection dual entry', () => {
       ],
     }])
 
-    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
+    const options = await b.popup().options(projection('s1'), new AbortController().signal)
     expect(options.map((option: SelectOption) => [option.label, option.detail])).toEqual([
       ['免费模型', 'WriterX 云 · 内置免费'],
       ['专供模型', 'WriterX 云 · 会员专供'],
     ])
-    await b.contribution().ui.onSelect(options[1]!, projection('s1'))
+    await b.popup().onSelect(options[1]!, projection('s1'))
     expect(b.hostCurrent()).toEqual({ provider: 'hub', model: 'premium' })
+  })
+
+  it('keeps built-in descriptions unchanged in English', async () => {
+    const b = await bench('en')
+    b.mint('s1')
+    const options = await b.popup().options(projection('s1'), new AbortController().signal)
+    expect(options[0]?.detail)
+      .toBe('DeepSeek · Fast, efficient, and economical; suited to focused, routine, or parallel tasks.')
+    expect(options[1]?.detail)
+      .toBe('DeepSeek · Stronger agentic coding, knowledge, and difficult reasoning; suited to complex or quality-critical tasks at higher cost.')
   })
 
   it('a seat selection is the current the popup marks active next — one shared state', async () => {
@@ -317,7 +368,7 @@ describe('ui-model-selection dual entry', () => {
       reasoningEffort: 'max',
     })
     // The POPUP's next options pass reflects it without a seat-side reload.
-    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
+    const options = await b.popup().options(projection('s1'), new AbortController().signal)
     expect(options.find((o: SelectOption) => o.label === 'DeepSeek-V4-Pro')).toMatchObject({ active: true })
   })
 
@@ -325,9 +376,9 @@ describe('ui-model-selection dual entry', () => {
     const b = await bench()
     b.mint('s1')
     const seatFace = b.seat().inject!(sid('s1'))
-    const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
+    const options = await b.popup().options(projection('s1'), new AbortController().signal)
     const pro = options.find((o: SelectOption) => o.label === 'DeepSeek-V4-Pro')!
-    await b.contribution().ui.onSelect(pro, projection('s1'))
+    await b.popup().onSelect(pro, projection('s1'))
     expect(seatFace.directory.getSnapshot().current).toEqual({
       provider: 'deepseek-official',
       model: 'deepseek-v4-pro',
@@ -347,8 +398,8 @@ describe('ui-model-selection dual entry', () => {
     // The service face resolves the same instance the seat inject handed out.
     expect(b.ctx.modelDirectories.directoryFor(sid('a')).store).toBe(faceA.directory)
     await Promise.all([
-      b.contribution().ui.options(projection('a'), new AbortController().signal),
-      b.contribution().ui.options(projection('b'), new AbortController().signal),
+      b.popup().options(projection('a'), new AbortController().signal),
+      b.popup().options(projection('b'), new AbortController().signal),
     ])
     expect(b.calls.models).toBe(1)
   })
@@ -492,7 +543,7 @@ describe('ui-model-selection dual entry', () => {
     b.address(sid('child'))
 
     expect(b.contribution().available(projection('child'))).toBe(false)
-    await expect(b.contribution().ui.options(
+    await expect(b.popup().options(
       projection('child'),
       new AbortController().signal,
     )).rejects.toThrow(/unavailable for addressed subagent/)

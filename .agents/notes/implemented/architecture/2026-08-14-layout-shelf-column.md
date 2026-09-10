@@ -10,10 +10,10 @@ The web shell frame is a three-column grid: sidebar | center | details. A produc
 
 ## Decision
 
-`ui-layout` grows a fourth column, `shelf`, between center and details:
+`ui-layout` provides an independent `shelf` column between `main` content and the standard `rightbar` track:
 
-- **Slot**: `'shelf': { kind: 'single', scope: 'session' }`, declared by the same root `register()` call as the other three, with an empty owner share (sessionId arrives as a framework-standard prop). `ctx.layout` gains `openShelf()` / `closeShelf()`; the layout store gains a `shelf` width preference (0 = closed, `SHELF_DEFAULT = 400`, drag range 300–560).
-- **Concession chain**: keep center >= `CENTER_MIN` by shrinking the shelf first, then details, then auto-closing details. The shelf never auto-closes — it is a primary product panel, treated like the sidebar. With the shelf preference 0 (the dev default) the chain reduces exactly to the previous three-column behavior, so the development GUI is bit-for-bit unchanged: the extra track renders at 0px and the collapsed column paints no border.
+- **Slot**: `'shelf': { kind: 'single', scope: 'session' }`, declared by the root registration, with an empty owner share (sessionId arrives as a framework-standard prop). `ctx.layout` exposes `openShelf()` / `closeShelf()` / `toggleShelf()` / `resizeShelf(px)`; `layoutInfo` retains a shelf width preference (0 = closed, `SHELF_DEFAULT = 300`, drag range 300–1040).
+- **Concession chain**: keep center >= `CENTER_MIN` by shrinking the shelf first, then the right track, then closing the right track. The shelf never auto-closes — it is a primary product panel, treated like the sidebar. With the shelf preference 0 (the default), the solve uses standard sidebar/main/rightbar geometry: the extra track renders at 0px and the collapsed column paints no border.
 - **Occupancy**: no shipped row occupies `shelf`. A product composition (e.g. the NovelStudio shell's `--patch` overlay) inserts its own client plugin into it. The dev web-app bundle does not register the shelf plugin, keeping the development surface untouched.
 
 ## Alternatives considered
@@ -22,7 +22,7 @@ The web shell frame is a three-column grid: sidebar | center | details. A produc
 
 ## Consequences
 
-- The dev GUI is visually unchanged: fresh store state has `shelf: 0`, the fourth grid track is 0px, and `data-shelf-collapsed` suppresses the border seam.
+- The unoccupied shelf reserves no width: fresh `layoutInfo` has `shelf: 0`, and `data-shelf-collapsed` suppresses the border seam.
 - A product panel can now live in a real right column, openable next to tool details, each with its own drag handle.
-- Details behavior (session-change auto-close, drag semantics, concession) is preserved; the shelf deliberately does not auto-close on session change.
-- The shelf plugin package (`@deepseek-ai/dsh-client-ui-novel-shelf`) is a follow-up; it registers into `shelf` via `slots.inject` and ships only in the product composition.
+- The standard rightbar owner controls expansion and fullscreen presentation; the independent shelf does not auto-close on session change.
+- The product composition registers its shelf plugin into `shelf`; the official Web composition leaves that slot empty.

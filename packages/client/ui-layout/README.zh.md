@@ -1,5 +1,5 @@
 ---
-description: "Web GUI 外壳布局：四栏 AppFrame、产品标题栏、拖动手柄、面板几何与主题呈现。"
+description: "Web GUI 外壳布局：侧栏、中央内容、可选产品书架与右面板、产品标题栏、面板几何和主题呈现。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包提供四栏 AppFrame（侧栏、会话、可选产品书架、详情）、产品标题栏槽位、可缩放面板与 `ctx.layout` 几何动作。空间不足时，让步链先收缩书架，再收缩详情，最后关闭详情。主题呈现器把解析后的 token、正文字号与 `theme-color` 元数据投影到 document。面板几何是瞬时的，重新加载即重置。
+本包提供 Web GUI 的 AppFrame，包含侧栏、中央内容、可选产品书架和右面板轨道。书架先于右面板让出宽度以保护中栏，同时保留书籍导航。产品可提供标题栏。主题呈现器负责配色、别名 token、正文字号与 document 元数据；布局状态在刷新后重置。
 
 ## 目录
 
@@ -25,7 +25,9 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在 root 槽位挂载本插件。产品可在标准栏位旁注册 `shelf` 和 `titlebar`，没有注册时对应区域为空。用户通过手柄调整可见面板。关闭的侧栏保留 56px 控制栏；书架和详情收至零宽度，同时保留已挂载子树的状态。
+产品可在标准栏位旁注册 `shelf` 和 `titlebar`，没有注册时对应区域为空。书架以 300px 打开，可调整至 1040px，关闭时子树保持挂载。侧栏为 264～420px，默认 280px，收起后保留 56px 控制栏。窗口低于 1024px 时自动收起，打开右面板也会收起手动展开的侧栏。右面板首次打开使用窗口宽度的 45%，随后保留用户像素偏好，上限为 70%。框架先缩减书架宽度，再缩减或关闭右轨道，以保护中栏的 400px 空间。拖拽没有过渡延迟；右面板关闭或全屏时不显示右侧手柄。
+
+全局面板占据 root 作用域的 `main` keyed slot；`conversation` 是为会话界面保留的 key。`ctx.layout.selectPanel(id)` 选中已注册面板，`null` 则选中会话界面，但不改变当前会话。默认组合不注册任何全局面板。
 
 ### 主题呈现
 
@@ -39,7 +41,9 @@ kind: "package-reference"
 <details>
 <summary>实现细节——点击展开</summary>
 
-一次 `register()` 贡献 `AppFrame`，并声明 `sidebar`、`conversation`、`shelf`、`details`、`shell.overlay` 和 `titlebar`。瞬时 store 以默认侧栏宽度与关闭的两个辅助面板启动。各栏子树保持挂载，严格会话范围的详情入口使用 `SessionProvider`。文档标题由所选 Session 标题与预启动呈现标题、构建标题或本地化回退值组合。主题呈现器独立应用解析后的 token，并从已渲染 body 获取元数据颜色。
+`selectPanel(id)` 在改变选中态前检查实时 `main` 注册表；缺失的 key 会抛错并保留当前面板。`beginNavigation()` 为异步 UI 导航返回 abort signal。后续调用、有效面板选择（包括重复选择）或布局释放会中止该 signal，但不取消底层会话创建。消费者在提交导航或搬移草稿前检查 signal。
+
+一次注册声明六个子 slot并绑定 `ctx.layout` 的 `selectPanel`、`toggleSidebar`、`openRightbar(track, fullscreen)` 与 `closeRightbar`。同一个 root 存储把 `panelInfo` 选中态与 `layoutInfo` 测量、宽度偏好、呈现报告分开。`usePanelInfo` 订阅引用稳定的选中态对象，AppFrame 订阅引用稳定的布局对象。`rightbar` 的owner参数为实际 `width`、`viewportWidth` 与普通呈现的 `canShow`；占用方在空间不足时执行确定性的收起，变宽不自行重新展开。全屏隐藏宽度手柄，但不自行释放占用方要求保留的轨道。AppFrame 保持各列容器挂载。右栏的 root 控制器仅在选中会话界面时，经 `SessionProvider` 渲染 `rightbar.session`；内容卸载时的报告释放列宽。独立的标题组件仅在会话界面可见时使用所选会话标题，以构建配置的产品标题或本地化 `common.brand.localBuild` 为回退值；语言变化会更新该回退值。主题呈现器是第二个 effect：从解析后的快照做纯 DOM 写入——初始状态经 getter 读取一次，此后仅事件驱动，不经过 React。它先应用调色板、字号与 token 变量，再把渲染出的背景测量为唯一的颜色依据。 全屏呈现禁用网格和手柄过渡；占用方完全覆盖框架后才报告新的列宽。 退出全屏时，框架先保持无过渡并安装目标布局：关闭移除右轨道，恢复保留右轨道。后续普通几何操作恢复正常过渡。 独立书架使用自己的宽度偏好与收起状态，`titlebar` 接收产品窗口控件。
 
 </details>
 
@@ -51,7 +55,8 @@ kind: "package-reference"
 当布局面不够用时阅读以下页面。它们从框架进入它所渲染的栏与它所呈现的主题。
 
 - [ui-sidebar](../ui-sidebar/README.zh.md)——占据 `sidebar` 栏及其座位。
-- [ui-conversation](../ui-conversation/README.zh.md)——占据 `conversation` 与 `details` 栏。
+- [ui-conversation](../ui-conversation/README.zh.md)——占据 `main` 中的 `conversation` key。
+- [ui-sidebar-right](../ui-sidebar-right/README.zh.md)——以每会话一个停靠面占据 `rightbar` 栏。
 - [ui-theme](../ui-theme/README.zh.md)——呈现器消费其解析快照的主题 seam。
 - [Web 客户端架构](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.zh.md)——浏览器插件行如何加载并注册槽位。
 
@@ -73,8 +78,9 @@ kind: "package-reference"
 
 这些限制界定了当前布局行为。它们是当前包约束，不是通用窗口管理器对比或任务积压。
 
-- **面板几何是瞬时状态**——重新加载会恢复侧栏默认值并保持详情栏关闭；在不同会话 id 之间切换同样会关闭详情栏并忘记拖动后的宽度，而未选中表面以零宽度渲染详情栏却不修改几何。
-- **让步链自动关闭通过推导零宽度实现，不触碰偏好宽度**——窗口变宽时面板自行恢复；消费方不得把 store 中的详情宽度当作渲染真值。
+- **面板几何是瞬时状态**——重新加载会恢复侧栏默认值并隐藏右侧面板；每个拖出的宽度都是一份框架级偏好，不是按 Session 的事实。
+- **极窄窗口**——右栏关闭后，中栏仍可能小于400px；左侧56px控制栏保留。
+- **轨道与面板沿同一条曲线运动**——框架的轨道过渡和占位方的滑入读取同一组时长与缓动变量；占位方若自用一套，挤压时面板边缘就会与对话边缘脱开。
 - **挤压重排期间无滚动锚定**——布局变化可能移动读者的视口。
 
 <a id="dev-note"></a>
@@ -87,4 +93,4 @@ kind: "package-reference"
 
 </details>
 
-**运行时不变式：** 不发布伴生入口。`ctx.layout` 后的 viewing-state store 不发出 Cordis 事件；clamp、prune 与 concession-chain 顺序由本包测试覆盖。
+**运行时不变式：** 不发布伴生入口。`ctx.layout` 后的 viewing-state store 不发出 Cordis 事件；clamp 与轨道的时序由本包的 columns 与 service 规格直接断言。

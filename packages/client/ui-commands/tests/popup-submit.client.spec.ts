@@ -30,7 +30,7 @@ async function bench() {
     options: () => Promise.resolve([{ id: 'free', label: 'Free model' }]),
     onSelect: selected,
   }
-  command.register({ name: 'model', description: 'Model selector', available: () => true, ui: spec })
+  command.register({ name: 'model', description: () => 'Model selector', available: () => true, ui: spec })
   const shell = new SessionInputShell({
     actx, inputTriggers: () => controller, popup: () => popup, defaultSink: sink,
     commandAttachments: { serialize: () => Promise.resolve([]), release() {}, unsupportedNotice: () => 'Attachments refused' },

@@ -86,9 +86,9 @@ export function redactSettingsOperation(
   const schema = new Schema<never>(structuredClone(descriptor.schema) as Partial<Schema<never>>)
   protectCompoundSecrets(schema)
   if (detached.method === 'settings.update') {
-    detached.payload.patch = (redactWithPresence(schema, detached.payload.patch) ?? {}) as object
+    detached.payload.patch = redactWithPresence(schema, detached.payload.patch) ?? {}
   } else if (detached.method === 'settings.replace') {
-    detached.payload.section = (redactWithPresence(schema, detached.payload.section) ?? {}) as object
+    detached.payload.section = redactWithPresence(schema, detached.payload.section) ?? {}
   } else {
     detached.payload.ops = detached.payload.ops.map((op) => {
       if (op.op === 'unset') return op

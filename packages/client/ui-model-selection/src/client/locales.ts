@@ -12,6 +12,8 @@
 export const zh = {
   'command.description': '选择本会话使用的模型',
   'option.loadError': '目录加载失败：{message}',
+  'option.deepseekV4Flash.description': '快速、高效且经济；适合目标明确、常规或并行任务。',
+  'option.deepseekV4Pro.description': '更强的自主编码、知识与复杂推理能力；适合复杂或质量优先的任务，但成本更高。',
   'trigger.fallback': '选择模型',
   'trigger.loading': '正在加载模型…',
   'trigger.selectAria': '选择模型',
@@ -23,6 +25,7 @@ export const zh = {
   'effort.providerDefault': 'Default',
   'status.loading': '正在刷新模型列表…',
   'error.action': '模型操作失败：{message}',
+  'error.notSelectable': '当前模型不可选择。',
   'action.reload': '重新加载',
   'warning.groupLoad': '{name} 加载失败：{message}',
   'empty.models': '没有可用的模型。',
@@ -37,6 +40,8 @@ export type ModelKey = keyof typeof zh
 export const en = {
   'command.description': 'Select the model for this conversation',
   'option.loadError': 'Catalog failed to load: {message}',
+  'option.deepseekV4Flash.description': 'Fast, efficient, and economical; suited to focused, routine, or parallel tasks.',
+  'option.deepseekV4Pro.description': 'Stronger agentic coding, knowledge, and difficult reasoning; suited to complex or quality-critical tasks at higher cost.',
   'trigger.fallback': 'Select model',
   'trigger.loading': 'Loading models…',
   'trigger.selectAria': 'Select model',
@@ -48,6 +53,7 @@ export const en = {
   'effort.providerDefault': 'Default',
   'status.loading': 'Refreshing model list…',
   'error.action': 'Model operation failed: {message}',
+  'error.notSelectable': 'This model cannot be selected.',
   'action.reload': 'Reload',
   'warning.groupLoad': '{name} failed to load: {message}',
   'empty.models': 'No models available.',

@@ -49,14 +49,16 @@ export class ModelDirectoryResolver extends Service {
 
   /** Localized composer-block copy; this plugin owns the string it raises. */
   private readonly blockReason: () => string
+  private readonly notSelectableReason: () => string
 
   /**
    * @param ctx - owning root context (the service registers itself as `models`).
    * @param config - the bound translator for this plugin's own dictionary.
    */
-  constructor(ctx: Context, config: { blockReason: () => string }) {
+  constructor(ctx: Context, config: { blockReason: () => string; notSelectableReason: () => string }) {
     super(ctx, 'modelDirectories')
     this.blockReason = config.blockReason
+    this.notSelectableReason = config.notSelectableReason
     this.catalog = new ModelCatalogDirectory(ctx)
     void this.catalog.load().catch(() => { /* selectors expose the shared error */ })
     ctx.on('connection/reset', () => {
@@ -89,6 +91,7 @@ export class ModelDirectoryResolver extends Service {
       () => sessions.subagentAddress(sessionId) === undefined,
       this.catalog,
       binding.session.projections.faceOf('modelSelection'),
+      this.notSelectableReason,
     )
     live.directories.set(sessionId, directory)
     // The composer cannot read this plugin (the dependency runs one way), so

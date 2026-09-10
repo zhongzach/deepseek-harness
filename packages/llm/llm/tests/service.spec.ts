@@ -22,6 +22,7 @@ import type {
   LlmModelReasoningInfo,
   LlmProviderInfo,
   LlmResolvedModelInfo,
+  SystemPromptUpdate,
 } from '@deepseek-ai/dsh-llm'
 
 class ScriptedAdapter extends LlmAdapter {
@@ -61,6 +62,7 @@ class CatalogAdapter extends ScriptedAdapter {
     private readonly reasoning: Readonly<Record<string, LlmModelReasoningInfo>> = {},
     private readonly defaultMaxTokens: Readonly<Record<string, number>> = {},
     private readonly presentations: Readonly<Record<string, LlmModelInfo['presentation']>> = {},
+    private readonly systemPromptUpdate: Readonly<Record<string, string>> = {},
   ) {
     super(SCRIPT)
   }
@@ -85,6 +87,9 @@ class CatalogAdapter extends ScriptedAdapter {
       ...this.reasoning[model] === undefined ? {} : { reasoning: this.reasoning[model] },
       ...this.defaultMaxTokens[model] === undefined ? {} : { defaultMaxTokens: this.defaultMaxTokens[model] },
       ...this.presentations[model] === undefined ? {} : { presentation: this.presentations[model] },
+      ...this.systemPromptUpdate[model] === undefined
+        ? {}
+        : { systemPromptUpdate: this.systemPromptUpdate[model] as SystemPromptUpdate },
     })
   }
 }
@@ -1157,6 +1162,30 @@ describe('LlmRuntime', () => {
         .rejects.toMatchObject({ code: 'INVALID_MODEL_CONTEXT' })
     },
   )
+
+  it('captures a declared in-history system prompt update mode and rejects any other mode', async () => {
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    ctx.llm.registerAdapter(['route'], new CatalogAdapter(
+      { id: 'route', name: 'Route' },
+      [],
+      {},
+      {},
+      {},
+      {},
+      { capable: 'in-history', bogus: 'leading' },
+    ))
+    await expect(ctx.llm.resolveModelInfo('route', 'capable'))
+      .resolves.toMatchObject({ systemPromptUpdate: 'in-history' })
+    await expect(ctx.llm.resolveModelInfo('route', 'plain'))
+      .resolves.not.toHaveProperty('systemPromptUpdate')
+    await expect(ctx.llm.resolveModelInfo('route', 'bogus'))
+      .rejects.toMatchObject({ code: 'INVALID_MODEL_INFO' })
+    const capable = await ctx.llm.prepareCall({ provider: 'route', model: 'capable' })
+    expect(capable.systemPromptUpdate).toBe('in-history')
+    const plain = await ctx.llm.prepareCall({ provider: 'route', model: 'plain' })
+    expect(plain).not.toHaveProperty('systemPromptUpdate')
+  })
 
   it.each([
     [{ id: 1, name: 'Name' }, 'non-string id'],

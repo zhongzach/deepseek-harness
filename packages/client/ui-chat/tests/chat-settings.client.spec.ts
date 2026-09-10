@@ -21,9 +21,11 @@ describe('ui-chat Host settings', () => {
     await fiber.await()
     const ns = CHAT_SETTINGS_NAMESPACE
 
-    expect(ctx.settings.get(ns)).toEqual({ transcriptView: DEFAULT_TRANSCRIPT_VIEW_MODE })
+    expect(ctx.settings.get(ns)).toEqual({ transcriptView: DEFAULT_TRANSCRIPT_VIEW_MODE, showTurnMetrics: true })
     await ctx.settings.update(ns, { transcriptView: 'normal' })
-    expect(ctx.settings.get(ns)).toEqual({ transcriptView: 'normal' })
+    expect(ctx.settings.get(ns)).toEqual({ transcriptView: 'normal', showTurnMetrics: true })
+    await ctx.settings.update(ns, { showTurnMetrics: false })
+    expect(ctx.settings.get(ns)).toEqual({ transcriptView: 'normal', showTurnMetrics: false })
     await expect(ctx.settings.update(ns, { transcriptView: 'dense' })).rejects.toThrow()
 
     await fiber.dispose()

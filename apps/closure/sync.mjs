@@ -60,6 +60,7 @@ const next = {
   name: closureName,
   private: true,
   version: '0.0.1',
+  license: 'MIT',
   type: 'module',
   description:
     'Dependency-only deploy root: the dsh CLI plus every workspace package it reaches through dependencies and peer dependencies, so `pnpm deploy` of this package yields a tree that boots with plain Node. Regenerate with `node apps/closure/sync.mjs`. Not a build target.',

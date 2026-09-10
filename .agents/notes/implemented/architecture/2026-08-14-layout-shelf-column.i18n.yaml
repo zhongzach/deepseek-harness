@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-14-layout-shelf-column.md
-2026-08-14-layout-shelf-column.md: 1e5cef873a7667bc7b217388bcf35dac3e57aa57
-2026-08-14-layout-shelf-column.zh.md: f65b9aa7e26892e3d74f3b33296803abfd19b562
+2026-08-14-layout-shelf-column.md: 03cafe2bdf7cf0832e5663000ef1421aad862a1a
+2026-08-14-layout-shelf-column.zh.md: 9fc27007afa775bdac2caeae8f844f68cba232f9

@@ -5,6 +5,7 @@ import {
   checkDshFamilyVersion,
   checkExperimentalDependencyIsolation,
   checkExperimentalManifest,
+  checkWorkspaceManifest,
   expectedDshPackageFiles,
   type WorkspaceManifest,
 } from './check-workspace-constraints.ts'
@@ -12,6 +13,14 @@ import {
 const experimental: WorkspaceManifest = {
   dir: 'packages/experimental/prototype',
   manifest: { name: '@deepseek-ai/dsh-experimental-prototype', private: true },
+}
+
+const publicExperimental: WorkspaceManifest = {
+  dir: 'packages/experimental/agent-team',
+  manifest: {
+    name: '@deepseek-ai/dsh-experimental-agent-team',
+    publishConfig: { access: 'public' },
+  },
 }
 
 describe('experimental workspace constraints', () => {
@@ -32,6 +41,20 @@ describe('experimental workspace constraints', () => {
     })).toEqual([
       '@deepseek-ai/dsh-experimental-prototype: experimental package must set "private": true',
       '@deepseek-ai/dsh-experimental-prototype: experimental package must omit publishConfig',
+    ])
+  })
+
+  it('requires public metadata only for the Agent Teams exceptions', () => {
+    expect(checkExperimentalManifest(publicExperimental)).toEqual([])
+    expect(checkExperimentalManifest({
+      ...publicExperimental,
+      manifest: {
+        name: '@deepseek-ai/dsh-experimental-agent-team',
+        private: true,
+      },
+    })).toEqual([
+      '@deepseek-ai/dsh-experimental-agent-team: public experimental package must not set "private": true',
+      '@deepseek-ai/dsh-experimental-agent-team: public experimental package must set publishConfig.access to "public"',
     ])
   })
 
@@ -78,6 +101,21 @@ describe('experimental workspace constraints', () => {
 })
 
 describe('dsh family version coherence', () => {
+  it('keeps the exact private deployment root outside publication and shared version rules', () => {
+    const manifest = { name: '@deepseek-ai/dsh-closure', version: '0.0.1', private: true }
+    expect(checkWorkspaceManifest({ dir: 'apps/closure', manifest })).toEqual([])
+    expect(checkDshFamilyVersion(manifest, '0.1.5-alpha.2', 'apps/closure')).toBeUndefined()
+    expect(checkDshFamilyVersion(manifest, '0.1.5-alpha.2', 'apps/another')).toMatch(/must match root/)
+    expect(checkWorkspaceManifest({ dir: 'apps/closure', manifest: { ...manifest, private: false } }))
+      .toContainEqual(expect.stringContaining('@deepseek-ai/dsh-closure: deployment-only root must set "private": true'))
+    expect(checkWorkspaceManifest({ dir: 'apps/closure', manifest: { ...manifest, publishConfig: { access: 'public' } } }))
+      .toContainEqual(expect.stringContaining('@deepseek-ai/dsh-closure: deployment-only root must omit publishConfig'))
+    expect(checkWorkspaceManifest({ dir: 'apps/closure', manifest: { ...manifest, name: '@deepseek-ai/dsh-other' } }))
+      .toContainEqual(expect.stringContaining('apps/closure: deployment-only root must be named @deepseek-ai/dsh-closure'))
+    expect(checkWorkspaceManifest({ dir: 'apps/another', manifest }))
+      .toContainEqual(expect.stringContaining('@deepseek-ai/dsh-closure: release member must not set "private": true'))
+  })
+
   it('rejects a package carrying a stale shared version', () => {
     expect(checkDshFamilyVersion(
       { name: '@deepseek-ai/dsh-http-proxy', version: '0.1.2-alpha.5' },
@@ -102,7 +140,7 @@ describe('dsh family version coherence', () => {
   it('leaves other sequences to their own version lines', () => {
     expect(checkDshFamilyVersion({ name: '@deepseek-ai/cordis', version: '4.0.1' }, '0.1.2-rc.1')).toBeUndefined()
     expect(checkDshFamilyVersion(
-      { name: '@deepseek-ai/node-addon-landlock-run', version: '0.1.1' },
+      { name: '@deepseek-ai/node-addon-system', version: '0.1.1' },
       '0.1.2-rc.1',
     )).toBeUndefined()
     expect(checkDshFamilyVersion({ version: '0.1.2-alpha.5' }, '0.1.2-rc.1')).toBeUndefined()
@@ -110,6 +148,16 @@ describe('dsh family version coherence', () => {
 })
 
 describe('package payload constraints', () => {
+  it('ships the standalone input-trigger controller with its public companion export', () => {
+    expect(expectedDshPackageFiles({
+      name: '@deepseek-ai/dsh-client-ui-input-trigger',
+      exports: {
+        './client': { default: './lib/client.js' },
+        './client/controller': { default: './lib/controller.js' },
+      },
+    })).toEqual(['lib/index.js', 'lib/client.js', 'lib/controller.js', 'lib/types/**/*.d.ts'])
+  })
+
   it('includes a declared profile patch without a package-name allowlist', () => {
     expect(expectedDshPackageFiles({
       name: '@deepseek-ai/dsh-private-profile',

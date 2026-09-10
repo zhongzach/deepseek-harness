@@ -20,6 +20,7 @@ import { join, matchesGlob } from 'node:path'
 import { parseArgs } from 'node:util'
 import { releaseFamily, type ReleaseFamily, type ReleaseMember } from './families.ts'
 import { capture, isEntry } from './process.ts'
+import { deploymentOnlyPackageName } from './deployment-policy.ts'
 
 /** Files npm publishes whether or not `files` lists them. */
 const ALWAYS_PUBLISHED = ['package.json', 'README*', 'LICENSE*', 'LICENCE*'] as const
@@ -48,7 +49,7 @@ interface PlannedVersion {
   readonly tag: string | undefined
 }
 
-/** One private dsh package whose version follows the publishable family. */
+/** One private dsh workspace whose version follows the publishable family. */
 interface PrivateDshVersion {
   /** Repository-relative manifest path. */
   readonly manifestPath: string
@@ -243,13 +244,13 @@ function rootVersion(root: string): string {
 }
 
 /**
- * Discover private package manifests that share the dsh version without joining
- * its publish set.
+ * Discover private package and application manifests that share the dsh version
+ * without joining its publish set.
  * @param root - repository root.
- * @returns Private package manifests sorted by path.
+ * @returns Private workspace manifests sorted by path.
  */
 function privateDshVersions(root: string): PrivateDshVersion[] {
-  return globSync('packages/*/*/package.json', { cwd: root })
+  return globSync(['apps/*/package.json', 'packages/*/*/package.json'], { cwd: root })
     .map(path => path.replaceAll('\\', '/'))
     .sort()
     .flatMap((manifestPath) => {
@@ -259,6 +260,9 @@ function privateDshVersions(root: string): PrivateDshVersion[] {
       }
       const manifest = parsed as Record<string, unknown>
       if (manifest.private !== true) return []
+      const directory = manifestPath.slice(0, -'/package.json'.length)
+      const deploymentName = deploymentOnlyPackageName(directory)
+      if (deploymentName !== undefined && manifest.name === deploymentName) return []
       if (typeof manifest.version !== 'string') {
         throw new Error(`${manifestPath} must declare a string version`)
       }

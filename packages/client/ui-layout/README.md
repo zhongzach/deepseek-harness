@@ -1,5 +1,5 @@
 ---
-description: "Shell layout for the Web GUI: four-column AppFrame, product titlebar, drag handles, panel geometry, and theme presentation."
+description: "Shell layout for the Web GUI: sidebar, main content, optional product shelf and right panel, product titlebar, panel geometry, and theme presentation."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package provides a four-column AppFrame (sidebar, conversation, optional product shelf, details), a product titlebar slot, resizable panels, and `ctx.layout` geometry actions. When space runs out, the concession chain shrinks shelf then details and finally closes details. The theme presenter projects resolved tokens, content font size, and `theme-color` metadata onto the document. Panel geometry is transient and resets on reload.
+This package provides the Web GUI's AppFrame with sidebar, main content, an optional product shelf, and a right-panel track. The shelf concedes width before the right panel to protect the center; the shelf stays available for book navigation. Products can supply a titlebar. The theme presenter owns color scheme, alias tokens, content font size, and document metadata. Layout state resets on reload.
 
 ## Table of Contents
 
@@ -25,7 +25,9 @@ This package provides a four-column AppFrame (sidebar, conversation, optional pr
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount this plugin at the root slot. Products register `shelf` and `titlebar` alongside the standard columns; absent occupants leave those regions empty. Users resize visible panels through their handles. A closed sidebar retains a 56px control rail; shelf and details close to zero width while their mounted subtrees retain state.
+Products register `shelf` and `titlebar` alongside the standard columns; absent occupants leave those regions empty. The shelf opens at 300px and resizes up to 1040px; its subtree stays mounted when closed. The sidebar spans 264–420px, defaults to 280px, and retains a 56px collapsed rail. Below 1024px it collapses automatically, and opening the right panel collapses a manually expanded sidebar. The right panel first opens at 45% of the viewport, retains the user's pixel preference, and caps at 70%. The frame concedes shelf width first, then reduces or closes the right track to protect 400px for the center. Dragging has no transition delay; the right handle is absent while closed or fullscreen.
+
+Global panels occupy the root-scoped `main` keyed slot; `conversation` is the reserved key for the Conversation. `ctx.layout.selectPanel(id)` selects a registered panel, and `null` selects the Conversation without changing the current Session. No global panel is registered by the shipped composition.
 
 ### Theme presentation
 
@@ -39,7 +41,9 @@ The presenter consumes resolved theme snapshots and projects them onto the docum
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-One `register()` contributes `AppFrame` and declares `sidebar`, `conversation`, `shelf`, `details`, `shell.overlay`, and `titlebar`. Its transient store starts sidebar at the default width and both auxiliary panels closed. All column subtrees stay mounted; the strict details entry uses `SessionProvider`. Document title combines the selected Session title with the preboot presentation title, build title, or localized fallback. The theme presenter separately applies resolved tokens and derives its metadata color from the rendered body.
+`selectPanel(id)` checks the live `main` registry before changing selection; an absent key throws and leaves the current panel intact. `beginNavigation()` returns an abort signal for an asynchronous UI navigation. A later call, a valid panel selection (including repeated selection), or layout disposal aborts that signal without cancelling underlying Session creation. Consumers check the signal before committing navigation or moving drafts.
+
+One registration declares six child slots and binds `ctx.layout` methods `selectPanel`, `toggleSidebar`, `openRightbar(track, fullscreen)`, and `closeRightbar`. One root store separates `panelInfo` selection from `layoutInfo` measurements, width preferences, and presentation reports. `usePanelInfo` subscribes to the stable selection object; AppFrame subscribes to the stable layout object. The `rightbar` owner supplies actual `width`, `viewportWidth`, and normal-presentation eligibility `canShow`; insufficient room causes a deterministic close, never automatic reopening on widening. Fullscreen hides the width handle without releasing a track the occupant retains. AppFrame keeps the column containers mounted. The right column's root controller renders `rightbar.session` through `SessionProvider` only while the Conversation is selected; its unmount report releases the track. The independent title component uses the selected Session title only while the Conversation is visible, with the build-configured product title or localized `common.brand.localBuild` as its fallback; locale revisions update that fallback. The theme presenter is a second effect: pure DOM writes from resolved snapshots — initial state through the getter once, then event-driven only, with no React path. It applies palette, font-size, and token variables before measuring the rendered background as the single color authority. Fullscreen presentation suppresses grid and handle transitions; its occupant reports the new columns only after covering the frame. Fullscreen exit keeps transitions suppressed while the frame installs its destination geometry: close removes the right track, and restore retains it. Subsequent normal geometry actions restore ordinary transitions. The independent shelf uses its own width preference and collapse state, and `titlebar` receives product window controls.
 
 </details>
 
@@ -51,7 +55,8 @@ One `register()` contributes `AppFrame` and declares `sidebar`, `conversation`, 
 Read these pages when the layout surface is not enough. They move from the frame to the columns it renders and the theme it presents.
 
 - [ui-sidebar](../ui-sidebar/README.md) — occupies the `sidebar` column and its seats.
-- [ui-conversation](../ui-conversation/README.md) — occupies the `conversation` and `details` columns.
+- [ui-conversation](../ui-conversation/README.md) — occupies the `main` key `conversation`.
+- [ui-sidebar-right](../ui-sidebar-right/README.md) — occupies the `rightbar` column with one docking surface per session.
 - [ui-theme](../ui-theme/README.md) — the theme seam whose resolved snapshots the presenter consumes.
 - [Web client architecture](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.md) — how browser plugin rows load and register slots.
 
@@ -73,8 +78,9 @@ None; this package neither assembles nor sends a provider request.
 
 These limits define the current layout behavior. They are current package constraints, not a general window-manager comparison or a task backlog.
 
-- **Panel geometry is transient** — reload restores the sidebar default and details closed; switching between distinct Session ids also closes details and forgets its dragged width, while unselected surfaces render details at zero width without modifying geometry.
-- **Concession-chain auto-close derives a zero width without touching the preferred width** — the panel restores itself when the window widens; consumers must not read the stored details width as the rendered truth.
+- **Panel geometry is transient** — reload restores the sidebar default and the right panel hidden; each dragged width is one frame-wide preference, not a per-Session fact.
+- **Extremely narrow windows** — after the right panel closes, the center may still fall below 400px; the left 56px rail remains.
+- **Track and panel travel on one shared curve** — the frame's track transition and the occupant's slide read the same duration and easing variables; an occupant that used its own would detach the panel's edge from the conversation's while squeezing.
 - **No scroll anchoring during squeeze reflow** — layout changes may move the reader's viewport.
 
 <a id="dev-note"></a>
@@ -87,4 +93,4 @@ None.
 
 </details>
 
-**Runtime invariant:** No companion is published. The shell viewing-state store behind ctx.layout emits no cordis events; clamp/prune/concession-chain sequencing is asserted directly by this package's columns and service specs.
+**Runtime invariant:** No companion is published. The shell viewing-state store behind ctx.layout emits no cordis events; clamp and track sequencing is asserted directly by this package's columns and service specs.

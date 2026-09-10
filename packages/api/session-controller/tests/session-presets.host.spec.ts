@@ -67,9 +67,8 @@ async function harness(presets?: readonly string[]) {
         options.meta === undefined ? {} : { meta: options.meta },
       )
       const agent = stubAgent(session)
-      const agentCtx = ctx.extend({ agent })
-      ;(agent as { ctx?: Context }).ctx = agentCtx
-      await options.setup?.(agentCtx)
+      ;(agent as { ctx?: Context }).ctx = ctx
+      await options.setup?.(ctx, agent)
       const unregister = ctx.agents.register(agent)
       return { agent, dispose: () => { unregister(); return Promise.resolve() } }
     },
@@ -106,16 +105,16 @@ async function coldHarness(started = false, raceStartsTurn = false) {
   f.factory.resume = async (_ownerCtx, options) => {
     resumeCount += 1
     const session = f.ctx.sessions.prepare(options.resumeSessionId, {
-      seedSource: 'persistence',
-      seed: [...events],
-      meta: header,
+      eventState: 'detached',
+      seed: structuredClone([...events]),
+      meta: { ...header },
       inheritedEventCount: SessionLogOffset(0),
     })
     if (raceStartsTurn) session.append('turn/start', { turn: 1 })
     const agent = stubAgent(session)
     const agentCtx = f.ctx.extend({ agent })
     ;(agent as { ctx?: Context }).ctx = agentCtx
-    const commit = await options.setup?.(agentCtx)
+    const commit = await options.setup?.(agentCtx, agent)
     commit?.commit()
     const detach = f.ctx.sessions.enter(session)
     f.ctx.sessions.announce(session)
@@ -127,7 +126,7 @@ async function coldHarness(started = false, raceStartsTurn = false) {
   const controller = createSessionTestController(f.ctx, {
     defaultModelSelection: () => ({ provider: 'test', model: 'test-model' }), cwd: f.cwd,
   })
-  return { ...f, controller, id, readEvents: () => events, unload: () => unload(), resumes: () => resumeCount }
+  return { ...f, controller, id, readEvents: () => events, unload: () => { unload() }, resumes: () => resumeCount }
 }
 
 describe('blank stored Session with an unavailable preset', () => {
@@ -136,7 +135,7 @@ describe('blank stored Session with an unavailable preset', () => {
     const result = entry === 'create'
       ? await f.remote.create({ sessionId: f.id })
       : await f.controller.resolveAgent(f.id)
-    expect('error' in result).toBe(false)
+    expect(result).not.toHaveProperty('error')
     const switches = () => f.readEvents().filter(event => event.type === 'agent-preset/selected')
     expect(switches()).toHaveLength(1)
     expect(switches()[0]).toMatchObject({ data: { agentPreset: 'standard' } })

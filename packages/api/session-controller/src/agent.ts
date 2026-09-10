@@ -376,12 +376,14 @@ export class ApiSessionAgentController {
     readonly setup: AgentSetup
   }> {
     const presets = this.ctx.get('agentPresets')
-    if (presets === undefined) return { setup: (agentCtx) => { this.installSelection(agentCtx) } }
+    if (presets === undefined) {
+      return { setup: (_agentCtx, agent) => { this.installSelection(agent) } }
+    }
     const resolvedId = (await presets.resolve(presetId)).id
     return {
       agentPreset: resolvedId,
-      setup: async (agentCtx) => {
-        this.installSelection(agentCtx)
+      setup: async (agentCtx, agent) => {
+        this.installSelection(agent)
         await presets.mount(agentCtx, resolvedId)
       },
     }
@@ -396,15 +398,14 @@ export class ApiSessionAgentController {
         || observation.events.some(event => event.type === 'turn/start')) throw error
       const replacement = await this.composeAgent(undefined)
       return {
-        setup: async (agentCtx) => {
-          const session = agentCtx.agent?.session
-          if (session === undefined) throw new Error('api-session: Agent setup has no scoped Session')
+        setup: async (agentCtx, agent) => {
+          const session = agent.session
           // The actual resumed artifact must still be blank after observation and asynchronous setup.
           const assertBlank = (): void => {
             if (session.snapshotEvents().some(event => event.type === 'turn/start')) throw error
           }
           assertBlank()
-          const setupCommit = await replacement.setup(agentCtx)
+          const setupCommit = await replacement.setup(agentCtx, agent)
           return {
             commit: () => {
               assertBlank()
@@ -523,9 +524,7 @@ export class ApiSessionAgentController {
     return { provider, model }
   }
 
-  private installSelection(agentCtx: Context): void {
-    const agent = agentCtx.agent
-    if (agent === undefined) throw new Error('api-session: Agent setup has no scoped Agent')
+  private installSelection(agent: Agent): void {
     this.selectionFor(agent)
   }
 

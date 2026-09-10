@@ -10,10 +10,10 @@ Web 外壳框架采用三列网格：侧栏｜中间栏｜详情栏。一个产�
 
 ## 决策
 
-`ui-layout` 在中间栏与详情栏之间增加第四列 `shelf`：
+`ui-layout` 在 `main` 内容与标准 `rightbar` 轨道之间提供独立的 `shelf` 列：
 
-- **Slot**：`'shelf': { kind: 'single', scope: 'session' }`，由声明其它三列的同一个根 `register()` 调用声明，owner share 为空（sessionId 作为框架标准 prop 传入）。`ctx.layout` 增加 `openShelf()`／`closeShelf()`；布局存储增加 `shelf` 宽度偏好（0 表示关闭，`SHELF_DEFAULT = 400`，拖动范围为 300–560）。
-- **退让链**：先收窄 shelf，再收窄详情栏，最后自动关闭详情栏，以保持中间栏宽度不小于 `CENTER_MIN`。Shelf 永不自动关闭——它是与侧栏同等对待的主要产品面板。Shelf 偏好为 0（开发环境默认值）时，退让链完全退化为原有三列行为，因此开发 GUI 逐字节不变：新增轨道渲染为 0px，收起的列不绘制边框。
+- **Slot**：`'shelf': { kind: 'single', scope: 'session' }`，由根注册声明，owner share 为空（sessionId 作为框架标准 prop 传入）。`ctx.layout` 暴露 `openShelf()`／`closeShelf()`／`toggleShelf()`／`resizeShelf(px)`；`layoutInfo` 保留书架宽度偏好（0 表示关闭，`SHELF_DEFAULT = 300`，拖动范围为 300–1040）。
+- **退让链**：先收窄 shelf，再收窄右轨道，最后关闭右轨道，以保持中间栏宽度不小于 `CENTER_MIN`。Shelf 永不自动关闭——它是与侧栏同等对待的主要产品面板。Shelf 偏好为 0（默认值）时，计算采用标准 sidebar/main/rightbar 几何：新增轨道渲染为 0px，收起的列不绘制边框。
 - **占用方式**：已交付的行均不占用 `shelf`。产品组合（例如 NovelStudio 外壳的 `--patch` overlay）会向其中插入自己的客户端插件。开发用 web-app 组合包不注册 shelf 插件，因此开发界面保持不变。
 
 ## 考虑过的替代方案
@@ -22,7 +22,7 @@ Web 外壳框架采用三列网格：侧栏｜中间栏｜详情栏。一个产�
 
 ## 后果
 
-- 开发 GUI 在视觉上保持不变：全新存储状态下 `shelf: 0`，第四条网格轨道为 0px，`data-shelf-collapsed` 会抑制边框。
+- 未占用的 shelf 不预留宽度：全新 `layoutInfo` 中 `shelf: 0`，`data-shelf-collapsed` 会抑制边框。
 - 产品面板可以驻留在真正的右侧栏中，与工具详情并排打开，且各自拥有拖动手柄。
-- 详情栏行为（会话变更时自动关闭、拖动语义、退让规则）保持不变；shelf 刻意不在会话变更时自动关闭。
-- Shelf 插件包（`@deepseek-ai/dsh-client-ui-novel-shelf`）是后续工作；它通过 `slots.inject` 注册到 `shelf`，且只随产品组合交付。
+- 标准 rightbar 所有者控制展开与全屏呈现；独立 shelf 不在会话变更时自动关闭。
+- 产品组合将自己的书架插件注册到 `shelf`；官方 Web 组合将该槽位留空。
