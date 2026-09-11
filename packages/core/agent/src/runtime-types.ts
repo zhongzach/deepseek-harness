@@ -362,6 +362,22 @@ declare module '@deepseek-ai/cordis' {
      */
     'agent/request-error'(this: Scoped<Agent>, payload: { agent: Agent; turn: number; step: number; provider: string; failure: LlmFailure; retryPolicy: ResolvedRetryPolicy | undefined; signal: AbortSignal }, next: () => Promise<RequestErrorAction>): Promise<RequestErrorAction>
     /**
+     * Recover a provider output limit after the partial Assistant message is logged.
+     * A retry requires a new or replaced model-visible context; unchanged requests
+     * are rejected. Partial tool calls are not executed. Without a recovery owner,
+     * the step and turn retain the native max-tokens outcome.
+     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.
+     * @param payload.agent - the agent owning the partial output.
+     * @param payload.turn - the current turn.
+     * @param payload.step - the current step.
+     * @param payload.provider - the actual provider.
+     * @param payload.model - the actual model.
+     * @param payload.signal - cancellation that wins over recovery.
+     * @param next - delegate to the next policy; the default leaves the limit terminal.
+     * @mode waterfall
+     */
+    'agent/output-limit'(this: Scoped<Agent>, payload: { agent: Agent; turn: number; step: number; provider: string; model: string; signal: AbortSignal }, next: () => Promise<RequestErrorAction>): Promise<RequestErrorAction>
+    /**
      * Process-local assistant-stream publication. Chunk frames are transient;
      * the loop appends one final v2 `assistant/message` or `assistant/attempt`
      * with the same stream before a committed end frame.

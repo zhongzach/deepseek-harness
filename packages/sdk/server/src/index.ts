@@ -13,6 +13,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { Readable, Writable } from 'node:stream'
 import Schema from '@deepseek-ai/schemastery'
 import { JsonRpcLineTransport } from '@deepseek-ai/dsh-sdk-protocol'
+import type {} from '@deepseek-ai/dsh-cmdline'
 import { HarnessSdkJsonRpcServer } from './server.ts'
 
 export * from './server.ts'
@@ -93,10 +94,32 @@ export function apply(ctx: Context, config: JsonRpcConfig): void {
   })
 
   ctx.effect(() => {
-    transport.start()
+    const loader = ctx.get('loader')
+    const ready = ctx.get('appReady')
+    let stopped = false
+    let cancelReady = (): void => {}
+    let cancelStartup!: () => void
+    const cancelled = new Promise<void>((resolve) => { cancelStartup = resolve })
+    // Keep stdin buffered until the final Loader generation owns this server.
+    // A superseded fiber must not consume initialize and resume on a dead ctx.
+    let startup = Promise.resolve()
+    if (ready !== undefined) {
+      cancelReady = ready.onReady(() => { if (!stopped) transport.start() })
+    } else if (loader === undefined) {
+      transport.start()
+    } else {
+      startup = Promise.race([loader.await(), cancelled]).then(() => { if (!stopped) transport.start() })
+    }
+    void startup.catch(() => {
+      if (!stopped) ctx.logger.error('SDK transport could not start because Loader settlement failed')
+    })
     return async () => {
-      await server.shutdown()
-      transport.close()
+      stopped = true
+      cancelReady()
+      cancelStartup()
+      // Startup failure has already been reported; disposal still drains owned work.
+      await startup.catch(() => {})
+      try { await server.shutdown() } finally { transport.close() }
     }
   }, 'jsonrpc.serve')
 }

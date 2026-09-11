@@ -1,0 +1,9 @@
+version: 1
+scenario: max-tokens-continue-pwsh
+profile: sdk
+composition: default
+recording: authored
+platform: pwsh
+header:
+  class: sdk-pwsh
+  pin: true

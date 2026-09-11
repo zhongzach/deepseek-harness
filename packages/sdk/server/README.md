@@ -29,6 +29,8 @@ Mount this plugin when a runtime must serve SDK clients: add it to a `cordis.yml
 
 ### Wiring
 
+The stdio transport starts only after the launcher's `appReady` signal. A Loader-only embedding waits for tree settlement; a bare embedding starts immediately. Unloading the server cancels pending startup, so a discarded server cannot consume initialization input or run a fallback adapter on a disposed context.
+
 The plugin creates one agent per `sessionId` on first use. A registered model adapter wins the route; an unowned `deepseek-official` route mounts the DeepSeek adapter, and any other unowned provider fails initialization. The selected adapter resolves the exact model and optional reasoning effort before initialization succeeds.
 
 ### Configuration

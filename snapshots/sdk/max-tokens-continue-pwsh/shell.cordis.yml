@@ -1,0 +1,9 @@
+# Pin the PowerShell-facing tool set on every host with pwsh available.
+- id: tool-bash
+  disabled: true
+- id: tool-pwsh
+  disabled: false
+- id: bash-sandbox
+  disabled: true
+- id: pwsh-sandbox
+  disabled: false

@@ -481,7 +481,21 @@ export class ReactLoopAgent implements Agent {
             stream: live.stream,
           }, { surfaceOp: 'append' }).seq,
         )
-        if (finish.kind === 'max-tokens') return { kind: 'max-tokens' }
+        if (finish.kind === 'max-tokens') {
+          const generation = this.session.surface.replaceGeneration
+          const size = this.session.surface.nodes.length
+          const action = await this.dispatch.waterfall('agent/output-limit', {
+            turn, step, provider: request.provider, model: request.model, signal,
+          }, () => Promise.resolve<RequestErrorAction>(undefined))
+          signal.throwIfAborted()
+          if (action?.kind === 'retry') {
+            if (generation === this.session.surface.replaceGeneration && size === this.session.surface.nodes.length) {
+              throw new LlmError('output-limit recovery must change logged model context before retrying', 'INVALID_RECOVERY')
+            }
+            continue
+          }
+          return { kind: 'max-tokens' }
+        }
 
         const toolCalls = message.content.filter(block => block.type === 'tool-call')
         if (toolCalls.length === 0) return { kind: 'completed' }

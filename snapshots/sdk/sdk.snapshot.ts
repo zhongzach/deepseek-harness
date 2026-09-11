@@ -61,6 +61,7 @@ import {
   type SdkPromptContentBlock,
 } from '@deepseek-ai/dsh-sdk-client'
 import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
+import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
 
 const corpusRoot = fileURLToPath(new URL('../', import.meta.url))
 
@@ -124,6 +125,9 @@ interface SdkAssertions {
 }
 
 const SDK_ASSERTIONS: Readonly<Record<string, SdkAssertions>> = {
+  'max-tokens-continue-pwsh': {
+    patches: [join(corpusRoot, 'sdk', 'max-tokens-continue-pwsh', 'shell.cordis.yml')],
+  },
   'ptc-turn': {
     patches: [fileURLToPath(new URL('./ptc-turn/runtime.cordis.yml', import.meta.url))],
     expectedFinalResponse: 'CODE_ONE+CODE_TWO',
@@ -342,7 +346,9 @@ async function hydrateReplayFixtures(scenario: CorpusScenario, cwd: string): Pro
   await mkdir(root, { recursive: true })
   return Promise.all((await fixtureFiles(scenario)).map(async (source) => {
     const destination = join(root, basename(source))
-    await writeFile(destination, (await readFile(source, 'utf8')).replaceAll('{{cwd}}', cwd))
+    // Windows accepts forward slashes, including inside JSON-encoded tool arguments.
+    // Raw backslashes would corrupt the fixture before the SDK runtime can start.
+    await writeFile(destination, (await readFile(source, 'utf8')).replaceAll('{{cwd}}', cwd.replaceAll('\\', '/')))
     return destination
   }))
 }
@@ -781,7 +787,9 @@ async function verifyHeaders(
 
 describe('TypeScript SDK snapshots over the jsonrpc runtime', () => {
   for (const scenario of sdkScenarios) {
-    const scenarioTest = recording
+    const unavailablePlatform = scenario.manifest.platform === 'posix' && process.platform === 'win32'
+      || scenario.manifest.platform === 'pwsh' && resolvePwshPath() === undefined
+    const scenarioTest = unavailablePlatform || recording
       && (scenario.manifest.recording === 'authored' || scenario.manifest.sessionFormat !== undefined)
       ? it.skip
       : it

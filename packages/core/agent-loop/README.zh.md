@@ -122,6 +122,8 @@ const handle = await ctx.agents.create({
 
 ### 失败与取消
 
+在 `max-tokens` 终态之后，策略可使用 `agent/output-limit` 将部分输出留存为上下文，并在同一步中请求下一次尝试。循环要求先记录上下文变化才能重试，且仍不分派截断的工具调用。没有恢复策略时，该步骤保持终态；取消会阻止再次调用。[决策说明](../../../.agents/notes/implemented/architecture/2026-09-12-output-limit-recovery.zh.md)解释了这种可选行为。
+
 最终适配器选择、分发与迭代失败以终止结束的形式到达并进入 `agent/request-error`；拥有恢复权的监听器返回 `{ kind: 'retry' }` 且不调用 `next()`，未被处理的失败则是终态。Middleware、结果处理、工具及其他扩展失败仍会抛出并直接关闭轮次——插件失败结束的是轮次，不是循环。取消后未分发的模型工具调用会收到合成的 `tool/call` 加 `ABORTED_BEFORE_DISPATCH` 结果对。[显式取消决策](../../../.agents/notes/implemented/architecture/2026-07-16-explicit-turn-cancellation.zh.md) 拥有信号生命周期。
 
 </details>

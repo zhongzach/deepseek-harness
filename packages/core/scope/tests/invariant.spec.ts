@@ -73,6 +73,7 @@ describe('scoped-dispatch invariants', () => {
         () => Promise.resolve(undefined),
       ],
       'agent/turn-stopping': [{ agent, turn: 1, signal }],
+      'agent/output-limit': [{ agent, turn: 1, step: 1, provider: 'p', model: 'm', signal }, () => Promise.resolve(undefined)],
       'agent/error': [{ agent, turn: 1, step: 0, error: new Error('x') }],
     } satisfies { [K in AgentEventName]: EventArgs<K> }
     const rows: Array<[string, unknown[]]> = [

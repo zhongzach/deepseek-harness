@@ -7,6 +7,7 @@ import { PassThrough, Writable } from 'node:stream'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
+import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { LlmAdapter } from '@deepseek-ai/dsh-llm'
@@ -38,6 +39,8 @@ interface ApplyHarness {
   sendRaw(text: string): void
   frames(): Record<string, unknown>[]
   exits(): number[]
+  inputListeners(): number
+  remount(): Promise<void>
   waitForFrame(predicate: (frame: Record<string, unknown>) => boolean, description: string): Promise<Record<string, unknown>>
   dispose(): Promise<void>
 }
@@ -135,6 +138,8 @@ async function mountPlugin(
     sendRaw: (text) => { input.write(text) },
     frames,
     exits: () => events.flatMap(event => event.kind === 'exit' ? [event.code] : []),
+    inputListeners: () => input.listenerCount('data'),
+    remount: async () => { await fiber.dispose(); await ctx.plugin(jsonrpc, { input, output, exit }) },
     waitForFrame: (predicate, description) => waitFor(() => frames().find(predicate), description),
     dispose: async () => { await ctx.fiber.dispose() },
   }
@@ -171,6 +176,63 @@ async function mockCompletionServer(): Promise<{ url: string; requests: unknown[
 }
 
 describe('dsh-sdk-jsonrpc-server plugin apply', () => {
+  it('admits buffered initialize only after launcher readiness and cancels the retired listener', async () => {
+    const storageDir = await mkdtemp(join(tmpdir(), 'dsh-jsonrpc-app-ready-'))
+    vi.stubEnv('DEEPSEEK_API_KEY', 'test-key')
+    const listeners = new Set<() => void>()
+    const harness = await mountPlugin(storageDir, { beforeServer: (ctx) => {
+      provideCmdline(ctx, { args: [], exit: () => {}, ready: {
+        onReady(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
+      } })
+    } })
+    try {
+      harness.send({ jsonrpc: '2.0', id: 'ready-init', method: 'initialize', params: { cwd: storageDir, provider: 'deepseek-official', model: 'apply-model' } })
+      expect(harness.inputListeners()).toBe(0)
+      expect(listeners.size).toBe(1)
+      await harness.remount()
+      expect(harness.inputListeners()).toBe(0)
+      expect(harness.frames()).toHaveLength(0)
+      expect(listeners.size).toBe(1)
+      for (const listener of [...listeners]) listener()
+      const response = await harness.waitForFrame(frame => frame.id === 'ready-init', 'initialize after launcher readiness')
+      expect(response.error).toBeUndefined()
+      expect(harness.frames().filter(frame => frame.id === 'ready-init')).toHaveLength(1)
+    } finally {
+      await harness.dispose()
+      expect(listeners.size).toBe(0)
+      await rm(storageDir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps initialize unread when its server is replaced before Loader settles', async () => {
+    const storageDir = await mkdtemp(join(tmpdir(), 'dsh-jsonrpc-replaced-startup-'))
+    vi.stubEnv('DEEPSEEK_API_KEY', 'test-key')
+    let release!: () => void
+    let started!: () => void
+    const ready = new Promise<void>((resolve) => { release = resolve })
+    const entered = new Promise<void>((resolve) => { started = resolve })
+    let entry: Promise<string> | undefined
+    const harness = await mountPlugin(storageDir, { beforeServer: async (ctx) => {
+      await ctx.plugin(Loader)
+      ctx.loader.builtins['delayed-replacement'] = { inject: ['llm'], async apply(owner: Context) {
+        started(); await ready; owner.llm.registerAdapter(['delayed-private'], new DelayedAdapter())
+      } }
+      entry = ctx.loader.create({ name: 'cordis:delayed-replacement' }); await entered
+    } })
+    try {
+      harness.send({ jsonrpc: '2.0', id: 'replacement-init', method: 'initialize', params: { cwd: storageDir, provider: 'deepseek-official', model: 'deepseek-v4-flash' } })
+      await harness.remount()
+      release(); await entry
+      const response = await harness.waitForFrame(frame => frame.id === 'replacement-init', 'initialize after replacement')
+      expect(response.error).toBeUndefined()
+      expect(response.result).toEqual({ serverInfo: { name: 'deepseek-harness-sdk-runtime', version: '0.0.1' } })
+      expect(harness.frames().filter(frame => frame.id === 'replacement-init')).toHaveLength(1)
+    } finally {
+      release(); await Promise.allSettled(entry ? [entry] : []); await harness.dispose()
+      await rm(storageDir, { recursive: true, force: true })
+    }
+  })
+
   it('serves initialize over the injected stdio pair', async () => {
     const storageDir = await mkdtemp(join(tmpdir(), 'dsh-jsonrpc-apply-init-'))
     vi.stubEnv('DEEPSEEK_API_KEY', 'test-key')
@@ -224,10 +286,8 @@ describe('dsh-sdk-jsonrpc-server plugin apply', () => {
       const probe = { jsonrpc: '2.0', id: 'probe-during-delay', method: 'nope/unknown' }
       harness.sendRaw(`${JSON.stringify(initialize)}\n${JSON.stringify(probe)}\n`)
 
-      // The transport processes independent requests concurrently. Receiving
-      // this later probe proves the preceding initialize handler has reached
-      // its Loader wait, without relying on a scheduler delay.
-      await harness.waitForFrame(frame => frame.id === 'probe-during-delay', 'probe while initialize waits')
+      // Both frames remain buffered while the Loader-owned readiness barrier is unresolved.
+      expect(harness.inputListeners()).toBe(0)
       expect(harness.frames().some(frame => frame.id === 'init-delayed')).toBe(false)
 
       release()
@@ -237,6 +297,7 @@ describe('dsh-sdk-jsonrpc-server plugin apply', () => {
         id: 'init-delayed',
         result: { serverInfo: { name: 'deepseek-harness-sdk-runtime' } },
       })
+      await harness.waitForFrame(frame => frame.id === 'probe-during-delay', 'probe after Loader settlement')
       expect(harness.ctx.llm.listProviders()).toContainEqual({ id: 'delayed-private', name: 'delayed-private' })
     } finally {
       release()

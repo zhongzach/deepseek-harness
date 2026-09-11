@@ -327,7 +327,9 @@ type PreStepDecision =
   }
 ```
 
-`agent/request-error` runs after a failed model step closes and before its turn closes. Listeners can repair durable state or await policy work while the failed turn's signal is still live. A handling listener returns `{ kind: 'retry' }` without calling `next()`; the default `undefined` leaves the failure terminal.
+`agent/request-error` runs after a failed model attempt is logged and before its step or turn closes. Listeners can repair durable state or await policy work while the failed turn's signal is still live. A handling listener returns `{ kind: 'retry' }` without calling `next()`; the default `undefined` leaves the failure terminal.
+
+`agent/output-limit` handles a provider's `max-tokens` finish after the partial Assistant message is logged and before any tool dispatch. Its retry action requires appended or replaced model-visible context; otherwise the loop rejects recovery with `INVALID_RECOVERY`. Without a handling listener, the native terminal limit remains. Cancellation wins after the callback. The policy owns partial-output retention, request changes and retry bounds; the loop neither raises budgets nor executes truncated tool calls.
 
 ```ts type-equiv
 /** Action returned by a listener that owns model-request recovery. */
@@ -1057,6 +1059,35 @@ One message entered the live inbox.
 ```
 
 Types: [Scoped](scope.md) · [UserMessage](session.md)
+
+Source: [`packages/core/agent/src/runtime-types.ts`](../../packages/core/agent/src/runtime-types.ts)
+
+<a id="agentoutput-limit--waterfall"></a>
+
+#### `agent/output-limit` — waterfall
+
+Recover a provider output limit after the partial Assistant message is logged. A retry requires a new or replaced model-visible context; unchanged requests are rejected. Partial tool calls are not executed. Without a recovery owner, the step and turn retain the native max-tokens outcome. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.
+
+```ts cordis-catalog
+/**
+ * Recover a provider output limit after the partial Assistant message is logged.
+ * A retry requires a new or replaced model-visible context; unchanged requests
+ * are rejected. Partial tool calls are not executed. Without a recovery owner,
+ * the step and turn retain the native max-tokens outcome.
+ * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.
+ * @param payload.agent - the agent owning the partial output.
+ * @param payload.turn - the current turn.
+ * @param payload.step - the current step.
+ * @param payload.provider - the actual provider.
+ * @param payload.model - the actual model.
+ * @param payload.signal - cancellation that wins over recovery.
+ * @param next - delegate to the next policy; the default leaves the limit terminal.
+ * @mode waterfall
+ */
+'agent/output-limit'(this: Scoped<Agent>, payload: { agent: Agent; turn: number; step: number; provider: string; model: string; signal: AbortSignal }, next: () => Promise<RequestErrorAction>): Promise<RequestErrorAction>
+```
+
+Types: [Scoped](scope.md)
 
 Source: [`packages/core/agent/src/runtime-types.ts`](../../packages/core/agent/src/runtime-types.ts)
 

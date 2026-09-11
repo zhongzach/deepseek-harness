@@ -122,6 +122,8 @@ Prompt admission uses the actual `prepareCall()` result, not the preceding `requ
 
 ### Failure and cancellation
 
+After a `max-tokens` finish, a policy can use `agent/output-limit` to retain partial output as context and request another attempt in the same step. The loop requires a logged context change before retrying and still does not dispatch truncated tool calls. Without a recovery owner, the step remains terminal; cancellation prevents another call. [The decision](../../../.agents/notes/implemented/architecture/2026-09-12-output-limit-recovery.md) explains the opt-in behavior.
+
 Final adapter selection, dispatch, and iteration failures arrive as terminal finishes and enter `agent/request-error`; a handling listener returns `{ kind: 'retry' }` without calling `next()`, while an unhandled failure is terminal. Middleware, result-processing, tool, and other extension failures remain thrown and close the turn directly — plugin failure ends the turn, not the loop. Undispatched model tool calls after cancellation receive synthetic `tool/call` plus `ABORTED_BEFORE_DISPATCH` result pairs. The [explicit-cancellation decision](../../../.agents/notes/implemented/architecture/2026-07-16-explicit-turn-cancellation.md) owns the signal lifecycle.
 
 </details>

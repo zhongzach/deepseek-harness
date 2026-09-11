@@ -3091,6 +3091,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'payload', description: '.message - the inserted message. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.' }],
   },
   {
+    name: 'agent/output-limit',
+    mode: 'waterfall',
+    signature: '\'agent/output-limit\'(this: Scoped<Agent>, payload: { agent: Agent; turn: number; step: number; provider: string; model: string; signal: AbortSignal }, next: () => Promise<RequestErrorAction>): Promise<RequestErrorAction>',
+    summary: 'Recover a provider output limit after the partial Assistant message is logged.',
+    description: 'Recover a provider output limit after the partial Assistant message is logged. A retry requires a new or replaced model-visible context; unchanged requests are rejected. Partial tool calls are not executed. Without a recovery owner, the step and turn retain the native max-tokens outcome. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.',
+    parameters: [{ name: 'payload', description: '.signal - cancellation that wins over recovery.' }, { name: 'next', description: 'delegate to the next policy; the default leaves the limit terminal.' }],
+  },
+  {
     name: 'agent/pre-step',
     mode: 'waterfall',
     signature: '\'agent/pre-step\'(this: Scoped<Agent>, payload: { agent: Agent; messages: UserMessage[]; turn: number; step: number; signal: AbortSignal }, next: () => Promise<PreStepDecision>): Promise<PreStepDecision>',

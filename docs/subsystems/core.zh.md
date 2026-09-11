@@ -335,7 +335,9 @@ type PreStepDecision =
   }
 ```
 
-`agent/request-error` 在失败的模型步骤关闭之后、其轮次关闭之前运行。listener 可以在失败轮次的 signal 仍然存活时修复持久状态或 await 策略工作。处理该错误的 listener 返回 `{ kind: 'retry' }` 且不调用 `next()`；默认的 `undefined` 会让失败保持终态。
+`agent/request-error` 在失败的模型尝试记入日志后、其步骤或轮次关闭前运行。listener 可以在失败轮次的 signal 仍然存活时修复持久状态或 await 策略工作。处理该错误的 listener 返回 `{ kind: 'retry' }` 且不调用 `next()`；默认的 `undefined` 会让失败保持终态。
+
+`agent/output-limit` 在部分 Assistant 消息记入日志后、工具分派前处理提供方的 `max-tokens` 终态。重试动作要求已追加或替换模型可见上下文，否则 loop 以 `INVALID_RECOVERY` 拒绝恢复。没有处理 listener 时保留原生长度终态。回调结束后仍以取消为先。策略负责片段留存、请求调整和重试次数；loop 不提高预算，也不执行截断的工具调用。
 
 ```ts type-equiv
 /** Action returned by a listener that owns model-request recovery. */
@@ -1067,6 +1069,35 @@ One message entered the live inbox.
 ```
 
 Types: [Scoped](scope.zh.md) · [UserMessage](session.zh.md)
+
+Source: [`packages/core/agent/src/runtime-types.ts`](../../packages/core/agent/src/runtime-types.ts)
+
+<a id="agentoutput-limit--waterfall"></a>
+
+#### `agent/output-limit` — waterfall
+
+Recover a provider output limit after the partial Assistant message is logged. A retry requires a new or replaced model-visible context; unchanged requests are rejected. Partial tool calls are not executed. Without a recovery owner, the step and turn retain the native max-tokens outcome. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.
+
+```ts cordis-catalog
+/**
+ * Recover a provider output limit after the partial Assistant message is logged.
+ * A retry requires a new or replaced model-visible context; unchanged requests
+ * are rejected. Partial tool calls are not executed. Without a recovery owner,
+ * the step and turn retain the native max-tokens outcome.
+ * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.
+ * @param payload.agent - the agent owning the partial output.
+ * @param payload.turn - the current turn.
+ * @param payload.step - the current step.
+ * @param payload.provider - the actual provider.
+ * @param payload.model - the actual model.
+ * @param payload.signal - cancellation that wins over recovery.
+ * @param next - delegate to the next policy; the default leaves the limit terminal.
+ * @mode waterfall
+ */
+'agent/output-limit'(this: Scoped<Agent>, payload: { agent: Agent; turn: number; step: number; provider: string; model: string; signal: AbortSignal }, next: () => Promise<RequestErrorAction>): Promise<RequestErrorAction>
+```
+
+Types: [Scoped](scope.zh.md)
 
 Source: [`packages/core/agent/src/runtime-types.ts`](../../packages/core/agent/src/runtime-types.ts)
 
