@@ -35,6 +35,8 @@ kind: "package-reference"
 
 模型发现可返回用于选择器分组的可选 `presentation` 元数据（`sectionId`、`sectionName`、`sectionOrder`），不会改变提供方/模型标识或请求序列化。`llm/response-meta` 向部署插件报告提供方的响应状态和响应头，不会把它们加入模型上下文。
 
+适配器可通过 `llm/fetch` 暴露请求级 HTTP。中间件接收所属的不可变模型请求与实际 HTTP 输入，必须只委派一次并保留取消及流的所有权。鉴权头和私有端点只在可信 Host 插件内流转；事件本身不增加模型上下文或持久数据。
+
 挂载服务与至少一个适配器，然后在每个请求中按名称选择提供方：
 
 ```yaml

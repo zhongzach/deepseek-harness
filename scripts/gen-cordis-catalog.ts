@@ -678,6 +678,7 @@ export const FOUNDATION_TYPE_NAMES: ReadonlySet<string> = new Set([
   'NonNullable',
   'Omit',
   'Partial',
+  'Parameters',
   'Pick',
   'Promise',
   'Record',
@@ -686,6 +687,7 @@ export const FOUNDATION_TYPE_NAMES: ReadonlySet<string> = new Set([
   'Request',
   'Response',
   'Uint8Array',
+  'fetch',
 ])
 
 /** Project types deliberately documented outside the subsystems catalog. */

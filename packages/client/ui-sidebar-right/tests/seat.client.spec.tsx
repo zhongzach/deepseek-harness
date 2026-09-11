@@ -279,6 +279,92 @@ describe('RightbarSeat presentation', () => {
 })
 
 describe('RightbarSeat fullscreen entry', () => {
+  it('Escape restores the wide panel without remounting or closing its tab', async () => {
+    const h = await mountSeat()
+    const tab = h.open()
+    const body = element(h.view.container, '[data-tab-body]')
+    const signal = h.bodies.get(tab.id)!.tab.signal
+    fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
+    expect(h.layout().mode).toBe('fullscreen')
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(h.layout().mode).toBe('push')
+    expect(h.layout().expanded).toBe(true)
+    expect(element(h.view.container, '[data-tab-body]')).toBe(body)
+    expect(h.layout().tabs[tab.id]).toBeDefined()
+    expect(signal.aborted).toBe(false)
+    const restored = h.instance.getSnapshot()
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(h.instance.getSnapshot()).toBe(restored)
+  })
+
+  it('Escape returns to the conversation on an automatically fullscreen narrow viewport', async () => {
+    const h = await mountSeat(500, false)
+    const tab = h.open(), signal = h.bodies.get(tab.id)!.tab.signal
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(h.layout()).toMatchObject({ expanded: false, mode: 'push' })
+    expect(h.layout().tabs[tab.id]).toBeDefined()
+    expect(signal.aborted).toBe(false)
+    h.view.update({ width: 420, viewportWidth: 1440, canShow: true })
+    expect(h.layout().expanded).toBe(false)
+  })
+
+  it.each([{ isComposing: true }, { keyCode: 229 }, { repeat: true }, { ctrlKey: true }, { altKey: true }, { metaKey: true }, { shiftKey: true }])('does not handle Escape with %j', async (flags) => {
+    const h = await mountSeat(); h.open()
+    fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
+    fireEvent.keyDown(document.body, { key: 'Escape', ...flags })
+    expect(h.layout().mode).toBe('fullscreen')
+  })
+
+  it('leaves editor-consumed Escape and native select controls alone', async () => {
+    const h = await mountSeat(); h.open()
+    fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
+    const input = document.createElement('textarea')
+    const select = document.createElement('select')
+    element(h.view.container, '[data-tab-body]').append(input, select)
+    const cancel = (event: KeyboardEvent): void => { event.preventDefault() }
+    input.addEventListener('keydown', cancel)
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(h.layout().mode).toBe('fullscreen')
+    fireEvent.keyDown(select, { key: 'Escape' })
+    expect(h.layout().mode).toBe('fullscreen')
+    input.removeEventListener('keydown', cancel)
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(h.layout().mode).toBe('push')
+  })
+
+  it.each(['dialog', 'alertdialog', 'menu', 'listbox'])('gives a %s the first Escape, even if it removes itself synchronously', async (role) => {
+    const h = await mountSeat(); h.open()
+    fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
+    const overlay = document.createElement('div'); overlay.setAttribute('role', role)
+    document.body.append(overlay)
+    const close = (): void => { overlay.remove() }
+    document.addEventListener('keydown', close, { once: true })
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(overlay.isConnected).toBe(false)
+    expect(h.layout().mode).toBe('fullscreen')
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(h.layout().mode).toBe('push')
+  })
+
+  it('does not let hidden dialogs prevent exiting and removes listeners on session switch and disposal', async () => {
+    const h = await mountSeat(); h.open()
+    fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
+    const overlay = document.createElement('div'); overlay.setAttribute('role', 'dialog'); overlay.hidden = true
+    document.body.append(overlay)
+    try { fireEvent.keyDown(document.body, { key: 'Escape' }); expect(h.layout().mode).toBe('push') }
+    finally { overlay.remove() }
+    fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
+    const saved = h.instance.getSnapshot()
+    await h.runtime.sessions.add({ id: OTHER })
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(h.instance.getSnapshot()).toBe(saved)
+    await h.runtime.sessions.setCurrent(SESSION)
+    const beforeDispose = h.instance.getSnapshot()
+    await h.runtime.dispose()
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(h.instance.getSnapshot()).toBe(beforeDispose)
+  })
+
   it('retains the previous report until its transform finishes, then leaves the track in place on exit', async () => {
     const h = await mountSeat()
     act(() => { h.actions.setMode(SESSION, 'fullscreen') })

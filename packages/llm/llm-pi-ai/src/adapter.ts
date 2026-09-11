@@ -110,6 +110,8 @@ export interface PiAiAdapterOptions {
    * event; deployment plugins read billing/quota headers there.
    */
   onResponseMeta?: (meta: LlmResponseMeta) => void
+  /** Resolve the optional Chat Completions HTTP transport; other provider APIs keep their native transport. */
+  resolveFetch?: (options: GenerateOptions) => typeof globalThis.fetch
 }
 
 /** The two auth injectables a pi-ai collection is built with. */
@@ -395,6 +397,7 @@ export class PiAiAdapter extends LlmAdapter {
         }, onReplayDegrade)
       const events = snapshot.models.streamSimple(model, context, {
         ...profileOptions(profile, reasoning, apiKey),
+        ...model.api !== 'openai-completions' || this.config.resolveFetch === undefined ? {} : { fetch: this.config.resolveFetch(options) },
         ...options.temperature === undefined ? {} : { temperature: options.temperature },
         ...options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens },
         ...options.sessionId === undefined ? {} : { sessionId: String(options.sessionId) },

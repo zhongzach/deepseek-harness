@@ -86,6 +86,18 @@ declare module '@deepseek-ai/cordis' {
      */
     'llm/response-meta'(meta: LlmResponseMeta): void
 
+    /**
+     * Wrap an adapter's request-scoped HTTP fetch without replacing global fetch.
+     * Consumers preserve cancellation, body streaming and credential secrecy.
+     * Non-HTTP transports and adapters without this hook do not dispatch it.
+     * @mode waterfall
+     * @param options - the immutable model request owning this HTTP operation.
+     * @param input - the provider HTTP target; may contain private endpoint data.
+     * @param init - a request-local mutable HTTP option copy; preserve model-visible payloads and authorization.
+     * @param next - dispatch the request exactly once after middleware updates.
+     */
+    'llm/fetch'(options: GenerateOptions, input: Parameters<typeof fetch>[0], init: NonNullable<Parameters<typeof fetch>[1]>, next: () => Promise<Response>): Promise<Response>
+
   }
 }
 

@@ -92,6 +92,8 @@ kind: "package-reference"
 
 模型条目支持仅用于选择器的 `presentation: { sectionId, sectionName, sectionOrder? }`，两个模型描述接口均返回此信息，不改变请求标识。适配器通过 `llm/response-meta` 转发响应状态和响应头供部署计费使用。对于已使用 `reasoning_content` 的 Chat Completions 历史，它把助手工具调用消息缺失的思考字段补为空串；其他协议及历史保持不变。
 
+Chat Completions HTTP 请求通过 pi-ai 的 fetch 选项进入请求级 `llm/fetch` waterfall（瀑布式事件）。部署插件可以消费网关专用的响应元数据，不必替换进程全局 fetch 或改变其他提供方协议。流观察者必须限制保留字节数、保留模型输出和 token 用量，并传播取消；网关特定计费留在本适配器之外。
+
 pi-ai 提供登录的提供方可以通过 harness 授权 seam 登录：流程提供 OAuth 或交互式密钥提示（密钥键入 pi-ai 自己的登录提示，而非设置表单），得到的凭据存储在 harness 凭据存储的 `llm-pi-ai/<provider id>` 记录中。存储的登录在其路由的 `apiKeyEnv` 覆盖之下完成认证，并在存储的跨进程锁下自行刷新；退出登录即删除存储记录。落在记录文法之外——小写连字符标识符——的手工声明路由键无法登录，因为对它的记录写入会以 `LlmError('UNSTORABLE_PROVIDER_ID')` 拒绝；这类路由改用 `apiKeyEnv` 或提供方 ambient 设置认证。
 
 ### 解析模型目录

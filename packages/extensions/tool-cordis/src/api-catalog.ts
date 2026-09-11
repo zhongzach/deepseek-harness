@@ -3347,6 +3347,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [],
   },
   {
+    name: 'llm/fetch',
+    mode: 'waterfall',
+    signature: '\'llm/fetch\'(options: GenerateOptions, input: Parameters<typeof fetch>[0], init: NonNullable<Parameters<typeof fetch>[1]>, next: () => Promise<Response>): Promise<Response>',
+    summary: 'Wrap an adapter\'s request-scoped HTTP fetch without replacing global fetch.',
+    description: 'Wrap an adapter\'s request-scoped HTTP fetch without replacing global fetch. Consumers preserve cancellation, body streaming and credential secrecy. Non-HTTP transports and adapters without this hook do not dispatch it.',
+    parameters: [{ name: 'options', description: 'the immutable model request owning this HTTP operation.' }, { name: 'input', description: 'the provider HTTP target; may contain private endpoint data.' }, { name: 'init', description: 'a request-local mutable HTTP option copy; preserve model-visible payloads and authorization.' }, { name: 'next', description: 'dispatch the request exactly once after middleware updates.' }],
+  },
+  {
     name: 'llm/response-meta',
     mode: 'emit',
     signature: '\'llm/response-meta\'(meta: LlmResponseMeta): void',

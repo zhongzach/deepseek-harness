@@ -128,7 +128,7 @@ interface PanelProps {
   readonly useStore: Store['useStore']
   readonly occurrence: SidebarRightInjected['occurrence']
   readonly fullscreen: boolean
-  readonly autoFullscreen: boolean
+  readonly exitFullscreen: () => void
   /** Receives the kit's room-rule readings for the service's `split`. */
   readonly reportRoom: (fits: ReadonlyMap<PaneId, HalvesFit>) => void
 }
@@ -249,7 +249,7 @@ function ExitFullscreenGlyph(): ReactNode {
 }
 
 /** The panel's two controls, placed by the kit at the top-right pane's strip end. */
-function PanelChrome({ sessionId, fullscreen, autoFullscreen, actions, t }: Pick<PanelProps, 'sessionId' | 'actions' | 't' | 'fullscreen' | 'autoFullscreen'>): ReactNode {
+function PanelChrome({ sessionId, fullscreen, exitFullscreen, actions, t }: Pick<PanelProps, 'sessionId' | 'actions' | 't' | 'fullscreen' | 'exitFullscreen'>): ReactNode {
   const next: DockMode = fullscreen ? 'push' : 'fullscreen'
   const modeLabel = fullscreen ? t('chrome.exitFullscreen') : t('chrome.toFullscreen')
   return (
@@ -261,8 +261,8 @@ function PanelChrome({ sessionId, fullscreen, autoFullscreen, actions, t }: Pick
           aria-label={modeLabel}
           data-sidebar-right-mode={next}
           onClick={() => {
-            if (fullscreen && autoFullscreen) actions.setExpanded(sessionId, false)
-            actions.setMode(sessionId, next)
+            if (fullscreen) exitFullscreen()
+            else actions.setMode(sessionId, next)
           }}
         >
           {fullscreen ? <ExitFullscreenGlyph /> : <FullscreenGlyph />}
@@ -288,7 +288,7 @@ function PanelChrome({ sessionId, fullscreen, autoFullscreen, actions, t }: Pick
  * anchored to the frame's right edge and slid off it while collapsed.
  */
 function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<HTMLDivElement> }): ReactNode {
-  const { sessionId, surface, actions, t, renderSlot, openTab, width, reportRoom, fullscreen, autoFullscreen, panelRef } = panel
+  const { sessionId, surface, actions, t, renderSlot, openTab, width, reportRoom, fullscreen, panelRef } = panel
   const { expanded } = surface.layout
   return (
     <div
@@ -317,7 +317,8 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
           renderTabTitle={titlesFor(panel)}
           renderTabMenuItems={(tab, dismiss) =>
             renderSlot('sidebar.right.tab.menu.item', { tab, dismiss })}
-          chrome={<PanelChrome sessionId={sessionId} fullscreen={fullscreen} autoFullscreen={autoFullscreen} actions={actions} t={t} />}
+          chrome={<PanelChrome sessionId={sessionId} fullscreen={fullscreen} exitFullscreen={panel.exitFullscreen}
+            actions={actions} t={t} />}
           onRoom={reportRoom}
         />
       </div>
@@ -369,6 +370,38 @@ export function RightbarSeat({
   const room = useRef<ReadonlyMap<PaneId, HalvesFit>>(new Map())
   const reportRoom = useCallback((fits: ReadonlyMap<PaneId, HalvesFit>): void => { room.current = fits }, [])
   const track = shown && !autoFullscreen
+  const exitFullscreen = useCallback(() => {
+    if (autoFullscreen) actions.setExpanded(sessionId, false)
+    actions.setMode(sessionId, 'push')
+  }, [actions, autoFullscreen, sessionId])
+
+  useEffect(() => {
+    if (!shown || !fullscreen) return
+    const nested = new WeakSet<KeyboardEvent>()
+    // Record overlays before their handlers can synchronously remove them.
+    // Menu/Modal close on Escape without necessarily preventing its default.
+    const capture = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      const overlays = document.querySelectorAll('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]')
+      if ([...overlays].some(el => el.closest('[hidden], [aria-hidden="true"]') === null)
+        || (event.target instanceof Element && event.target.closest('select') !== null)) nested.add(event)
+    }
+    const escape = (event: KeyboardEvent): void => {
+      // Safari can end IME composition before dispatching its final keydown.
+      // oxlint-disable-next-line typescript/no-deprecated -- 229 is the fallback when isComposing is already false.
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || event.keyCode === 229
+        || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || nested.has(event)) return
+      event.preventDefault()
+      exitFullscreen()
+    }
+    window.addEventListener('keydown', capture, true)
+    // Bubble after the editor so its own Escape/IME behavior wins.
+    window.addEventListener('keydown', escape)
+    return () => {
+      window.removeEventListener('keydown', capture, true)
+      window.removeEventListener('keydown', escape)
+    }
+  }, [shown, fullscreen, exitFullscreen])
 
   useEffect(() => {
     if (surface === undefined) actions.open(sessionId)
@@ -417,7 +450,7 @@ export function RightbarSeat({
   if (surface === undefined) return null
   const panel: PanelProps = {
     sessionId, actions, t, renderSlot, surface, openTab, useTabTypes, useTabNavigation, useStore, occurrence,
-    fullscreen, autoFullscreen, reportRoom,
+    fullscreen, exitFullscreen, reportRoom,
   }
   return (
     <>

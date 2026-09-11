@@ -92,6 +92,8 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 Model entries accept selector-only `presentation: { sectionId, sectionName, sectionOrder? }`; both model-description APIs return it without changing wire identity. The adapter forwards response status and headers through `llm/response-meta` for deployment accounting. For Chat Completions histories already using `reasoning_content`, it fills missing reasoning on assistant tool-call messages with an empty string; unrelated protocols and histories remain unchanged.
 
+Chat Completions HTTP requests pass through the request-scoped `llm/fetch` waterfall via pi-ai's fetch option. Deployment plugins can consume gateway-only response metadata without replacing process-wide fetch or changing other provider protocols. Stream observers must bound retained bytes, preserve model output and token usage, and propagate cancellation; gateway-specific accounting stays outside this adapter.
+
 A provider pi-ai ships a login for can be signed into through the harness authorization seam: the flow offers OAuth or an interactive key prompt (a key is typed into pi-ai's own login prompt, not into the settings form), and the resulting credential is stored in the harness credential store at `llm-pi-ai/<provider id>`. The stored sign-in authenticates its route beneath any `apiKeyEnv` override and refreshes itself under the store's cross-process lock; signing out deletes the stored record. A hand-declared route key outside the record grammar — a lowercase hyphenated identifier — cannot be signed into, because a record write for it refuses with `LlmError('UNSTORABLE_PROVIDER_ID')`; such a route authenticates through `apiKeyEnv` or ambient provider settings instead.
 
 ### Resolve the model catalog

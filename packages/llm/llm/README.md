@@ -35,6 +35,8 @@ Choose this package whenever a plugin or composition needs to call a model: it i
 
 Model discovery may return optional `presentation` metadata (`sectionId`, `sectionName`, `sectionOrder`) for selector grouping; this never changes provider/model identity or request serialization. `llm/response-meta` reports provider response status and headers to deployment plugins without adding them to model context.
 
+Adapters can expose request-scoped HTTP through `llm/fetch`. Its middleware receives the owning immutable model request and actual HTTP inputs, and must delegate once while preserving cancellation and stream ownership. Authentication headers and private endpoints stay within trusted Host plugins; the event adds no model context or durable data by itself.
+
 Mount the service and at least one adapter, then select the provider by name in every request:
 
 ```yaml
