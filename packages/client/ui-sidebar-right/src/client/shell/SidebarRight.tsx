@@ -45,6 +45,7 @@ import type { SidebarRightOpenTabOptions } from '../service.ts'
 import type { SidebarRightTabDefinition } from '../tab-registry.ts'
 import type { createSidebarRightStore, SurfaceState } from '../stores.ts'
 import { canCloseTab } from '../stores.ts'
+import { defaultSeedFromDefinitions } from '../contract/seed.ts'
 import type { TabOccurrence } from '../tab-domain.ts'
 import type { SidebarRightTabNavigation } from '../contract/slots.ts'
 import type { TabHookContext } from '../tab-info.ts'
@@ -117,6 +118,7 @@ export type RightbarSeatProps =
 
 /** Everything the panel needs, already bound to one session. */
 interface PanelProps {
+  readonly retainedKind: string | undefined
   readonly sessionId: SessionId
   readonly surface: SurfaceState
   readonly actions: Store['actions']
@@ -310,7 +312,7 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
           dropZones="horizontal"
           minPaneFraction={0.2}
           canAddTab={paneId => guideIn(surface.layout, paneId) === undefined}
-          canCloseTab={tabId => canCloseTab(surface, tabId)}
+          canCloseTab={tabId => canCloseTab(surface, tabId, panel.retainedKind)}
           intents={intentsFor(sessionId, actions, openTab)}
           labels={dockLabels(t)}
           renderTab={bodiesFor(panel)}
@@ -334,7 +336,7 @@ function Floats(panel: PanelProps): ReactNode {
     <div className={css.floatHost} data-sidebar-right-float-host>
       <FloatLayer
         state={surface.layout}
-        canCloseTab={tabId => canCloseTab(surface, tabId)}
+        canCloseTab={tabId => canCloseTab(surface, tabId, panel.retainedKind)}
         intents={intentsFor(sessionId, actions, openTab)}
         labels={dockLabels(t)}
         renderTab={bodiesFor(panel)}
@@ -360,6 +362,9 @@ export function RightbarSeat({
   // mounted session; a tab's own actions route through the controller's
   // adopted stores instead.
   const surfaces = useStore(state => state.bySession)
+  const definitions = useTabTypes(value => value)
+  const initial = defaultSeedFromDefinitions(definitions)
+  const retainedKind = initial.retain ? initial.kind : undefined
   const surface = surfaces[sessionId]
   const shown = surface !== undefined && surface.layout.expanded
   const autoFullscreen = viewportWidth < 768
@@ -404,8 +409,8 @@ export function RightbarSeat({
   }, [shown, fullscreen, exitFullscreen])
 
   useEffect(() => {
-    if (surface === undefined) actions.open(sessionId)
-  }, [actions, sessionId, surface])
+    actions.open(sessionId)
+  }, [actions, sessionId, retainedKind])
 
   useLayoutEffect(() => {
     if (shown && !fullscreen && !canShow) actions.setExpanded(sessionId, false)
@@ -450,7 +455,7 @@ export function RightbarSeat({
   if (surface === undefined) return null
   const panel: PanelProps = {
     sessionId, actions, t, renderSlot, surface, openTab, useTabTypes, useTabNavigation, useStore, occurrence,
-    fullscreen, exitFullscreen, reportRoom,
+    fullscreen, exitFullscreen, reportRoom, retainedKind,
   }
   return (
     <>

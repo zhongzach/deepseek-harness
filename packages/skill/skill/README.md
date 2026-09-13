@@ -54,6 +54,8 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 An invocation policy on every skill decides which surfaces may advertise and load it: `modelInvocable` for model-facing tools and catalogs, `userInvocable` for human-facing commands. The registry keeps all four combinations, so one discovery result can serve both surfaces without conflating their catalogs.
 
+A summary may carry a non-empty `displayName` for a human-facing title, including Chinese. The registry preserves this optional field across discovery and loading. The kebab-case `name` remains the lookup and duplicate-resolution identity; a display title is not an invocation alias.
+
 | Policy | Model | User |
 |---|---|---|
 | `{ modelInvocable: true, userInvocable: true }` | included | included |

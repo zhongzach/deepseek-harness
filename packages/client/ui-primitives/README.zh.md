@@ -76,6 +76,8 @@ kind: "package-library"
 
 ### 本地化文案
 
+`projectUserText` 在匹配参数之后接受可选的引用渲染器。回调接收每个已识别引用的类型、显示标签、原始 token 和去包装后的值，可绘制本地化胶囊或文件控件，不改变 token 匹配或周围的普通文字。省略回调时保留标准行内 chip；调用方仍负责复制和序列化原始输入。
+
 这些原子组件无法读取应用 locale，因此每段面向用户的文案都必须通过 label prop 提供。`HoverCard`、`TerminalBlock`、`JsonTree`、`CodeBlock`、`MarkdownText`、`JsonBlock`、`ConnectionIndicator`、`Modal`、`DiffBlock`、`ReadBlock`、`SearchBlock` 与 `WebBlock` 接收完整的本地化 label。本包不拥有语言回退；遗漏会导致类型检查失败，各功能会把带类型的 `t` 席位映射到 primitive 的 label 接口。
 
 -----

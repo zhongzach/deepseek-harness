@@ -14,7 +14,7 @@
  * text end, so slash paths (`/nfs-hg/xxx`, `/plan.md`) and punctuation-glued
  * tokens (`/plan。`) stay plain even for a loaded name.
  */
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import clsx from 'clsx'
 import { ReferenceIcon } from './ReferenceIcon.tsx'
 import css from './user-text.module.css'
@@ -35,6 +35,18 @@ interface DecorationRange {
   readonly display?: string
 }
 
+/** One recognized reference, separated from its original serialized spelling. */
+export interface UserTextReference {
+  /** Reference category selected by the existing token matcher. */
+  readonly kind: 'file' | 'folder' | 'session' | 'skill' | 'command'
+  /** Default visible label, including native slash prefixes for skills and commands. */
+  readonly label: string
+  /** Exact matched token, retained for tooltips or copying. */
+  readonly raw: string
+  /** Unquoted file path, skill/command name, or visible session label. */
+  readonly value: string
+}
+
 /**
  * Split one sent text into inline plain runs and reference chips.
  * @param text - the logged model text of the message or queue row.
@@ -43,6 +55,7 @@ interface DecorationRange {
  * host loaded for this message, or the command a command bubble echoes
  * (unsent queue rows pass none).
  * @param slashKind - the chip kind those tokens render as.
+ * @param renderReference - optional presentation of a recognized reference; plain text and matching stay unchanged.
  * @returns inline nodes covering the whole text.
  */
 export function projectUserText(
@@ -50,6 +63,7 @@ export function projectUserText(
   sessionLabels: readonly string[],
   slashNames: readonly string[] = [],
   slashKind: 'skill' | 'command' = 'skill',
+  renderReference?: (reference: UserTextReference) => ReactNode,
 ): ReactNode {
   const ranges: DecorationRange[] = []
   SESSION_WIRE_RE.lastIndex = 0
@@ -107,7 +121,15 @@ export function projectUserText(
         : referenceKind === 'session'
           ? label.slice(1)
           : label.slice(1).replace(/^"|"$/gu, '').split(/[\\/]/u).filter(Boolean).at(-1) ?? label.slice(1))
-    parts.push(
+    const chipKind = referenceKind ?? slashKind
+    if (renderReference !== undefined) {
+      parts.push(<Fragment key={tokenStart}>{renderReference({
+        kind: chipKind,
+        label: displayLabel,
+        raw: label,
+        value: referenceKind === 'session' ? displayLabel : label.slice(1).replace(/^"|"$/gu, ''),
+      })}</Fragment>)
+    } else parts.push(
       <span
         key={tokenStart}
         className={clsx(css.refChip, referenceKind === undefined && css.slashChip)}

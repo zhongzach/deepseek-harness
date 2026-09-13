@@ -393,6 +393,7 @@ function makeHarness(
     actions: chat.actions,
     useTranscriptView: bindSnapshotSelector(transcriptView),
     renderSlot,
+    renderSlotChain: (_key, _owner, options) => options?.fallback ?? null,
     SessionProvider: SessionProviderStub,
     viewRequest: null,
     openView,

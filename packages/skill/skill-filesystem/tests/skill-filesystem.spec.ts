@@ -30,6 +30,20 @@ async function writeFlatSkill(root: string, name: string, description: string, b
   await writeFile(join(root, `${name}.md`), `---\nname: ${name}\ndescription: ${description}\n---\n\n${body}\n`)
 }
 
+it('preserves display-name for human catalogs while the invocation name stays stable', async () => {
+  const root = await tempDir('skill-display-name')
+  await writeSkill(root, 'stable-id', 'Test routing')
+  await writeFile(join(root, 'stable-id/SKILL.md'), '---\nname: stable-id\ndisplay-name: 中文写法\ndescription: Test routing\n---\nKeep this body.\n', 'utf8')
+  const ctx = new Context()
+  try {
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(SkillFileSystem, { includeDefaultRoots: false, customSkillDirs: [root], watch: false })
+    expect(await ctx.skills.list()).toEqual([expect.objectContaining({ name: 'stable-id', displayName: '中文写法' })])
+    expect(await ctx.skills.get('stable-id')).toMatchObject({ name: 'stable-id', displayName: '中文写法', content: 'Keep this body.' })
+    expect(await ctx.skills.get('中文写法')).toBeUndefined()
+  } finally { await ctx.fiber.dispose() }
+})
+
 class TestFileSystem extends FileSystem {
   listDirCalls = 0
   failResolvePaths = new Set<string>()

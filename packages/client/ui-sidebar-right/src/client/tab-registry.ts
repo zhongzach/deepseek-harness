@@ -118,6 +118,8 @@ export interface SidebarRightTabDefinition {
   readonly title: (address: string) => string
   /** Entry boxes for the guide page. Omit to stay off it. */
   readonly guide?: readonly SidebarRightGuideEntry[]
+  /** Prefer this guide page as the default and retain it as an unclosable first docked tab. Lowest guide order wins ties. */
+  readonly retainAsDefault?: boolean
 }
 
 /** What a routing decision settles on: who draws the address, and as what. */

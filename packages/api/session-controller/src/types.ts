@@ -229,6 +229,8 @@ export interface SkillListRequest {
 export interface SkillEntry {
   /** Kebab-case identifier referenced as `/name`. */
   readonly name: string
+  /** Human-facing title; the invocation always uses name. */
+  readonly displayName?: string
   /** Short routing description. */
   readonly description: string
   /** Optional extra routing guidance. */

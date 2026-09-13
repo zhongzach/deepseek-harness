@@ -55,6 +55,7 @@ describe('SessionSkillCatalog', () => {
     const list = vi.fn(() => Promise.resolve([
       {
         name: 'review',
+        displayName: '审稿助手',
         description: 'Review the current change.',
         whenToUse: 'Before publishing.',
         invocation: { modelInvocable: true, userInvocable: true },
@@ -71,6 +72,7 @@ describe('SessionSkillCatalog', () => {
     await expect(catalog.list({ sessionId }, new AbortController().signal)).resolves.toEqual({
       skills: [{
         name: 'review',
+        displayName: '审稿助手',
         description: 'Review the current change.',
         whenToUse: 'Before publishing.',
         modelInvocable: true,

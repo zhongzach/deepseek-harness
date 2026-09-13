@@ -63,10 +63,12 @@ type SurfacePlan = (state: LayoutState, mint: Mint, makeTab: (id: TabId) => TabR
  * Decide whether an explicit close may remove a tab.
  * @param surface - current surface.
  * @param tabId - tab requested for closing.
- * @returns false for a missing tab or the guide standing as the only docked tab.
+ * @param retainedKind - optional default navigation page retained in docked panes.
+ * @returns false for a retained navigation page, missing tab, or sole docked guide.
  */
-export function canCloseTab(surface: SurfaceState, tabId: TabId): boolean {
+export function canCloseTab(surface: SurfaceState, tabId: TabId, retainedKind?: string): boolean {
   const tab = surface.layout.tabs[tabId]
+  if (retainedKind !== undefined && tab !== undefined && tab.kind === retainedKind && tab.contentId === pageAddress(tab.kind) && findTabPane(surface.layout, tabId).host === 'dock') return false
   return tab !== undefined && !(tab.kind === GUIDE_KIND && soleDockedTab(surface.layout, tabId))
 }
 
@@ -86,7 +88,7 @@ export interface OpenContentIntent {
   readonly title: string
   /** Land a new tab in this pane. */
   readonly paneId?: PaneId
-  /** Take this tab's pane and slot, and close it in the same entry. */
+  /** Replace this tab unless it is the retained navigation page; then open beside it. */
   readonly replaceTab?: TabId
   /** Resource tabs reveal an existing identity by default; `false` permits duplicates. Pages always deduplicate within the target pane. */
   readonly revealIfOpened?: boolean
@@ -108,7 +110,7 @@ function counting(from: number): { mint: Mint; used: () => number } {
  * The surface a session starts with: collapsed, one pane, no tabs. The default
  * page is not seeded here — the settle rule seeds it when the column first
  * expands still empty, so a collapsed column never holds a page nobody asked
- * for, and an open into a fresh surface shows only what it opened.
+ * for. Opening content also seeds navigation when the default page opts into retention.
  * @returns the initial surface.
  */
 export function createSurface(): SurfaceState {
@@ -186,15 +188,37 @@ function arriving(state: LayoutState, tabId: TabId, toPaneId: PaneId, otherwise:
 function advance(surface: SurfaceState, plan: SurfacePlan, seed: () => SidebarRightSeed): SurfaceState {
   const counter = counting(surface.minted)
   const makeTab = (id: TabId): TabRecord => seedRecord(id, seed)
-  const planned = plan(surface.layout, counter.mint, makeTab)
-  if (planned.length === 0) return surface
+  const planned = [...plan(surface.layout, counter.mint, makeTab)]
+  if (planned.length === 0 && (!surface.layout.expanded || !seed().retain)) return surface
   // The settle planner reads the state the intent produces, so it is applied
   // to a scratch copy first; the record then applies both parts once. The
   // seed factory is withheld while the intent leaves the column collapsed:
   // an empty collapsed column stays empty until the expansion that shows it.
-  const after = replay(surface.layout, planned)
+  let after = replay(surface.layout, planned)
   const settled = planSettle(after, counter.mint, after.expanded ? makeTab : undefined)
-  const stepped = record(surface.history, surface.layout, [...planned, ...settled])
+  planned.push(...settled)
+  after = replay(after, settled)
+  const initial = after.expanded ? seed() : undefined
+  if (initial?.retain) {
+    const activePane = after.activePaneId
+    for (const paneId of dockPaneIds(after)) {
+      const pane = getPane(after, paneId), activeTab = pane.activeTabId
+      const held = panePage(after, paneId, initial.kind)
+      const retained = held === undefined
+        ? planOpenContent(after, counter.mint, {
+          kind: initial.kind, contentId: pageAddress(initial.kind), title: initial.title, paneId, index: 0, revealIfOpened: false,
+        }).ops
+        : pane.tabs[0] !== held ? planPlaceTab(after, held, paneId, 0) : []
+      if (retained.length === 0) continue
+      const ops: LayoutOp[] = [...retained]
+      if (activeTab !== undefined) ops.push({ type: 'focusTab', tabId: activeTab })
+      ops.push({ type: 'focusPane', paneId: activePane })
+      planned.push(...ops)
+      after = replay(after, ops)
+    }
+  }
+  if (planned.length === 0) return surface
+  const stepped = record(surface.history, surface.layout, planned)
   return { layout: stepped.state, history: stepped.history, minted: counter.used() }
 }
 
@@ -269,7 +293,7 @@ export function createSidebarRightStore(
     actions: {
       // Materialize a session's surface without changing it, so the first read
       // after a session switch sees the collapsed empty column rather than nothing.
-      open: (d, sessionId: string) => { d.bySession = seat(d, sessionId, surface => surface) },
+      open: (d, sessionId: string) => { d.bySession = seat(d, sessionId, surface => advance(surface, () => [], seed)) },
       setExpanded: (d, sessionId: string, expanded: boolean) => {
         d.bySession = seat(d, sessionId, s => advance(s, state => planSetExpanded(state, expanded), seed))
       },
@@ -304,7 +328,10 @@ export function createSidebarRightStore(
       // landed on, synchronously, because actions return nothing.
       openContent: (d, sessionId: string, intent, settled) => {
         d.bySession = seat(d, sessionId, s => advance(s, (state, mint) => {
-          const { kind, contentId, title, replaceTab: replace } = intent
+          const { kind, contentId, title } = intent
+          const initial = seed()
+          const replace = initial.retain && intent.replaceTab !== undefined && state.tabs[intent.replaceTab]?.kind === initial.kind
+            && !canCloseTab(s, intent.replaceTab, initial.kind) ? undefined : intent.replaceTab
           const ops: LayoutOp[] = [...planSetExpanded(state, true)]
           // A replaced tab lends its pane and slot; one that floats cannot (a
           // floating pane holds one tab), so the new tab lands as if unplaced.
@@ -350,7 +377,8 @@ export function createSidebarRightStore(
       // the then-current default page.
       closeTab: (d, sessionId: string, tabId: TabId) => {
         d.bySession = seat(d, sessionId, s => advance(s, (state) => {
-          if (!canCloseTab(s, tabId)) return []
+          const initial = seed()
+          if (!canCloseTab(s, tabId, initial.retain ? initial.kind : undefined)) return []
           if (!soleDockedTab(state, tabId)) return [{ type: 'closeTab', tabId }]
           // The collapse also leaves fullscreen: the reopened column shows only
           // the reseeded default page, which never earns the whole window.

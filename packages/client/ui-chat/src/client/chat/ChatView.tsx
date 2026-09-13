@@ -215,7 +215,7 @@ const ChatNodeList = memo(function ChatNodeList({ order, ...seatProps }: ChatNod
  * ordered business Node crosses the keyed renderer seat.
  */
 export function ChatView({
-  useSession, useChat, useChatNode, useChatNodeProcess, useSessions, useStore, actions, renderSlot,
+  useSession, useChat, useChatNode, useChatNodeProcess, useSessions, useStore, actions, renderSlot, renderSlotChain,
   sessionId, openFile, loadOlder, loadThrough, loadImage, openView, chatScroll, forkAt, fileMentions,
   useTranscriptView, useProjection, t,
 }: ChatViewSlotProps) {
@@ -795,6 +795,7 @@ export function ChatView({
             forkAt={forkAt}
             loadImage={loadImage}
             renderMessageImages={renderMessageImages}
+            renderUserText={renderSlotChain}
             fileMentions={fileMentions}
             renderSlot={renderSlot}
             t={t}
@@ -807,6 +808,8 @@ export function ChatView({
           {running && <TurnStatus startTime={runningTurnStart} t={t} />}
           {pendingSteering.map(item => (
             <PendingSteeringBubble
+              renderUserText={renderSlotChain}
+              openFile={requestOpenFile}
               key={item.id}
               content={item.content}
               renderMessageImages={renderMessageImages}
@@ -815,6 +818,8 @@ export function ChatView({
           ))}
           {visibleSubmissions.map(submission => (
             <PendingSubmissionBubble
+              renderUserText={renderSlotChain}
+              openFile={requestOpenFile}
               key={submission.requestId}
               submission={submission}
               renderMessageImages={renderMessageImages}

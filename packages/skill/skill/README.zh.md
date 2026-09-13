@@ -54,6 +54,8 @@ kind: "package-reference"
 
 每个 skill 上的调用策略决定哪些接口可以展示并加载它：`modelInvocable` 用于面向模型的工具与目录，`userInvocable` 用于面向用户的命令。注册表保留全部四种组合，因此一次发现结果可以同时服务两个接口，而不会混淆各自的目录。
 
+摘要可以通过非空的 `displayName` 提供面向用户的标题，包括中文。注册表在发现和加载时保留此可选字段。kebab-case `name` 仍是查找与重名裁决的身份；显示标题不是调用别名。
+
 | 策略 | 模型 | 用户 |
 |---|---|---|
 | `{ modelInvocable: true, userInvocable: true }` | 包含 | 包含 |

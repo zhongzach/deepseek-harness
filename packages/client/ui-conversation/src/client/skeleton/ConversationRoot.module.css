@@ -53,6 +53,12 @@
   display: none;
 }
 
+/* A single conversation view has no second row to reserve. */
+.header:not(:has(.tabs)) {
+  min-height: 50px;
+  padding-bottom: 10px;
+}
+
 .titleRow {
   display: flex;
   align-items: center;

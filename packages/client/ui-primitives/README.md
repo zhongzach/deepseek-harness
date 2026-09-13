@@ -76,6 +76,8 @@ The catalog above lists what each export is for; this section covers the behavio
 
 ### Localizing copy
 
+`projectUserText` accepts an optional reference renderer after its matching arguments. The callback receives each recognized reference's kind, display label, original token and unwrapped value. It can draw localized capsules or file controls without changing token matching or the surrounding plain text. Omitting the callback retains the standard inline chips; the caller still owns copying and serializing the original input.
+
 The atoms cannot read the application locale, so every piece of user-facing copy arrives through required label props. `HoverCard`, `TerminalBlock`, `JsonTree`, `CodeBlock`, `MarkdownText`, `JsonBlock`, `ConnectionIndicator`, `Modal`, `DiffBlock`, `ReadBlock`, `SearchBlock`, and `WebBlock` accept complete localized labels. The package owns no language fallback; omission fails typechecking, and each feature maps its typed `t` seat into the primitive's label interface.
 
 -----

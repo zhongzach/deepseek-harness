@@ -14,6 +14,7 @@ kind: "package-reference"
 
 ## 目录
 
+- [用户引用](#user-references)
 - [系统提示词行](#system-prompt-row)
 - [轮次 token 用量](#turn-token-usage)
 - [轮次过程折叠](#turn-process-folding)
@@ -23,6 +24,11 @@ kind: "package-reference"
 - [开发备注](#dev-note)
 
 -----
+
+<a id="user-references"></a>
+## 用户引用
+
+产品可通过 `conversation.message.user-text` 渲染用户文字。此链由 Chat 管理，供持久化的用户/steering 消息与即时提交回显共用，接收原始文字、关联会话标签、已加载 skill 名称和文件打开回调。不接管时保留标准文本投影。附件卡片、复制原文操作及时间戳仍由 Chat 管理；气泡提供 `data-user-message-bubble`，供产品限定样式作用范围。Session 日志不新增展示元数据。
 
 <a id="system-prompt-row"></a>
 ## 系统提示词行

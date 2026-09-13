@@ -157,7 +157,7 @@ function TurnMaxTokensItem({ t }: {
 /** Right-aligned bubble shared by user and steering rows. */
 function UserStyleBubble({
   content, renderMessageImages, actions, pending = false, echo = false, referenceLabels = [], skillNames = [],
-  previewAttachments, t,
+  previewAttachments, renderUserText, openFile, t,
 }: {
   content: readonly unknown[]
   renderMessageImages: ChatNodeOwnerProps['renderMessageImages']
@@ -173,6 +173,8 @@ function UserStyleBubble({
   skillNames?: readonly string[]
   /** Local submission-echo attachments replacing the content-derived attachment sequence. */
   previewAttachments?: readonly PresentedAttachment[]
+  renderUserText?: ChatNodeOwnerProps['renderUserText']
+  openFile?: (path: string) => void
   t: ChatViewSlotProps['t']
 }): ReactNode {
   const { text, attachments: contentAttachments, rest } = contentParts(content)
@@ -213,8 +215,11 @@ function UserStyleBubble({
               ))}
           </div>
         )}
-        {showBubble && <div className={css.bubble}>
-          {projectUserText(text, referenceLabels, skillNames)}
+        {showBubble && <div className={css.bubble} data-user-message-bubble>
+          {renderUserText === undefined ? projectUserText(text, referenceLabels, skillNames)
+            : renderUserText('conversation.message.user-text', {
+              text, referenceLabels, skillNames, ...openFile === undefined ? {} : { openFile },
+            }, { fallback: projectUserText(text, referenceLabels, skillNames) })}
           {rest.map((block, i) => <JsonBlock key={i} label={t('message.extraBlock')} payload={block} truncatedLabel={truncated} />)}
         </div>}
         {referenceLabels.length > 0 && (
@@ -234,14 +239,18 @@ function UserStyleBubble({
  * @param props - Pending message content and conversation translator.
  * @returns the pending steering bubble.
  */
-export function PendingSteeringBubble({ content, renderMessageImages, t }: {
+export function PendingSteeringBubble({ content, renderMessageImages, renderUserText, openFile, t }: {
   content: readonly unknown[]
   renderMessageImages: ChatNodeOwnerProps['renderMessageImages']
+  renderUserText?: ChatNodeOwnerProps['renderUserText']
+  openFile?: (path: string) => void
   t: ChatViewSlotProps['t']
 }): ReactNode {
   return (
     <UserStyleBubble
       content={content}
+      renderUserText={renderUserText}
+      {...openFile === undefined ? {} : { openFile }}
       renderMessageImages={renderMessageImages}
       pending
       t={t}
@@ -265,9 +274,11 @@ export function PendingSteeringBubble({ content, renderMessageImages, t }: {
  * @param props - the session snapshot's pending submission and render seats.
  * @returns the echoed user bubble.
  */
-export function PendingSubmissionBubble({ submission, renderMessageImages, t }: {
+export function PendingSubmissionBubble({ submission, renderMessageImages, renderUserText, openFile, t }: {
   submission: PendingSubmission
   renderMessageImages: ChatNodeOwnerProps['renderMessageImages']
+  renderUserText?: ChatNodeOwnerProps['renderUserText']
+  openFile?: (path: string) => void
   t: ChatViewSlotProps['t']
 }): ReactNode {
   const content = useMemo(
@@ -294,6 +305,8 @@ export function PendingSubmissionBubble({ submission, renderMessageImages, t }: 
     <UserStyleBubble
       content={content}
       previewAttachments={previewAttachments}
+      renderUserText={renderUserText}
+      {...openFile === undefined ? {} : { openFile }}
       renderMessageImages={renderMessageImages}
       pending={submission.placement === 'steering'}
       echo
@@ -313,12 +326,14 @@ export function PendingSubmissionBubble({ submission, renderMessageImages, t }: 
 
 /** User and admitted-steering keyed Chat renderer. */
 export const UserMessageNodeView = memo(function UserMessageNodeView({
-  node, renderMessageImages, t,
+  node, renderMessageImages, renderUserText, openFile, t,
 }: ChatNodeViewProps<'user' | 'steering'>) {
   const data = node.data
   return (
     <UserStyleBubble
       content={data.content}
+      renderUserText={renderUserText}
+      openFile={openFile}
       renderMessageImages={renderMessageImages}
       {...data.referenceLabels === undefined ? {} : { referenceLabels: data.referenceLabels }}
       {...data.skillNames === undefined ? {} : { skillNames: data.skillNames }}

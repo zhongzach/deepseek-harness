@@ -22,6 +22,8 @@ Chat and Trajectory may recognize the same durable event family, but each keeps 
 
 ## Target activation
 
+Chat exposes the `conversation.message.user-text` presentation chain with original text, associated `referenceLabels`, `skillNames`, and an optional `openFile(path)` callback. Its authorized renderer is passed to keyed user/steering views and local submission echoes through `ChatNodeOwnerProps.renderUserText`. The text renderer owns only display; attachment and action ownership stay with Chat. The [Chat README](../../packages/client/ui-chat/README.md) describes fallback and styling behavior.
+
 Each Session keeps a monotonic set of active targets. Creating or reading a target source does not activate it. The shell explicitly activates its persisted or newly selected View, while another consumer activates a target through its first source subscription. First activation creates that target's builder and calls `replace()` once from the current target-indexed Contexts. Later flushes call `apply()` for every active target, and unsubscription does not remove one.
 
 The shell owns View selection and resolves the registered preferred View or Chat fallback before rendering when a binding is created or selected as current, and after View-roster changes. The assembler receives only the resolved target id and does not select Chat or another default target. A third-party View participates through the same selection and activation operations.

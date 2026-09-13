@@ -105,6 +105,7 @@ interface SkillRootEntry {
 
 interface ParsedSkill {
   name: string
+  displayName?: string
   description: string
   whenToUse?: string
   invocation: SkillInvocationPolicy
@@ -209,6 +210,7 @@ export class FileSystemSkillProvider implements SkillProvider {
     if (parsed === undefined) return undefined
     return {
       name: parsed.name,
+      ...parsed.displayName !== undefined ? { displayName: parsed.displayName } : {},
       description: parsed.description,
       ...parsed.whenToUse !== undefined ? { whenToUse: parsed.whenToUse } : {},
       invocation: parsed.invocation,
@@ -731,6 +733,7 @@ async function discoverRoot(root: SkillRoot, ctx: Context, provider: string): Pr
     if (parsed === undefined) continue
     skills.push({
       name: parsed.name,
+      ...parsed.displayName !== undefined ? { displayName: parsed.displayName } : {},
       description: parsed.description,
       ...parsed.whenToUse !== undefined ? { whenToUse: parsed.whenToUse } : {},
       invocation: parsed.invocation,
@@ -809,6 +812,7 @@ async function parseSkillFile(path: string, ctx: Context, signal?: AbortSignal, 
   }
   const name = stringField(parsed.data, 'name')
   const description = stringField(parsed.data, 'description')
+  const displayName = stringField(parsed.data, 'display-name')?.trim()
   if (name === undefined || description === undefined) {
     ctx.logger.warn(`skill file ${path} ignored: frontmatter requires name and description`)
     return undefined
@@ -827,6 +831,7 @@ async function parseSkillFile(path: string, ctx: Context, signal?: AbortSignal, 
   return {
     name,
     description,
+    ...displayName ? { displayName } : {},
     ...optionalString(parsed.data, 'whenToUse'),
     invocation,
     ...optionalMetadata(parsed.data),

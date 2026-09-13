@@ -37,6 +37,8 @@ skill 可以是被扫描根目录顶层的目录 bundle `<name>/SKILL.md`，也�
 
 `disable-model-invocation: true` 会把 skill 从面向模型的目录和 loader 中排除；`user-invocable: false` 会把它从面向用户的命令中排除，省略的字段默认允许对应接口调用。这两个键接受 YAML 布尔值，以及不区分大小写的 `true`/`false`、`yes`/`no`、`on`/`off` 和 `1`/`0` 形式；被拒绝的拼写或非布尔值会让整个 skill 随警告一起被丢弃，而不会静默允许某个接口。
 
+可选的 `display-name` frontmatter 提供面向用户的标题，例如 `章节写作`；发现和加载结果通过 `displayName` 返回它。空标题会被省略。必填 `name` 仍是 ASCII kebab-case 调用 ID；此提供方不会翻译标题或改写文件。
+
 目录与正文具有独立的生命周期：发现阶段把 frontmatter 解析进目录条目，每次加载都会重新读取当前文件，因此编辑 skill 正文无需版本化或缓存失效。
 
 ### 根目录与优先级

@@ -14,6 +14,7 @@ File-mention providers receive the viewed Session ID with the closing-turn owner
 
 ## Table of Contents
 
+- [User references](#user-references)
 - [System prompt row](#system-prompt-row)
 - [Turn token usage](#turn-token-usage)
 - [Turn Process Folding](#turn-process-folding)
@@ -23,6 +24,11 @@ File-mention providers receive the viewed Session ID with the closing-turn owner
 - [Dev Note](#dev-note)
 
 -----
+
+<a id="user-references"></a>
+## User references
+
+Products can render user text through `conversation.message.user-text`, a Chat-owned chain shared by durable user/steering messages and immediate submission echoes. It receives the original text, associated session labels, loaded skill names and the file-opening callback. Declining it keeps the standard text projection. Attachment cards, original-text copy actions and timestamps remain owned by Chat; the bubble exposes `data-user-message-bubble` for scoped product styling. No presentation metadata is added to the Session log.
 
 <a id="system-prompt-row"></a>
 ## System prompt row

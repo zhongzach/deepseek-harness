@@ -10,26 +10,41 @@
  * type would use — the guide is not special in the machinery, only in being
  * always available.
  */
-import type { SidebarRightTabRegistry } from '../tab-registry.ts'
+import type { SidebarRightTabDefinition, SidebarRightTabRegistry } from '../tab-registry.ts'
 
 /** One pane's initial page, resolved from the current registered guide entries. */
 export interface SidebarRightSeed {
   readonly kind: string
   readonly title: string
+  /** Retain the default navigation page beside opened resources. */
+  readonly retain?: boolean
 }
 
 /**
- * Resolve the default page from the registered entry count.
+ * Prefer an explicitly retained guide entry, otherwise use the registered entry count.
  * @param tabs - current tab registry.
- * @returns the sole entry, or the guide when there are zero or multiple entries.
+ * @returns the retained page with the lowest guide order, otherwise the sole entry or guide.
  */
 export function defaultSeed(tabs: SidebarRightTabRegistry): SidebarRightSeed {
-  const [only, ...others] = tabs.guide()
+  return defaultSeedFromDefinitions(tabs.entries())
+}
+
+/**
+ * Resolve the same default from the reactive catalog used by the pane chrome.
+ * @param definitions - currently effective tab types, including the built-in guide.
+ * @returns the shared default-page and retention policy.
+ */
+export function defaultSeedFromDefinitions(definitions: readonly SidebarRightTabDefinition[]): SidebarRightSeed {
+  const choices = definitions.flatMap(definition => (definition.guide ?? []).map(guide => ({
+    kind: definition.kind, order: guide.order, retained: definition.retainAsDefault,
+  })))
+  const [only, ...others] = choices
   const single = only !== undefined && others.length === 0
-  const kind = single ? only.kind : GUIDE_KIND
-  const definition = tabs.get(kind)
+  const preferred = choices.filter(choice => choice.retained).sort((a, b) => a.order - b.order)[0]
+  const kind = preferred?.kind ?? (single ? only.kind : GUIDE_KIND)
+  const definition = definitions.find(value => value.kind === kind)
   if (definition === undefined) throw new Error(`sidebarRight: default tab kind "${kind}" is not registered`)
-  return { kind, title: definition.title(pageAddress(kind)) }
+  return { kind, title: definition.title(pageAddress(kind)), ...definition.retainAsDefault ? { retain: true } : {} }
 }
 
 /** The guide tab's kind. */

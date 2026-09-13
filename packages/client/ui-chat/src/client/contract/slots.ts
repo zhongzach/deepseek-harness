@@ -90,6 +90,8 @@ export interface ChatNodeOwnerProps {
    */
   loadImage: MessageImageLoader
   renderMessageImages: RenderMessageImages
+  /** Authorized user-text child renderer from the Chat view; absent uses the standard projection. */
+  renderUserText?: PropsRenderSlots<'conversation.message.user-text'>['renderSlotChain']
   fileMentions: (owner: TurnTailOwnerProps) => MarkdownFileMentions | undefined
   /** Turn-process state when this Node belongs to a projected Turn. */
   turnProcess?: TurnProcessOwnerProps | undefined
@@ -157,7 +159,7 @@ export interface ChatViewInjected {
 /** Full Chat view props. */
 export type ChatViewSlotProps =
   PropsRuntime<'conversation.view'>
-  & PropsRenderSlots<'conversation.chat.node' | 'conversation.message.images'>
+  & PropsRenderSlots<'conversation.chat.node' | 'conversation.message.images' | 'conversation.message.user-text'>
   & PropsStore<ChatStore>
   & InjectFace<ChatViewInjected>
   & PropsLocale<'chat'>
@@ -202,6 +204,17 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * registration replaces the shipped gallery; without one, images are omitted.
      */
     'conversation.message.images': { kind: 'single'; scope: 'session'; owner: MessageImagesOwnerProps }
+    /** Optional user-text presentation. Attachments, action copy and durable messages retain their original ownership. */
+    'conversation.message.user-text': {
+      kind: 'chain'
+      scope: 'session'
+      owner: {
+        text: string
+        referenceLabels: readonly string[]
+        skillNames: readonly string[]
+        openFile?: (path: string) => void
+      }
+    }
     /**
      * Command row keyed by the command name. The component receives the folded
      * command lifecycle and linked compaction when present. Reusing a key
