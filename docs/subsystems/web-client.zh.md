@@ -47,6 +47,8 @@ Connection 拥有 request correlation、`/api` carrier、trust check、精确 Fe
 
 ### Workspaces
 
+产品可以通过可释放的 locale 覆盖、导航策略、目录流准备回调和可选改名对话框插槽适配 Workspace 展示。这些 UI 扩展保留原生 Workspace 和 Session 对象；具体行为由 [Workspace UI 包](../../packages/client/ui-workspace/README.zh.md)定义。
+
 [`api/workspace-controller`](../../packages/api/workspace-controller/README.zh.md)把 Workspace mutation policy 与权威 follow feed 留在 Host。`ClientWorkspaceModel` 拥有浏览器侧 row、order、archived Session id、command echo，以及 stream/unary 竞态合并。每代 stream 先给出完整 baseline，再给出 `upsert`、`remove`、`order` 和 `archived` increment；重连时以新 baseline 替换 model。`WorkspaceController` 把该 model 作为 `ctx.workspaces` 公开，而 `ui-workspace` 向 UI 提供 `useWorkspaces` 与 navigation callback。
 
 这种配对不会产生第二份业务真相。Host controller 决定持久状态与 mutation outcome；Client model 维护最新可用的本地 projection，在有利于渲染时保持 object identity，并明确 delayed response 与 replacement baseline 的合并规则。

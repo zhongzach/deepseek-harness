@@ -120,6 +120,8 @@ export interface SidebarRightTabDefinition {
   readonly guide?: readonly SidebarRightGuideEntry[]
   /** Prefer this guide page as the default and retain it as an unclosable first docked tab. Lowest guide order wins ties. */
   readonly retainAsDefault?: boolean
+  /** Hide the new-tab control in docked panes containing this type. Defaults to false; navigation APIs remain available. */
+  readonly hideAddTab?: boolean
 }
 
 /** What a routing decision settles on: who draws the address, and as what. */

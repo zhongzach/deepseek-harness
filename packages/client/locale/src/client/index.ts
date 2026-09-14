@@ -161,6 +161,7 @@ function syncDocumentLanguage(snapshot: LocaleSnapshot): void {
  */
 export class LocaleRuntime {
   private dicts = new Map<string, Map<string, LocaleDict>>()
+  private overrides = new Map<string, Map<string, LocaleDict[]>>()
   private bound = new Map<string, Translate>()
   private catalog = new Map<string, LocaleDefinition>()
   private fallbackChains = new Map<string, readonly LocaleId[]>()
@@ -444,6 +445,32 @@ export class LocaleRuntime {
     return t
   }
 
+  /**
+   * Overlay selected product vocabulary without replacing the base dictionary owner.
+   * @param ns - target namespace.
+   * @param locale - locale id of the supplied strings.
+   * @param dict - selected replacements; missing keys use the base dictionary.
+   * @returns disposer restoring the previous vocabulary.
+   */
+  override(ns: string, locale: string, dict: LocaleDict): () => void {
+    if (!LOCALE_ID_PATTERN.test(locale)) throw new Error(`locale id "${locale}" is not well-formed`)
+    const key = localeKey(locale)
+    let locales = this.overrides.get(ns)
+    if (!locales) { locales = new Map(); this.overrides.set(ns, locales) }
+    const entries = locales.get(key) ?? []
+    const copy = { ...dict }
+    entries.push(copy); locales.set(key, entries)
+    this.publish(this.snapshot.active, false)
+    return () => {
+      const index = entries.indexOf(copy)
+      if (index < 0) return
+      entries.splice(index, 1)
+      if (entries.length === 0) locales.delete(key)
+      if (locales.size === 0) this.overrides.delete(ns)
+      this.publish(this.snapshot.active, false)
+    }
+  }
+
   private translate(ns: string, key: string, params?: Record<string, unknown>): string {
     const chain = this.fallbackChain(this.snapshot.active)
     const template = this.lookup(ns, key, chain)
@@ -457,6 +484,11 @@ export class LocaleRuntime {
   private lookup(ns: string, key: string, chain: readonly LocaleId[]): string | undefined {
     const locales = this.dicts.get(ns)
     for (const locale of chain) {
+      const overlays = this.overrides.get(ns)?.get(localeKey(locale)) ?? []
+      for (let index = overlays.length - 1; index >= 0; index--) {
+        const value = overlays[index]?.[key]
+        if (value !== undefined) return value
+      }
       const value = locales?.get(localeKey(locale))?.[key]
       if (value !== undefined) return value
     }

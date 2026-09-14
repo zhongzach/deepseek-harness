@@ -304,10 +304,11 @@ export function ConversationRoot({
         open: pickerOpen,
         anchorRef: pickerAnchor,
         selectedId: pendingWorkspaceId ?? sessionWorkspace?.workspaceId,
-        onPick: (workspaceId) => {
+        onPick: (workspaceId, beforeOpen) => {
           setPickerOpen(false)
           setPendingWorkspaceId(workspaceId)
-          void selectWorkspace(workspaceId).catch(() => {
+          const selection = beforeOpen ? selectWorkspace(workspaceId, beforeOpen) : selectWorkspace(workspaceId)
+          void selection.catch(() => {
             setPendingWorkspaceId(current => current === workspaceId ? undefined : current)
           })
         },

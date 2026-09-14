@@ -117,6 +117,28 @@ function element(container: HTMLElement, selector: string): HTMLElement {
 }
 
 describe('RightbarSeat presentation', () => {
+  it('lets a tab type hide the add control without changing navigation or layout', async () => {
+    const h = await mountSeat()
+    h.open('first.txt')
+    const layout = h.layout()
+    expect(h.view.container.querySelector('[data-dockkit-add-tab]')).not.toBeNull()
+    let unregister!: () => void
+    act(() => {
+      unregister = h.runtime.ctx.sidebarRightTabs.register({
+        id: 'test/no-add', kind: 'text', priority: 'extension', title: () => 'Document', hideAddTab: true,
+      })
+    })
+    expect(h.view.container.querySelector('[data-dockkit-add-tab]')).toBeNull()
+    expect(h.layout()).toBe(layout)
+    const next = h.open('next.txt', { kind: 'text' })
+    expect(h.controller.active()?.id).toBe(next.id)
+    expect(h.view.container.querySelector('[data-dockkit-add-tab]')).toBeNull()
+    const opened = h.layout()
+    act(() => { unregister() })
+    expect(h.view.container.querySelector('[data-dockkit-add-tab]')).not.toBeNull()
+    expect(h.layout()).toBe(opened)
+  })
+
   it('hides for a global main panel and retains the Session sidebar state', async () => {
     const h = await mountSeat()
     h.open('retained.txt')

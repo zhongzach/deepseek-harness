@@ -39,7 +39,7 @@ export interface WorkspacePickFlowProps {
   /** Render this surface's directory-flow hole with the owner conversation (the entry's narrowed renderSlot). */
   renderDirectoryFlow: (owner: DirectoryFlowOwnerProps) => ReactNode
   /** A real Workspace was picked or created. */
-  onPick: (workspaceId: WorkspaceId) => void
+  onPick: (workspaceId: WorkspaceId, beforeOpen?: Parameters<DirectoryFlowOwnerProps['onPicked']>[1]) => void
   /** Close the popover (outside click / Escape / post-pick). */
   onClose: () => void
   /** Only offer the add action, hide existing workspaces. */
@@ -123,10 +123,11 @@ export function WorkspacePickFlow({
   }
 
   /** Adopt a picked directory; failures land in the folder-error dialog (Choose again reopens the flow). */
-  const adoptDirectory = (path: string): Promise<void> =>
+  const adoptDirectory = (path: string, beforeOpen?: Parameters<DirectoryFlowOwnerProps['onPicked']>[1]): Promise<void> =>
     createWorkspace({ path }).then((workspace) => {
       setFlowOpen(false)
-      onPick(workspace.workspaceId)
+      if (beforeOpen) onPick(workspace.workspaceId, beforeOpen)
+      else onPick(workspace.workspaceId)
     }).catch((reason: unknown) => {
       setModalError(reason instanceof Error ? reason.message : String(reason))
       setFlowOpen(false)
@@ -160,9 +161,9 @@ export function WorkspacePickFlow({
   const flowOwner: DirectoryFlowOwnerProps = {
     open: flowOpen,
     busy: pickingFolder,
-    onPicked: (path) => {
+    onPicked: (path, beforeOpen) => {
       setPickingFolder(true)
-      void adoptDirectory(path).finally(() => { setPickingFolder(false) })
+      void adoptDirectory(path, beforeOpen).finally(() => { setPickingFolder(false) })
     },
     onCancel: () => { setFlowOpen(false) },
     onError: (message) => {

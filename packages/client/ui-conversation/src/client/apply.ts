@@ -85,6 +85,7 @@ const ABSENT_FILE_UPLOADS = {
 }
 
 interface WorkspaceNavigation {
+  readonly transferDraftOnSwitch?: boolean
   openSession(sessionId: SessionId): void
   openWorkspace(
     workspaceId: Parameters<ConversationInjected['selectWorkspace']>[0],
@@ -247,7 +248,9 @@ export function apply(ctx: Context, config: Config = Config({})): void {
         composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
         heroPlaceholder,
       },
-      selectWorkspace: workspaceId => workspaceNavigation.openWorkspace(workspaceId, (nextId) => {
+      selectWorkspace: (workspaceId, beforeOpen) => workspaceNavigation.openWorkspace(workspaceId, (nextId) => {
+        if (beforeOpen) { beforeOpen(nextId); return }
+        if (workspaceNavigation.transferDraftOnSwitch === false) return
         if (sessionId !== undefined && nextId !== sessionId) {
           const from = inputHub.shell(sessionId)
           const draft = from.snapshot.draft

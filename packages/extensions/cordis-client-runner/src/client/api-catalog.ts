@@ -350,9 +350,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'a Session already addressable through the Session Controller.',
       },
       {
-        signature: 'startSession(workspaceId?: WorkspaceId): void',
+        signature: 'startSession(workspaceId?: WorkspaceId, beforeOpen?: (sessionId: SessionId) => void): void',
         description: 'Start a New Session flow and navigate to its Session.',
-        parameters: [{ name: 'workspaceId', description: 'explicit target; absent inherits the current or most recent Workspace.' }],
+        parameters: [{ name: 'workspaceId', description: 'explicit target; absent inherits the current or most recent Workspace.' }, { name: 'beforeOpen', description: 'optional synchronous preparation after the Session resolves, skipped after supersession.' }],
       },
       {
         signature: 'archiveSession(sessionId: SessionId): Promise<void>',

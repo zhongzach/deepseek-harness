@@ -37,6 +37,8 @@ Call `ctx.locale.register(ns, { zh, en })` with a namespace merged into `LocaleN
 
 ### Registering a language pack
 
+Products can override selected strings with `ctx.locale.override(ns, locale, dict)` without replacing a base dictionary or changing the selected language. Lookup uses the most recently registered override for each key before the base value at that locale. The returned disposer restores earlier overrides or the base dictionary and updates mounted translation consumers; duplicate base registration still fails.
+
 An external client plugin registers the language definition and each translated namespace as owned effects; definitions and dictionaries may register in either order:
 
 ```js

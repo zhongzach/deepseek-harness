@@ -67,6 +67,8 @@ Each registration declares a **directory-flow child hole** (`single` kind: `conv
 
 ### View state
 
+Products may install one reversible `registerNavigationPolicy` to handle New Session without an available Workspace and disable cross-Workspace draft transfer. Directory-flow `onPicked(path, beforeOpen?)` carries optional preparation to the resolved Session, subject to the existing navigation cancellation. `sidebar.workspaces.rename` optionally replaces only the Workspace rename dialog; its absence renders the native fallback. These extensions do not change Session cwd or Workspace membership.
+
 Once the Workspace list baseline is ready, browser-persisted expansion and Session-order records retain only current Workspace ids plus Ungrouped and the flat-list account. Real Workspaces initialize from `WorkspaceView.sessionIds`, while Ungrouped and the cross-Workspace flat list initialize from recency. The shared sidebar projection hides rows whose durable Session summary has `origin: 'subagent'`, and each visible ordinary row inherits the blue activity indicator while any descendant reached through uninterrupted subagent-origin lineage is running. The same pure derivation reads the Schedule key from list projection values for grouped, flat, and search nodes; the package uses only the type-only `@deepseek-ai/dsh-schedule/client` dependency and does not import the Schedule runtime or `ui-schedule`.
 
 ### Hover cards
@@ -120,4 +122,4 @@ None.
 
 </details>
 
-**Runtime invariant:** No companion is published. A pure-consumer plugin registering presentational components into two host-declared slots plus its locale dictionaries — its inject face is stateless RPC wrappers plus a create-and-open call; it emits no cordis events and owns no cross-plugin mutable state.
+**Runtime invariant:** No companion is published. Navigation policy and slot registrations have no independent persisted source to compare against; behavior tests cover registration, disposal and navigation ordering. Native Workspace and Session providers own directory and membership invariants.

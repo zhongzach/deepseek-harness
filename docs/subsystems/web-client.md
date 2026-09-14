@@ -47,6 +47,8 @@ The durable event path opens `follow()`, whose first frame contains the current 
 
 ### Workspaces
 
+Products can adapt Workspace presentation through reversible locale overrides, a navigation policy, directory-flow preparation callbacks and the optional rename dialog slot. These UI extensions retain the native Workspace and Session objects; the [Workspace UI package](../../packages/client/ui-workspace/README.md) owns their behavior.
+
 [`api/workspace-controller`](../../packages/api/workspace-controller/README.md) keeps Workspace mutation policy and the authoritative follow feed on the Host. `ClientWorkspaceModel` owns the browser rows, order, archived Session ids, command echoes, and stream/unary race resolution. Every stream generation starts with a complete baseline followed by `upsert`, `remove`, `order`, and `archived` increments; reconnect replaces the model from the new baseline. `WorkspaceController` exposes that model as `ctx.workspaces`, while `ui-workspace` contributes `useWorkspaces` and navigation callbacks to the UI.
 
 This pairing is not a second source of business truth. Host controllers decide durable state and mutation outcomes; Client models maintain the latest usable local projection, preserve object identity where useful to rendering, and encode how delayed responses and replacement baselines merge.
