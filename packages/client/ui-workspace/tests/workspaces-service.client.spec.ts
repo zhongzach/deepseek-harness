@@ -220,6 +220,17 @@ async function flush(): Promise<void> {
 }
 
 describe('UiWorkspaceService', () => {
+  it('applies and disposes a product navigation policy without changing native defaults', async () => {
+    const b = bench(), empty = vi.fn()
+    expect(b.uiWorkspace.transferDraftOnSwitch).toBe(true)
+    const undo = b.uiWorkspace.registerNavigationPolicy({ onEmptyStart: empty, transferDraftOnSwitch: false })
+    expect(b.uiWorkspace.transferDraftOnSwitch).toBe(false)
+    expect(() => b.uiWorkspace.registerNavigationPolicy({})).toThrow('already registered')
+    b.uiWorkspace.startSession(); expect(empty).toHaveBeenCalledOnce(); expect(b.sessions.clear).not.toHaveBeenCalled()
+    undo(); expect(b.uiWorkspace.transferDraftOnSwitch).toBe(true)
+    b.uiWorkspace.startSession(); expect(b.sessions.clear).toHaveBeenCalledOnce()
+    await b.ctx.fiber.dispose()
+  })
   it('selects a Session before revealing its Conversation, including the current Session', () => {
     const current = sid('current')
     const b = bench({ sessions: sessionState([summary('current')], current) })

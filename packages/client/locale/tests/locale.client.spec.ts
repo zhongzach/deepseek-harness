@@ -27,6 +27,18 @@ const stubLanguages = (...tags: string[]): void => {
 }
 
 describe('LocaleRuntime', () => {
+  it('overlays product vocabulary reversibly without changing the base owner or language', () => {
+    const { svc } = make()
+    svc.register('project', 'zh', { title: '工作区', keep: '原文', count: '{n} 个' })
+    const first = svc.override('project', 'zh', { title: '小说' })
+    expect(svc.bind('project')('title')).toBe('小说')
+    expect(svc.bind('project')('keep')).toBe('原文')
+    const second = svc.override('project', 'zh', { title: '作品' })
+    first(); expect(svc.bind('project')('title')).toBe('作品')
+    second(); second(); expect(svc.bind('project')('title')).toBe('工作区')
+    expect(svc.bind('project')('count', { n: 2 })).toBe('2 个')
+    expect(() => svc.register('project', 'zh', {})).toThrow('already has locale')
+  })
   beforeEach(() => {
     // A Chinese browser is the baseline these specs assert their zh state on.
     stubLanguages('zh-CN')

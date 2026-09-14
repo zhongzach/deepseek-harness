@@ -12,8 +12,25 @@ import type {
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 
+/** Product-specific navigation behavior; unset values preserve the native workflow. */
+export interface WorkspaceNavigationPolicy {
+  /** Called instead of an inert New Session when no Workspace is available. */
+  onEmptyStart?: () => void
+  /** Whether a blank-session workspace pick transfers its draft; defaults to true. */
+  transferDraftOnSwitch?: boolean
+}
+
 /** Workspace archive and directory operations consumed by Client UI domains. */
 export interface UiWorkspace {
+  /** Whether the composed navigation policy transfers drafts across Workspace picks. */
+  readonly transferDraftOnSwitch: boolean
+  /**
+   * Install one product navigation policy without changing native defaults for other compositions.
+   * @param policy - behavior for empty starts and cross-Workspace draft handling.
+   * @returns disposer restoring native behavior.
+   * @throws when another policy is already installed.
+   */
+  registerNavigationPolicy(policy: WorkspaceNavigationPolicy): () => void
   /**
    * Select a Session and show its Conversation as one UI navigation action.
    * @param sessionId - listed or retained Session to display.
@@ -41,8 +58,9 @@ export interface UiWorkspace {
   /**
    * Start a New Session flow and navigate to its Session.
    * @param workspaceId - explicit target; absent inherits the current or most recent Workspace.
+   * @param beforeOpen - optional synchronous preparation after the Session resolves, skipped after supersession.
    */
-  startSession(workspaceId?: WorkspaceId): void
+  startSession(workspaceId?: WorkspaceId, beforeOpen?: (sessionId: SessionId) => void): void
   /**
    * Archive a Session and clear it when it is the current selection.
    * @param sessionId - Session to archive.
@@ -90,6 +108,16 @@ export class DirectoryBrowseError extends Error {
 class UiWorkspaceService extends Service implements UiWorkspace {
   private readonly connecting = new Map<WorkspaceId, Promise<SessionId>>()
   private readonly lifetime = new AbortController()
+  private policy: WorkspaceNavigationPolicy | undefined
+
+  get transferDraftOnSwitch(): boolean { return this.policy?.transferDraftOnSwitch ?? true }
+
+  registerNavigationPolicy(policy: WorkspaceNavigationPolicy): () => void {
+    if (this.policy) throw new Error('ui-workspace: navigation policy already registered')
+    this.policy = policy
+    return () => { if (this.policy === policy) this.policy = undefined }
+  }
+
 
   /**
    * @param ctx - Client root Context.
@@ -151,7 +179,7 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     if (!navigation.aborted) this.openSession(childId)
   }
 
-  startSession(workspaceId?: WorkspaceId): void {
+  startSession(workspaceId?: WorkspaceId, beforeOpen?: (sessionId: SessionId) => void): void {
     const workspace = this.workspaces.list.getSnapshot()
     const sessions = this.sessions.list.getSnapshot()
     const current = sessions.current
@@ -163,11 +191,12 @@ class UiWorkspaceService extends Service implements UiWorkspace {
       : undefined
     const target = workspaceId ?? currentWorkspaceId ?? recent
     if (target === undefined) {
+      if (this.policy?.onEmptyStart) { this.policy.onEmptyStart(); return }
       this.sessions.clear()
       this.ctx.layout.selectPanel(null)
       return
     }
-    void this.openWorkspace(target).catch(
+    void this.openWorkspace(target, beforeOpen).catch(
       (reason: unknown) => { console.warn('new session failed:', reason) },
     )
   }

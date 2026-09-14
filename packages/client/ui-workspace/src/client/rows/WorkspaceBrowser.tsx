@@ -1225,9 +1225,9 @@ export function WorkspaceBrowser({
           renderDirectoryFlow={owner => renderSlot('sidebar.workspaces.directoryFlow', owner)}
           addOnly
           side="right"
-          onPick={(workspaceId) => {
+          onPick={(workspaceId, beforeOpen) => {
             setWsPickerOpen(false)
-            startSession(workspaceId)
+            startSession(workspaceId, beforeOpen)
           }}
           onClose={() => { setWsPickerOpen(false) }}
         />
@@ -1326,7 +1326,7 @@ export function WorkspaceBrowser({
             ))}
       </div>
 
-      <Modal
+      {renderSlot('sidebar.workspaces.rename', { target: renameTarget, onClose: closeRename }, { fallback: <Modal
         open={renameTarget !== null}
         onClose={closeRename}
         closeLabel={t('close')}
@@ -1359,7 +1359,7 @@ export function WorkspaceBrowser({
           <div className={css.renameError} role="alert">{t('conflict.named', { name: renameTrimmed })}</div>
         )}
         {renameError !== null && <div className={css.renameError} role="alert">{renameError}</div>}
-      </Modal>
+      </Modal> })}
 
       <Modal
         open={sessionRenameTarget !== null}

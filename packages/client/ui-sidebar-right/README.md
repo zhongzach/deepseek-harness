@@ -85,6 +85,8 @@ Two more seats extend what is already there: `sidebar.right.tab.guide` (chain) r
 
 A page definition with a `guide` entry can opt into `retainAsDefault: true`. The selected page stays first in each expanded docked pane, including when a file is opened directly. Closing or replacing that page is refused; opening a file preserves it and focuses the file. Moving or floating it backfills navigation without taking focus. Removing the opt-in releases this protection. The default is off, so ordinary guide and resource behavior is unchanged.
 
+A tab definition can independently set `hideAddTab: true` to hide the new-tab control in docked panes containing that type, even when another tab is active. The default is off. This changes only the control's visibility: `openTab` and `openResource`, file-tab closing, and the split and fullscreen controls keep their behavior. Unregistering the definition restores the active replacement's policy without changing the layout.
+
 <a id="ctxsidebarright"></a>
 ## `ctx.sidebarRight`
 

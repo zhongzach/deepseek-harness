@@ -43,8 +43,8 @@ export interface DirectoryFlowOwnerProps {
   open: boolean
   /** True while the owner adopts a picked path (`createWorkspace` in flight); occupants disable their commit affordances. */
   busy: boolean
-  /** The operator picked a directory (absolute host path); the owner adopts it. */
-  onPicked: (path: string) => void
+  /** The owner adopts an absolute Host path; optional preparation runs only after current navigation resolves a Session. */
+  onPicked: (path: string, beforeOpen?: (sessionId: SessionId) => void) => void
   /** The operator dismissed the interaction; the owner just closes the flow. */
   onCancel: () => void
   /** The interaction itself failed (chooser missing, listing denied); the owner shows its error surface. */
@@ -57,7 +57,15 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.workspace.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
+    /** Product metadata rename dialog; omission retains the native display-name dialog. */
+    'sidebar.workspaces.rename': { kind: 'single'; scope: 'root'; owner: WorkspaceRenameOwnerProps }
   }
+}
+
+/** The selected Workspace and dismissal callback owned by the sidebar browser. */
+export interface WorkspaceRenameOwnerProps {
+  target: { workspaceId: WorkspaceId; currentTitle: string } | null
+  onClose(): void
 }
 
 /** The two directory-flow holes; a flow package's client half registers its one component into both. */
@@ -102,7 +110,7 @@ export type WorkspaceBrowserInjected = {
    * open it; without an explicit workspace, inherit the current Session
    * Workspace, then the recent Workspace, or clear into the New Session view.
    */
-  startSession: (workspaceId?: WorkspaceId) => void
+  startSession: (workspaceId?: WorkspaceId, beforeOpen?: (sessionId: SessionId) => void) => void
   /** Open a real Session. */
   open: (sessionId: SessionId) => void
   /**
@@ -147,7 +155,7 @@ export type WorkspaceBrowserInjected = {
 /** Full browser props: shell owner share + viewing store + injected actions + the locale seat. */
 export type WorkspaceBrowserProps =
   PropsRuntime<'sidebar.workspaces'>
-  & PropsRenderSlots<'sidebar.workspaces.directoryFlow'>
+  & PropsRenderSlots<'sidebar.workspaces.directoryFlow' | 'sidebar.workspaces.rename'>
   & PropsStore<ReturnType<typeof createWorkspaceViewStore>>
   & Omit<WorkspaceBrowserInjected, 'hooks'>
   & PropsHooks<WorkspaceBrowserInjected['hooks']>

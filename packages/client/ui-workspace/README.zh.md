@@ -67,6 +67,8 @@ Session 行渲染运行时的实时 `pendingInteraction` 分类：审批显示**
 
 ### 视图状态
 
+产品可以安装一份可释放的 `registerNavigationPolicy`，处理没有可用 Workspace 时的新会话操作，并禁止跨 Workspace 搬移草稿。目录流的 `onPicked(path, beforeOpen?)` 可把准备回调传给已解析的 Session，仍受现有导航取消机制约束。`sidebar.workspaces.rename` 可仅替换 Workspace 改名对话框；没有占用方时渲染原生回退。这些扩展不修改 Session cwd 或 Workspace 归属。
+
 Workspace 列表基线就绪后，浏览器持久化的展开状态与 Session 顺序记录只保留当前 Workspace id、Ungrouped 与单列表记账。真实 Workspace 从 `WorkspaceView.sessionIds` 初始化，Ungrouped 与跨 Workspace 单列表从最近更新时间顺序初始化。共享侧边栏投影会隐藏持久化 Session 摘要中带有 `origin: 'subagent'` 的行；每个可见普通行都会在经不间断的 subagent 谱系可达的任一后代运行时继承蓝色活动指示器。同一份纯派生还会为分组、平铺与搜索节点读取列表 projection value 中的 Schedule key；本包只使用纯类型依赖 `@deepseek-ai/dsh-schedule/client`，不会导入 Schedule runtime 或 `ui-schedule`。
 
 ### 悬浮卡片
@@ -120,4 +122,4 @@ Workspace 与 Session 悬浮卡片会复制对应行被截断的值：激活 Wor
 
 </details>
 
-**运行时不变式：** 不发布伴生入口。这是纯消费插件，只注册展示组件和 locale dictionary；inject face 是无状态 RPC wrapper 加 create-and-open 调用，不发出事件或持有跨插件可变状态。
+**运行时不变式：** 不发布伴生入口。导航策略与插槽注册没有可供交叉核对的独立持久化来源；行为测试覆盖注册、释放和导航顺序。目录及会话归属的不变量由原生 Workspace 与 Session 提供方负责。

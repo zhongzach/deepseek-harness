@@ -36,7 +36,7 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '../contract/slots.ts'
 import type { DockIntents, DockMode, FloatRect, TabId, TabRecord, TabRenderer } from '@deepseek-ai/dsh-client-ui-dockkit'
-import { canSplit, dockPaneIds, DockSurface, findPaneContentTab, FloatLayer } from '@deepseek-ai/dsh-client-ui-dockkit'
+import { canSplit, dockPaneIds, DockSurface, findPaneContentTab, FloatLayer, getPane, getTab } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { HalvesFit, LayoutState, PaneId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { GUIDE_KIND, pageAddress } from '../contract/seed.ts'
@@ -292,6 +292,8 @@ function PanelChrome({ sessionId, fullscreen, exitFullscreen, actions, t }: Pick
 function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<HTMLDivElement> }): ReactNode {
   const { sessionId, surface, actions, t, renderSlot, openTab, width, reportRoom, fullscreen, panelRef } = panel
   const { expanded } = surface.layout
+  const definitions = panel.useTabTypes(value => value)
+  const hideAddTabKinds = new Set(definitions.filter(definition => definition.hideAddTab).map(definition => definition.kind))
   return (
     <div
       ref={panelRef}
@@ -311,7 +313,8 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
           hideSplitWhenBlocked
           dropZones="horizontal"
           minPaneFraction={0.2}
-          canAddTab={paneId => guideIn(surface.layout, paneId) === undefined}
+          canAddTab={paneId => guideIn(surface.layout, paneId) === undefined
+            && getPane(surface.layout, paneId).tabs.every(tabId => !hideAddTabKinds.has(getTab(surface.layout, tabId).kind))}
           canCloseTab={tabId => canCloseTab(surface, tabId, panel.retainedKind)}
           intents={intentsFor(sessionId, actions, openTab)}
           labels={dockLabels(t)}
