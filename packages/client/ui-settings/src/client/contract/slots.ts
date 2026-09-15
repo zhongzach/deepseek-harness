@@ -53,6 +53,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'settings.section': { kind: 'list'; scope: 'root'; owner: SettingsSectionOwnerProps }
     /**
+     * Optional decorative navigation icon, keyed by a settings.section id.
+     * The shell supplies the size and falls back to its standard section
+     * glyph when the key has no contribution.
+     */
+    'settings.section.icon': { kind: 'keyed'; scope: 'root'; owner: SettingsSectionIconOwnerProps }
+    /**
      * One page inside the Plugins settings section. The section owner renders
      * localized entry labels as tabs and mounts each contribution inside its
      * corresponding tab panel. Options: `id` (tab key), `order` (tab order),
@@ -123,6 +129,12 @@ export interface SettingsHeaderOwnerProps {
 export interface SettingsSectionOwnerProps {
   /** Close the settings panel (the shell owns the open state). */
   close: () => void
+}
+
+/** Shell-owned size of a decorative settings navigation icon. */
+export interface SettingsSectionIconOwnerProps {
+  /** Icon width and height in CSS pixels. */
+  size: number
 }
 
 /** Owner share of the currently active settings-backed onboarding step. */

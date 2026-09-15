@@ -124,6 +124,7 @@ root
 │     ├─ settings.action
 │     ├─ settings.close
 │     ├─ settings.onboarding
+│     ├─ settings.section.icon
 │     └─ settings.section
 │        ├─ settings.general.item
 │        ├─ settings.models.provider-card

@@ -78,7 +78,9 @@ function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelP
                 aria-current={row.id === active ? 'true' : undefined}
                 onClick={() => { onSelect(row.id) }}
               >
-                {navIcon(row.id)}
+                <span className={css.navIcon} aria-hidden="true" data-settings-nav-icon={row.id}>
+                  {renderSlot('settings.section.icon', { size: 16 }, { entryKey: row.id, fallback: navIcon(row.id) })}
+                </span>
                 <span className={css.navLabel}>{row.label}</span>
               </button>
             ))}

@@ -2,6 +2,7 @@
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SettingsRootComponentProps } from '../src/client/shell-contract.ts'
@@ -63,8 +64,9 @@ function mount({
   const connectionListeners = new Set<() => void>()
   const reconnect = vi.fn()
   const renderSlot = vi.fn(
-    ((key: string, _owner: unknown, opts?: { only?: string }) => {
+    ((key: string, _owner: unknown, opts?: { only?: string; fallback?: ReactNode }) => {
       if (key === 'settings.section') return <div data-testid={`section-${opts?.only ?? 'all'}`} />
+      if (key === 'settings.section.icon') return opts?.fallback
       return SEAT_CONTENT[key]
     }) as SettingsRootComponentProps['renderSlot'],
   )
@@ -129,6 +131,24 @@ function openPanel() {
 }
 
 describe('SettingsRoot trigger', () => {
+  it('dispatches navigation icons by section id and keeps the default glyph when none is contributed', () => {
+    const { renderSlot } = mount({ rows: [
+      { id: 'general', order: 0, label: 'General' },
+      { id: 'models', order: 10, label: 'Models' },
+      { id: 'custom', order: 20, label: 'Custom' },
+    ] })
+    openPanel()
+    for (const [id, label] of [['general', 'General'], ['models', 'Models'], ['custom', 'Custom']] as const) {
+      expect(renderSlot).toHaveBeenCalledWith('settings.section.icon', { size: 16 }, expect.objectContaining({ entryKey: id }))
+      const icon = screen.getByRole('button', { name: label }).querySelector('[data-settings-nav-icon]')!
+      expect(icon.getAttribute('aria-hidden')).toBe('true')
+      expect(icon.querySelector('svg')?.getAttribute('width')).toBe('16')
+    }
+    const glyph = (label: string) => screen.getByRole('button', { name: label }).querySelector('svg')!.innerHTML
+    expect(glyph('Custom')).toBe(glyph('General'))
+    expect(glyph('Models')).not.toBe(glyph('General'))
+  })
+
   it.each([
     { column: 'expanded English', wide: true, dictionary: en, name: 'Settings' },
     { column: 'collapsed English', wide: false, dictionary: en, name: 'Settings' },

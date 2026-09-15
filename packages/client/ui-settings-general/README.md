@@ -33,6 +33,8 @@ Users reach the shell through the sidebar's bottom Settings control; feature plu
 
 The General section holds rows registered into `settings.general.item` by feature packages — it has no built-in rows. Feature plugins own the row copy and behavior; the shell only provides the section and its slot. The Appearance row, for example, lives in ui-theme.
 
+Feature plugins can contribute a decorative navigation icon through `settings.section.icon`, keyed by their section id. The shell supplies `size: 16` and keeps the icon out of the accessible name. An unregistered key uses the shell's standard section glyph; icon registration does not change section order, selection, or content.
+
 ### Opening the configuration file
 
 On a loopback browser, the shell renders **Open configuration file** only when the Host confirms that a provider-owned local document can be prepared. The action opens that document in the native text editor (bypassing the browser file association on macOS). Remote browsers never register the action and never issue the privileged settings read.
