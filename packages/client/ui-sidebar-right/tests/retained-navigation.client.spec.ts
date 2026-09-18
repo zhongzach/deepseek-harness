@@ -25,7 +25,7 @@ describe('retained default navigation', () => {
   it('prefers the retained guide entry by order, with stable registration ties and opt-out defaults', () => {
     const definition = (kind: string, order?: number, retainAsDefault?: boolean): SidebarRightTabDefinition => ({
       id: kind, kind, title: () => kind,
-      ...order === undefined ? {} : { guide: [{ order, title: () => kind }] },
+      ...order === undefined ? {} : { guide: [{ id: kind, order, title: () => kind }] },
       ...retainAsDefault === undefined ? {} : { retainAsDefault },
     })
     const guide = definition('guide'), files = definition('files', 20, true), other = definition('other', 10)

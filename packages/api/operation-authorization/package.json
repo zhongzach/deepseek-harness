@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-api-operation-authorization",
-  "version": "0.1.5-alpha.2",
+  "version": "0.1.6-alpha.2",
   "description": "Deployment policy events for API writes and model catalog presentation",
   "type": "module",
   "license": "MIT",

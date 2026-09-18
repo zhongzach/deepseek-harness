@@ -40,6 +40,8 @@ export const zh = {
   'tree.aria': '协作助手会话',
   'readonly.oneShot.title': '一次性协作助手记录',
   'readonly.title': '此协作助手暂时只读',
+  'open.sidebar': '在侧边栏打开 {label}',
+  'sidebar.chat': '聊天',
   'readonly.oneShot.body': '一次性任务不支持后续消息，可在这里查看完整执行记录。',
   'readonly.body': '父会话当前不在线，重新打开父会话后即可继续发送消息。',
 } as const
@@ -79,6 +81,8 @@ export const en: Record<SubagentKey, string> = {
   'count.running.other': '{count} subagents running',
   'switcher.aria': 'Switch subagent: {title}',
   'tree.aria': 'Subagent sessions',
+  'open.sidebar': 'Open {label} in sidebar',
+  'sidebar.chat': 'Chat',
   'readonly.oneShot.title': 'One-shot subagent record',
   'readonly.title': 'This subagent is read-only for now',
   'readonly.oneShot.body': 'One-shot tasks do not accept follow-ups; review the full execution record here.',

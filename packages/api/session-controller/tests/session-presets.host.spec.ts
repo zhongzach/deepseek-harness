@@ -69,8 +69,8 @@ async function harness(presets?: readonly string[]) {
       const agent = stubAgent(session)
       ;(agent as { ctx?: Context }).ctx = ctx
       await options.setup?.(ctx, agent)
-      const unregister = ctx.agents.register(agent)
-      return { agent, dispose: () => { unregister(); return Promise.resolve() } }
+      const unregister = await ctx.agents.register(agent)
+      return { agent, dispose: async () => { await unregister() } }
     },
     async resume() {
       throw new Error('test harness has no persisted sessions')
@@ -100,7 +100,7 @@ async function coldHarness(started = false, raceStartsTurn = false) {
     stat: () => Promise.resolve({ header, revision: SessionPersistenceRevision(`stored:${String(events.length)}`) }),
     inspect: () => Promise.resolve({ meta: header, events }),
   }) as never)
-  let unload = (): void => {}
+  let unload = async (): Promise<void> => {}
   let resumeCount = 0
   f.factory.resume = async (_ownerCtx, options) => {
     resumeCount += 1
@@ -120,13 +120,13 @@ async function coldHarness(started = false, raceStartsTurn = false) {
     f.ctx.sessions.announce(session)
     const unregister = f.ctx.agents.register(agent)
     events = session.snapshotEvents()
-    unload = () => { unregister(); detach() }
-    return { agent, dispose: () => { unload(); return Promise.resolve() } }
+    unload = async () => { await unregister(); detach() }
+    return { agent, dispose: () => unload() }
   }
   const controller = createSessionTestController(f.ctx, {
     defaultModelSelection: () => ({ provider: 'test', model: 'test-model' }), cwd: f.cwd,
   })
-  return { ...f, controller, id, readEvents: () => events, unload: () => { unload() }, resumes: () => resumeCount }
+  return { ...f, controller, id, readEvents: () => events, unload: () => unload(), resumes: () => resumeCount }
 }
 
 describe('blank stored Session with an unavailable preset', () => {
@@ -139,7 +139,7 @@ describe('blank stored Session with an unavailable preset', () => {
     const switches = () => f.readEvents().filter(event => event.type === 'agent-preset/selected')
     expect(switches()).toHaveLength(1)
     expect(switches()[0]).toMatchObject({ data: { agentPreset: 'standard' } })
-    f.unload()
+    await f.unload()
     const again = await f.controller.resolveAgent(f.id)
     expect('agent' in again).toBe(true)
     expect(switches()).toHaveLength(1)

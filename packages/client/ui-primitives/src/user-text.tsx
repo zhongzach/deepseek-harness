@@ -18,6 +18,7 @@ import { Fragment, type ReactNode } from 'react'
 import clsx from 'clsx'
 import { ReferenceIcon } from './ReferenceIcon.tsx'
 import css from './user-text.module.css'
+import markdownCss from './markdown/MarkdownText.module.css'
 
 /** The wire form a session chip serializes to; label is the display text. */
 const SESSION_WIRE_RE = /@\[([^\]\n]+)\]\(dsh-session:[^)\s]+\)/gu
@@ -47,6 +48,14 @@ export interface UserTextReference {
   readonly value: string
 }
 
+/** Optional navigation supplied by consumers that can preview references. */
+export interface UserTextReferences {
+  /** Open a file path decoded from an `@` mention. */
+  openFile: (path: string) => void
+  /** Open the source of a skill loaded for this message. */
+  openSkill: (name: string) => void
+}
+
 /**
  * Split one sent text into inline plain runs and reference chips.
  * @param text - the logged model text of the message or queue row.
@@ -55,7 +64,7 @@ export interface UserTextReference {
  * host loaded for this message, or the command a command bubble echoes
  * (unsent queue rows pass none).
  * @param slashKind - the chip kind those tokens render as.
- * @param renderReference - optional presentation of a recognized reference; plain text and matching stay unchanged.
+ * @param references - optional reference renderer or file and skill preview actions; matching stays unchanged.
  * @returns inline nodes covering the whole text.
  */
 export function projectUserText(
@@ -63,8 +72,10 @@ export function projectUserText(
   sessionLabels: readonly string[],
   slashNames: readonly string[] = [],
   slashKind: 'skill' | 'command' = 'skill',
-  renderReference?: (reference: UserTextReference) => ReactNode,
+  references?: UserTextReferences | ((reference: UserTextReference) => ReactNode),
 ): ReactNode {
+  const renderReference = typeof references === 'function' ? references : undefined
+  const navigation = typeof references === 'function' ? undefined : references
   const ranges: DecorationRange[] = []
   SESSION_WIRE_RE.lastIndex = 0
   let wire: RegExpExecArray | null
@@ -113,7 +124,7 @@ export function projectUserText(
     const referenceKind = kind === 'session'
       ? 'session'
       : label.startsWith('@') || label.startsWith('#')
-        ? label.endsWith('/') ? 'folder' : 'file'
+        ? label.slice(1).replace(/^"|"$/gu, '').endsWith('/') ? 'folder' : 'file'
         : undefined
     const displayLabel = range.display
       ?? (referenceKind === undefined
@@ -129,19 +140,39 @@ export function projectUserText(
         raw: label,
         value: referenceKind === 'session' ? displayLabel : label.slice(1).replace(/^"|"$/gu, ''),
       })}</Fragment>)
-    } else parts.push(
-      <span
+      cursor = end
+      continue
+    }
+    const contents = <>
+      {referenceKind !== undefined && (
+        <ReferenceIcon kind={referenceKind} size={16} className={css.refIcon} />
+      )}
+      {displayLabel}
+    </>
+    const open = navigation === undefined ? undefined
+      : referenceKind === 'file'
+        ? () => { navigation.openFile(label.slice(1).replace(/^"|"$/gu, '')) }
+        : referenceKind === undefined && slashKind === 'skill'
+          ? () => { navigation.openSkill(label.slice(1)) }
+          : undefined
+    const className = clsx(css.refChip, referenceKind === undefined && css.slashChip)
+    parts.push(open === undefined
+      ? <span key={tokenStart} className={className} data-ref-chip={referenceKind ?? slashKind} title={label}>
+        {contents}
+      </span>
+      : <button
         key={tokenStart}
-        className={clsx(css.refChip, referenceKind === undefined && css.slashChip)}
+        type="button"
+        className={clsx(className, markdownCss.fileMention)}
         data-ref-chip={referenceKind ?? slashKind}
         title={label}
+        onClick={(event) => {
+          if (event.detail > 1 || (event.detail !== 0 && event.currentTarget.ownerDocument.getSelection()?.isCollapsed === false)) return
+          open()
+        }}
       >
-        {referenceKind !== undefined && (
-          <ReferenceIcon kind={referenceKind} size={16} className={css.refIcon} />
-        )}
-        {displayLabel}
-      </span>,
-    )
+        {contents}
+      </button>)
     cursor = end
   }
   if (parts.length === 0) return <span className={css.plainRun}>{text}</span>

@@ -39,6 +39,8 @@ A skill is either a directory bundle `<name>/SKILL.md` or a flat file `<name>.md
 
 Optional `display-name` frontmatter supplies a human-facing title such as `章节写作`; discovery and loading expose it as `displayName`. An empty title is omitted. The required `name` remains the ASCII kebab-case invocation ID; this provider does not translate titles or rewrite files.
 
+Catalog entries and loaded skills expose the resolved instruction-file path, so symlinked directories and flat files can open as regular-file previews. Reload locators and resource bases retain the discovered paths, including symlinks.
+
 The catalog and the body have separate lifecycles: discovery parses frontmatter into the catalog entry, and every load re-reads the current file, so editing a skill body needs no versioning or cache invalidation.
 
 ### Roots and priority

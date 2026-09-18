@@ -157,7 +157,7 @@ function TurnMaxTokensItem({ t }: {
 /** Right-aligned bubble shared by user and steering rows. */
 function UserStyleBubble({
   content, renderMessageImages, actions, pending = false, echo = false, referenceLabels = [], skillNames = [],
-  previewAttachments, renderUserText, openFile, t,
+  previewAttachments, renderUserText, openFile, references, t,
 }: {
   content: readonly unknown[]
   renderMessageImages: ChatNodeOwnerProps['renderMessageImages']
@@ -175,6 +175,7 @@ function UserStyleBubble({
   previewAttachments?: readonly PresentedAttachment[]
   renderUserText?: ChatNodeOwnerProps['renderUserText']
   openFile?: (path: string) => void
+  references?: Pick<ChatNodeOwnerProps, 'openFile' | 'openSkill'>
   t: ChatViewSlotProps['t']
 }): ReactNode {
   const { text, attachments: contentAttachments, rest } = contentParts(content)
@@ -216,10 +217,10 @@ function UserStyleBubble({
           </div>
         )}
         {showBubble && <div className={css.bubble} data-user-message-bubble>
-          {renderUserText === undefined ? projectUserText(text, referenceLabels, skillNames)
+          {renderUserText === undefined ? projectUserText(text, referenceLabels, skillNames, 'skill', references)
             : renderUserText('conversation.message.user-text', {
               text, referenceLabels, skillNames, ...openFile === undefined ? {} : { openFile },
-            }, { fallback: projectUserText(text, referenceLabels, skillNames) })}
+            }, { fallback: projectUserText(text, referenceLabels, skillNames, 'skill', references) })}
           {rest.map((block, i) => <JsonBlock key={i} label={t('message.extraBlock')} payload={block} truncatedLabel={truncated} />)}
         </div>}
         {referenceLabels.length > 0 && (
@@ -326,7 +327,7 @@ export function PendingSubmissionBubble({ submission, renderMessageImages, rende
 
 /** User and admitted-steering keyed Chat renderer. */
 export const UserMessageNodeView = memo(function UserMessageNodeView({
-  node, renderMessageImages, renderUserText, openFile, t,
+  node, renderMessageImages, renderUserText, openFile, openSkill, t,
 }: ChatNodeViewProps<'user' | 'steering'>) {
   const data = node.data
   return (
@@ -334,6 +335,7 @@ export const UserMessageNodeView = memo(function UserMessageNodeView({
       content={data.content}
       renderUserText={renderUserText}
       openFile={openFile}
+      references={{ openFile, openSkill }}
       renderMessageImages={renderMessageImages}
       {...data.referenceLabels === undefined ? {} : { referenceLabels: data.referenceLabels }}
       {...data.skillNames === undefined ? {} : { skillNames: data.skillNames }}
@@ -363,7 +365,7 @@ export const ContextMessageNodeView = memo(function ContextMessageNodeView({
     <ContextInjectionRow
       content={data.content}
       source={data.source}
-      provenance={data.provenance}
+      producer={data.producer}
       form={data.form}
       t={t}
     />

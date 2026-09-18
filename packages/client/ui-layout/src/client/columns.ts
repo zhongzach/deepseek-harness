@@ -52,11 +52,14 @@ export function clampWidth(px: number, min: number, max: number): number {
  * @param sidebar - sidebar width preference in px (0 = closed).
  * @param rightbar - requested right panel width in px (0 = no track).
  * @param shelf - optional product shelf width preference in px (0 = closed).
+ * @param collapsedWidth - closed sidebar track width; zero hides the macOS desktop rail.
  * @returns actual widths after shrinking or removing the right track; only
  *   without that track may the center fall below its minimum, down to zero.
  */
-export function computeColumns(viewport: number, sidebar: number, rightbar: number, shelf = 0): Columns {
-  const s = sidebar === 0 ? SIDEBAR_COLLAPSED : clampWidth(sidebar, SIDEBAR_MIN, SIDEBAR_MAX)
+export function computeColumns(
+  viewport: number, sidebar: number, rightbar: number, shelf = 0, collapsedWidth = SIDEBAR_COLLAPSED,
+): Columns {
+  const s = sidebar === 0 ? collapsedWidth : clampWidth(sidebar, SIDEBAR_MIN, SIDEBAR_MAX)
   const sh0 = shelf === 0 ? 0 : clampWidth(shelf, SHELF_MIN, SHELF_MAX)
   // Concede shelf width before the right panel. Its minimum remains visible
   // so closing a reader never loses the project's navigation surface.

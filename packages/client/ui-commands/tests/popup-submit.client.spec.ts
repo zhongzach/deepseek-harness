@@ -2,7 +2,7 @@
 /** Real command contributions exercised through the Lexical submit facade. */
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { SlotTestRuntime, TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
+import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
 import { InputTriggerService } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import { SessionInputShell } from '@deepseek-ai/dsh-client-ui-conversation/src/client/input/facade.ts'
 import type { DraftAttachmentId } from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -15,8 +15,9 @@ async function bench() {
   const ctx = runtime.ctx
   const sessionId = 'popup-submit' as SessionId
   await runtime.sessions.add({ id: sessionId })
+  runtime.sessions.retainFor(ctx, sessionId, { source: 'mainView' })
   ctx.provide('locale', new LocaleRuntime(ctx))
-  new TestRemote(ctx, { commands: { list: () => Promise.resolve({ ok: true, value: [] }) } })
+  runtime.remote.provideNamespaces({ commands: { list: () => Promise.resolve({ ok: true, value: [] }) } })
   await ctx.plugin(InputTriggerService).await()
   await ctx.plugin(CommandUiRuntime).await()
   const actx = runtime.sessions.scope(sessionId)!
@@ -69,7 +70,7 @@ describe('submit-layer popup lifetime', () => {
     const b = await bench()
     const submit = vi.fn(() => Promise.resolve({ kind: 'success' as const }))
     b.shell.setDraft('/deny ')
-    b.shell.beginCommand({ token: '/deny ', submit }, { start: 0, end: 6, draftRev: b.shell.snapshot.draftRev })
+    b.shell.beginCommand({ name: 'deny', token: '/deny ', submit }, { start: 0, end: 6, draftRev: b.shell.snapshot.draftRev })
     b.shell.addAttachments(['attachment' as DraftAttachmentId])
     b.openOld()
     b.shell.submit()

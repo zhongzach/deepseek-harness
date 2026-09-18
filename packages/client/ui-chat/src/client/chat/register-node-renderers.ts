@@ -55,7 +55,7 @@ export function registerChatNodeRenderers(ctx: Context, turnMetrics: ObservableS
     locale: NS,
     inject: () => ({ hooks: { showTurnMetrics: turnMetrics } }),
     children: {
-      'conversation.chat.turnTail': { kind: 'chain', scope: 'session' },
+      'conversation.chat.turnTail': { kind: 'list', scope: 'session' },
       'conversation.chat.assistant-actions': { kind: 'list', scope: 'session' },
     },
   }, TurnTailNodeView))

@@ -22,6 +22,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
+import { IconDataOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ModelDirectoryState } from './directory.ts'
 import { ModelDirectoryResolver } from './service.ts'
 import type { ModelSelectInjected } from './slots.ts'
@@ -158,7 +159,9 @@ export function apply(ctx: ClientContext): void {
     const sessions = scope.sessions
     scope.effect(() => command.register({
       name: 'model',
+      label: () => t('command.label'),
       description: () => t('command.description'),
+      icon: IconDataOutline16,
       available: session => sessions.subagentAddress(session.sessionId) === undefined,
       ui: {
         kind: 'popupSelect',
@@ -177,7 +180,11 @@ export function apply(ctx: ClientContext): void {
           if (selection === undefined) {
             throw new Error('this provider\'s catalog failed to load — pick a model from a loaded group')
           }
-          await directory.select(selection)
+          const result = await directory.select(selection)
+          if (!result.ok) {
+            if (result.error.code === 'session/writer-held') throw new Error(t('error.sessionInUse'))
+            throw result.error
+          }
         },
         onAction: (actionId, session) => {
           if (sessions.subagentAddress(session.sessionId) !== undefined) return
@@ -207,8 +214,8 @@ export function apply(ctx: ClientContext): void {
             if (available) directory.load().catch(() => { /* surfaced on the store */ })
           },
           select: (selection: ModelSelection) => available
-            ? directory.select(selection).then(() => true, () => false)
-            : Promise.resolve(false),
+            ? directory.select(selection)
+            : Promise.resolve(undefined),
           requestAction: (actionId: string) => {
             if (available && modelAvailabilityActions(directory.store.getSnapshot().groups).some(action => action.id === actionId)) {
               scope.emit('model-selection/action', actionId)
