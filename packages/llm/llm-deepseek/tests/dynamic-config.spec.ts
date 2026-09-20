@@ -164,7 +164,8 @@ describe('request-level dynamic configuration', () => {
     expect(keyless.finish).toMatchObject({ kind: 'error', failure: { code: 'MISSING_CREDENTIAL' } })
     await expect(access(join(dir, '.anonymous-user-id'))).rejects.toMatchObject({ code: 'ENOENT' })
     await ctx.credentials.set(KEY_REF, 'sk-arrived')
-    await expect(ctx.llm.listModels('deepseek-official')).resolves.toHaveLength(3)
+    expect((await ctx.llm.listModels('deepseek-official')).map(model => model.id))
+      .toEqual(['deepseek-flash', 'deepseek-v4-pro'])
     await prompt(ctx)
     expect(server.headers[0]?.authorization).toBe('Bearer sk-arrived')
     await expect(access(join(dir, '.anonymous-user-id'))).resolves.toBeUndefined()
@@ -214,7 +215,8 @@ describe('request-level dynamic configuration', () => {
 
     await expect(ctx.llm.listModels('deepseek-official')).resolves.toEqual([])
     await ctx.credentials.set(customRef, 'custom-catalog-key')
-    await expect(ctx.llm.listModels('deepseek-official')).resolves.toHaveLength(3)
+    expect((await ctx.llm.listModels('deepseek-official')).map(model => model.id))
+      .toEqual(['deepseek-flash', 'deepseek-v4-pro'])
   })
 
   it('applies changed request file limits to the next request', async () => {
