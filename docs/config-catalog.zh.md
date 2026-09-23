@@ -1422,6 +1422,8 @@ export interface PiAiModelProfile {
   name?: string
   /** Optional selector-only section placement; it never enters pi-ai's model or request identity. */
   presentation?: LlmModelPresentation
+  /** Deployment-owned string annotations captured with the model; never sent to pi-ai or upstream by default. */
+  metadata?: Record<string, string>
   /** Maximum combined request and response context in tokens. */
   contextWindow?: number
   /**
@@ -1578,7 +1580,7 @@ export type PiAiThinkingTokenBudgetField = NonNullable<OpenAICompletionsCompat['
 
 依赖：`Api` (`@earendil-works/pi-ai`) · `CacheRetention` (`@earendil-works/pi-ai`) · [`LlmModelPresentation`](../packages/llm/llm/src/index.ts) · `Model` (`@earendil-works/pi-ai`) · `ModelThinkingLevel` (`@earendil-works/pi-ai`) · `OpenAICompletionsCompat` (`@earendil-works/pi-ai`) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts) · `ThinkingBudgets` (`@earendil-works/pi-ai`) · `Transport` (`@earendil-works/pi-ai`)
 
-来源：[`packages/llm/llm-pi-ai/src/config.ts:223`](../packages/llm/llm-pi-ai/src/config.ts)
+来源：[`packages/llm/llm-pi-ai/src/config.ts:225`](../packages/llm/llm-pi-ai/src/config.ts)
 
 <a id="deepseek-aidsh-llm-replay"></a>
 

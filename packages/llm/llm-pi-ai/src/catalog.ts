@@ -579,6 +579,8 @@ export interface PiAiModelProfile {
   name?: string
   /** Optional selector-only section placement; it never enters pi-ai's model or request identity. */
   presentation?: LlmModelPresentation
+  /** Deployment-owned string annotations captured with the model; never sent to pi-ai or upstream by default. */
+  metadata?: Record<string, string>
   /** Maximum combined request and response context in tokens. */
   contextWindow?: number
   /**

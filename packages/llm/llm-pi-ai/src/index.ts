@@ -67,12 +67,13 @@ import { authContextFrom, credentialStoreFrom } from './auth.ts'
 import { catalogProviderIds } from './catalog.ts'
 import { assertServiceable, Config, resolveProfiles } from './config.ts'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
+import type { PiAiAdapterOptions } from './adapter.ts'
 import { discoverModels } from './discovery.ts'
 import type { StoredModelDiscoveryProfile } from './discovery.ts'
 import { registerPiAiFlows } from './login.ts'
 
 export { PiAiAdapter } from './adapter.ts'
-export type { PiAiAdapterOptions } from './adapter.ts'
+export type { PiAiAdapterOptions, PiAiRequestPolicyInput } from './adapter.ts'
 export { Config } from './config.ts'
 export type {
   PiAiCompatProfile,
@@ -91,6 +92,16 @@ export const name = 'llm-pi-ai'
 export const inject = ['llm']
 
 const NS = 'llm-pi-ai'
+
+/** Deployment defaults and parameter translation; stored settings and the request protocol remain owned by callers. */
+export interface PiAiExtension {
+  /** Localize or order selector descriptions while retaining ids accepted by the captured model. */
+  describeReasoning?: PiAiAdapterOptions['describeReasoning']
+  /** Return an immutable runtime projection; never persist it or mutate the supplied settings. */
+  configure?: (config: Config) => Config
+  /** Validate and freeze request-local translation before credential resolution. */
+  prepareRequest?: PiAiAdapterOptions['prepareRequest']
+}
 
 /**
  * The registry captures these per route; a change here must re-register.
@@ -143,6 +154,17 @@ function directoryEntries(
 
 /** Register one generic pi-ai adapter for all configured provider routes. */
 export function apply(ctx: Context, config: Config): void {
+  applyWithExtension(ctx, config, {})
+}
+
+/**
+ * Mount the complete adapter with deployment-owned defaults and request translation.
+ * @param ctx - context owning registrations and their disposal.
+ * @param config - composition settings, merged with the live user section.
+ * @param extension - pure configuration projection and request-local parameter policy.
+ */
+export function applyWithExtension(ctx: Context, config: Config, extension: PiAiExtension): void {
+  const projected = (value: Config): Config => extension.configure?.(value) ?? value
   let current: () => Config = () => config
   let lastRaw: Config | undefined
   let memoized: ReadonlyMap<string, ResolvedPiAiProviderProfile> | undefined
@@ -158,7 +180,7 @@ export function apply(ctx: Context, config: Config): void {
   const profiles = (): ReadonlyMap<string, ResolvedPiAiProviderProfile> => {
     const raw = current()
     if (raw === lastRaw && memoized !== undefined) return memoized
-    const next = resolveProfiles(raw.providers, 'deferred')
+    const next = resolveProfiles(projected(raw).providers, 'deferred')
     lastRaw = raw
     memoized = next
     return next
@@ -195,6 +217,8 @@ export function apply(ctx: Context, config: Config): void {
   // a configuration change causes, and a sign-in survives one.
   const auth = { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }
   const adapter = new PiAiAdapter({
+    ...extension.describeReasoning === undefined ? {} : { describeReasoning: extension.describeReasoning },
+    ...extension.prepareRequest === undefined ? {} : { prepareRequest: extension.prepareRequest },
     profiles,
     resolveApiKey,
     auth,
@@ -305,9 +329,9 @@ export function apply(ctx: Context, config: Config): void {
       validate: (value) => {
         // Stored catalog drift must not prevent registration of the repair UI.
         if (registering) {
-          resolveProfiles(value.providers, 'deferred')
+          resolveProfiles(projected(value).providers, 'deferred')
         } else {
-          assertServiceable(value, current())
+          assertServiceable(projected(value), projected(current()))
         }
       },
       setSource: (source) => {

@@ -46,6 +46,7 @@ import {
 } from '@deepseek-ai/dsh-llm'
 import type {
   GenerateOptions,
+  LlmModelReasoningInfo,
   ImageAttachmentAccess,
   LlmModelInfo,
   LlmProviderInfo,
@@ -72,8 +73,24 @@ interface PiAiSnapshot {
   models: Models
 }
 
+/** Frozen request facts supplied to a deployment-owned parameter translator. */
+export interface PiAiRequestPolicyInput {
+  /** Requested route, content, tools, budget and cancellation lifetime. */
+  readonly options: GenerateOptions
+  /** Model and provider configuration captured before credential resolution. */
+  readonly model: Model<Api>
+  /** Profile belonging to the same immutable configuration snapshot. */
+  readonly profile: ResolvedPiAiProviderProfile
+  /** Validated selected level; undefined retains the deployment/provider default. */
+  readonly reasoning: ModelThinkingLevel | undefined
+}
+
 /** Constructor options for {@link PiAiAdapter}: the two resolution hooks the plugin owns. */
 export interface PiAiAdapterOptions {
+  /** Describe supported ids without changing their dispatch meaning; annotations and names do not enter model requests. */
+  describeReasoning?: (model: Model<Api>, profile: ResolvedPiAiProviderProfile, reasoning: LlmModelReasoningInfo) => LlmModelReasoningInfo
+  /** Validate without sending, then return a request-local payload translator; never change messages, tools or identity. */
+  prepareRequest?: (input: PiAiRequestPolicyInput) => ((payload: unknown) => unknown) | undefined
   /** Current validated profiles by provider route; called once per operation. */
   profiles: () => ReadonlyMap<string, ResolvedPiAiProviderProfile>
   /**
@@ -321,6 +338,8 @@ export class PiAiAdapter extends LlmAdapter {
     // catalog's `maxTokens` sizes the model and stops there.
     const configuredMaxTokens = profile.configuredMaxTokens.get(model)
     const presentation = profile.modelPresentations.get(model)
+    const described = reasoningInfo(resolvedModel, defaultLevel)
+    const reasoning = described.reasoning
     return {
       provider,
       id: model,
@@ -329,7 +348,7 @@ export class PiAiAdapter extends LlmAdapter {
       ...presentation === undefined ? {} : { presentation },
       context: { contextWindow: resolvedModel.contextWindow },
       ...configuredMaxTokens === undefined ? {} : { defaultMaxTokens: configuredMaxTokens },
-      ...reasoningInfo(resolvedModel, defaultLevel),
+      ...reasoning === undefined ? {} : { reasoning: this.config.describeReasoning?.(resolvedModel, profile, reasoning) ?? reasoning },
     }
   }
 
@@ -363,6 +382,7 @@ export class PiAiAdapter extends LlmAdapter {
       model,
       options.reasoningEffort ?? profile.reasoning,
     )
+    const translatePayload = this.config.prepareRequest?.({ options, model, profile, reasoning })
     const apiKey = await this.config.resolveApiKey(options.provider, profile)
 
     const consumer = new AbortController()
@@ -408,7 +428,13 @@ export class PiAiAdapter extends LlmAdapter {
         // Chat Completions only: a DeepSeek-style thinking endpoint refuses a
         // tool-call history with a step that carries no `reasoning_content`
         // (see passback.ts); pi-ai cannot fill it, the wire hook can.
-        ...model.api === 'openai-completions' ? { onPayload: (payload: unknown) => { fillReasoningPassback(payload); return undefined } } : {},
+        ...model.api === 'openai-completions' || translatePayload !== undefined ? {
+          onPayload: (payload: unknown) => {
+            const translated = translatePayload === undefined ? payload : translatePayload(payload)
+            if (model.api === 'openai-completions') fillReasoningPassback(translated)
+            return translated
+          },
+        } : {},
         // Response status + headers, tagged with the request identity, for the
         // deployment seam (billing/quota headers; see PiAiAdapterOptions).
         ...this.config.onResponseMeta === undefined ? {} : {

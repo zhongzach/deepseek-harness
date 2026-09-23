@@ -138,6 +138,10 @@ The adapter is built on immutable snapshots and per-operation resolution. Each o
 
 ### Source map
 
+Deployment plugins can call `applyWithExtension` instead of mounting the generic plugin separately. Its pure `configure` projection supplies runtime defaults to validation and model resolution without rewriting the `llm-pi-ai` settings section. `prepareRequest` receives the captured profile, model and validated reasoning level before credential lookup; it can reject the request or return a request-local payload translator. The translator must preserve messages, tools, model identity and the selected protocol. Authentication, streaming, registration disposal and retries remain owned by this adapter; Chat Completions reasoning passback runs after translation. With no extension, the generic plugin retains its existing behavior.
+
+Model entries and overrides accept string-valued `metadata` for deployment policies, not secrets. The adapter captures a detached annotation map with each profile; annotations do not enter pi-ai models or requests by default. `describeReasoning` can give supported effort ids their dispatch-specific names and order without changing those ids or adding unsupported choices. Description and request hooks read the same captured annotations, so saved selections retain their meanings when their display names differ from their ids.
+
 | File | Role |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Plugin entry: profile resolution, settings wiring, directory and route registration |

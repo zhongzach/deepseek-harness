@@ -217,6 +217,8 @@ export interface ResolvedPiAiProviderProfile
   configuredMaxTokens: ReadonlyMap<string, number>
   /** Selector-only section placement configured by exact model id. */
   modelPresentations: ReadonlyMap<string, LlmModelPresentation>
+  /** Detached deployment annotations, keyed by exact model id; request and description hooks share this snapshot. */
+  modelMetadata: ReadonlyMap<string, Readonly<Record<string, string>>>
 }
 
 /** Plugin configuration: the provider routes this instance owns. */
@@ -311,6 +313,7 @@ const modelPresentation = z.union([
 const modelFields = {
   name: z.string(),
   presentation: modelPresentation,
+  metadata: z.dict(z.string()),
   contextWindow: z.number().step(1).min(1),
   maxTokens: z.number().step(1).min(1),
   // No explicit default, unlike the route's `defaultInput`: schemastery
@@ -511,6 +514,8 @@ export function resolveProfiles(
       ...rest.thinkingBudgets === undefined ? {} : { thinkingBudgets: { ...rest.thinkingBudgets } },
       configuredMaxTokens: catalog?.configuredMaxTokens ?? new Map(),
       modelPresentations: catalog?.presentations ?? new Map(),
+      modelMetadata: new Map((source.models ?? Object.entries(source.modelOverrides ?? {}).map(([id, row]) => ({ id, ...row })))
+        .filter(row => row.metadata !== undefined).map(row => [row.id, { ...row.metadata }])),
       modelErrors: catalog?.modelErrors ?? new Map(),
       ...piProvider === undefined ? {} : { piProvider },
       ...catalogError === undefined ? {} : { catalogError },

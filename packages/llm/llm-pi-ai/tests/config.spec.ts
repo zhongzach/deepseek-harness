@@ -19,6 +19,17 @@ const configWith = (model: Record<string, unknown>): (() => unknown) =>
   routeWith({ models: [{ id: 'm', ...model }] })
 
 describe('reasoning schema boundary', () => {
+  it('captures detached string annotations for model entries and catalog overrides', () => {
+    const metadata = { purpose: 'display-only' }
+    const raw = routeWith({ models: [{ id: 'm', metadata }] })() as Config
+    const resolved = resolveProfiles(raw.providers)
+    expect(resolved.get('acme-gateway')?.modelMetadata.get('m')).toEqual(metadata)
+    raw.providers!['acme-gateway']!.models![0]!.metadata!.purpose = 'later'
+    expect(resolved.get('acme-gateway')?.modelMetadata.get('m')?.purpose).toBe('display-only')
+    const overridden = resolveProfiles({ deepseek: { modelOverrides: { 'deepseek-v4-flash': { metadata } } } })
+    expect(overridden.get('deepseek')?.modelMetadata.get('deepseek-v4-flash')).toEqual(metadata)
+    expect(configWith({ metadata: { invalid: 123 } })).toThrow()
+  })
   it('accepts an empty provider section and propagates unexpected catalog failures', () => {
     expect(() => { assertServiceable({}) }).not.toThrow()
     const failure = new TypeError('model metadata lookup failed')

@@ -113,6 +113,37 @@ describe('PiAiAdapter provider routing', () => {
     expect(second.requests).toHaveLength(0)
   })
 
+  it('prepares extension policy before credentials and keeps it on the captured configuration', async () => {
+    const server = await mockServer([{ events: textEvents }])
+    let providers: Record<string, LlmPiAi.PiAiProviderProfile> = {
+      deepseek: { baseURL: server.url, models: [{ id: 'deepseek-v4-flash', maxTokens: 8192, metadata: { stage: 'captured' } }] },
+    }
+    const order: string[] = []
+    let release!: (value: string) => void
+    const credential = new Promise<string>((resolve) => { release = resolve })
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    ctx.llm.registerAdapter(['deepseek'], new PiAiAdapter({
+      profiles: () => resolveProfiles(providers), auth: memoryAuth(),
+      prepareRequest: ({ model, profile }) => {
+        order.push('policy')
+        expect(profile.modelMetadata.get(model.id)).toEqual({ stage: 'captured' })
+        const cap = model.maxTokens
+        return payload => ({ ...payload as Record<string, unknown>, max_tokens: cap })
+      },
+      resolveApiKey: () => { order.push('credential'); return credential },
+    }))
+    try {
+      const result = assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+      await vi.waitFor(() => { expect(order).toEqual(['policy', 'credential']) })
+      providers = { deepseek: { baseURL: server.url, models: [{ id: 'deepseek-v4-flash', maxTokens: 16384 }] } }
+      release('fixture-key')
+      expect((await result).finish).toEqual({ kind: 'stop' })
+      expect(server.requests[0]).toMatchObject({ max_tokens: 8192 })
+      expect(server.requests[0]).not.toHaveProperty('metadata')
+    } finally { release('fixture-key'); await ctx.fiber.dispose() }
+  })
+
   it('merges profile headers with Harness attribution winning', async () => {
     const server = await mockServer([{ events: textEvents }])
     const ctx = await harness(server.url, {
