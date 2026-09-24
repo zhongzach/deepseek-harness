@@ -5,9 +5,95 @@ import { ApiAuthorizationError, type ApiAuthorizationOperation } from '@deepseek
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
 import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
+import { redactSecrets } from '@deepseek-ai/dsh-settings'
 import { MemoryCredentials } from '../../../credentials/credentials/tests/memory.ts'
-import { MemorySettings } from '../../../settings/settings/tests/memory.ts'
 import SettingsController from '../src/index.ts'
+
+/** In-memory settings double: the smallest provider surface the controller's
+ * authorized-write path consumes (describe/update/replace/mutate plus a
+ * per-namespace schema), standing in for the profile-driven SettingsForms,
+ * which cannot be subclassed for fixtures. */
+class MemorySettings {
+  readonly writable = true
+  readonly persisted: Array<{ ns: string; section: Record<string, unknown> }> = []
+  private readonly schemas = new Map<string, Schema<never>>()
+  private readonly values = new Map<string, Record<string, unknown>>()
+  private readonly revisions = new Map<string, number>()
+
+  constructor(ctx: Context) {
+    ctx.provide('settings', this as never)
+  }
+
+  register<T>(ns: string, schema: Schema<T>): void {
+    this.schemas.set(ns, schema as Schema<never>)
+    this.values.set(ns, {})
+    this.revisions.set(ns, 0)
+  }
+
+  describe(options?: { redactSecrets?: boolean }) {
+    return [...this.schemas.entries()].map(([ns, schema]) => {
+      const value = structuredClone(this.values.get(ns))
+      const redacted = options?.redactSecrets === true
+        ? redactSecrets(schema, value)
+        : { value, secrets: [] }
+      return {
+        ns, autoGenerate: true, schema: schema.toJSON(), revision: this.revisions.get(ns),
+        applies: 'live', value: redacted.value, secrets: redacted.secrets,
+      }
+    })
+  }
+
+  update(ns: string, patch: Record<string, unknown>, expectedRevision?: number): Promise<void> {
+    return this.write(ns, current => ({ ...current, ...patch }), expectedRevision)
+  }
+
+  replace(ns: string, section: Record<string, unknown>, expectedRevision?: number): Promise<void> {
+    return this.write(ns, () => section, expectedRevision)
+  }
+
+  mutate(
+    ns: string,
+    ops: readonly { op: 'set' | 'unset'; path: string[]; value?: unknown }[],
+    expectedRevision?: number,
+  ): Promise<void> {
+    return this.write(
+      ns,
+      current => ops.reduce((section, op) => applyOp(section, op) as Record<string, unknown>, current),
+      expectedRevision,
+    )
+  }
+
+  private write(
+    ns: string,
+    change: (current: Record<string, unknown>) => Record<string, unknown>,
+    expectedRevision?: number,
+  ): Promise<void> {
+    if (!this.schemas.has(ns)) return Promise.reject(new Error(`settings: unknown namespace "${ns}"`))
+    const revision = this.revisions.get(ns) ?? 0
+    if (expectedRevision !== undefined && expectedRevision !== revision) {
+      return Promise.reject(new Error(`settings: revision conflict on "${ns}"`))
+    }
+    const section = change(structuredClone(this.values.get(ns) ?? {}))
+    this.persisted.push({ ns, section: structuredClone(section) })
+    this.values.set(ns, structuredClone(section))
+    this.revisions.set(ns, revision + 1)
+    return Promise.resolve()
+  }
+}
+
+function applyOp(node: unknown, op: { op: 'set' | 'unset'; path: readonly string[]; value?: unknown }): unknown {
+  const [key, ...rest] = op.path
+  if (key === undefined) return node
+  const clone: Record<string, unknown> | unknown[] = Array.isArray(node)
+    ? [...node]
+    : { ...(typeof node === 'object' && node !== null ? node : {}) }
+  const child = rest.length === 0
+    ? op.op === 'set' ? op.value : undefined
+    : applyOp(Reflect.get(clone, key), { ...op, path: rest })
+  if (rest.length === 0 && op.op === 'unset') Reflect.deleteProperty(clone, key)
+  else Reflect.set(clone, key, child)
+  return clone
+}
 
 const contexts: Context[] = []
 afterEach(async () => { for (const ctx of contexts.splice(0)) await ctx.fiber.dispose() })

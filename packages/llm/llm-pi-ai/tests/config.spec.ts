@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { assertServiceable, Config, resolveProfiles } from '../src/config.ts'
+import { assertServiceable, Config, resolveProfiles, type Options } from '../src/config.ts'
 
 /** Validate one hand-declared route, with the caller's fields layered onto it. */
 const routeWith = (profile: Record<string, unknown>): (() => unknown) =>
-  () => Config({
+  () => ({ providers: Config({
     providers: {
       'acme-gateway': {
         api: 'openai-completions',
@@ -12,7 +12,7 @@ const routeWith = (profile: Record<string, unknown>): (() => unknown) =>
         ...profile,
       },
     },
-  })
+  }).providers.get() })
 
 /** Validate that route with the caller's fields on its single model entry. */
 const configWith = (model: Record<string, unknown>): (() => unknown) =>
@@ -21,10 +21,13 @@ const configWith = (model: Record<string, unknown>): (() => unknown) =>
 describe('reasoning schema boundary', () => {
   it('captures detached string annotations for model entries and catalog overrides', () => {
     const metadata = { purpose: 'display-only' }
-    const raw = routeWith({ models: [{ id: 'm', metadata }] })() as Config
-    const resolved = resolveProfiles(raw.providers)
+    const raw = routeWith({ models: [{ id: 'm', metadata }] })() as Options
+    const resolved = resolveProfiles(raw.providers ?? {})
     expect(resolved.get('acme-gateway')?.modelMetadata.get('m')).toEqual(metadata)
-    raw.providers!['acme-gateway']!.models![0]!.metadata!.purpose = 'later'
+    // The parsed snapshot itself is frozen at the volatile seam, so detachment
+    // is proven against the caller-held literal: later edits must not reach
+    // the resolved projection.
+    metadata.purpose = 'later'
     expect(resolved.get('acme-gateway')?.modelMetadata.get('m')?.purpose).toBe('display-only')
     const overridden = resolveProfiles({ deepseek: { modelOverrides: { 'deepseek-v4-flash': { metadata } } } })
     expect(overridden.get('deepseek')?.modelMetadata.get('deepseek-v4-flash')).toEqual(metadata)
@@ -79,7 +82,7 @@ describe('modality schema boundary', () => {
     // well-typed, and the namespace validator is what refuses it. Asserting
     // only the schema would report this route as writable.
     expect(routeWith({ defaultInput: [] })).not.toThrow()
-    expect(() => { assertServiceable(routeWith({ defaultInput: [] })() as Config) })
+    expect(() => { assertServiceable(routeWith({ defaultInput: [] })() as Options) })
       .toThrow(/defaultInput must name at least one modality/)
   })
 
@@ -130,10 +133,10 @@ describe('model presentation schema boundary', () => {
 
   it('rejects an incomplete section at service resolution', () => {
     expect(() => {
-      assertServiceable(configWith({ presentation: { sectionId: 'premium' } })() as Config)
+      assertServiceable(configWith({ presentation: { sectionId: 'premium' } })() as Options)
     }).toThrow(/sectionName/)
     expect(() => {
-      assertServiceable(configWith({ presentation: { sectionName: 'Premium' } })() as Config)
+      assertServiceable(configWith({ presentation: { sectionName: 'Premium' } })() as Options)
     }).toThrow(/sectionId/)
   })
 })
@@ -154,7 +157,7 @@ describe('request image policy bounds', () => {
           [field]: value,
         },
       },
-    } as unknown as Config
+    } as Options
     expect(() => {
       assertServiceable(programmatic)
     }).toThrow(message)

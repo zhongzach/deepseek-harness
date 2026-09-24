@@ -3,11 +3,18 @@ import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LlmRuntime, { createUserMessage } from '@deepseek-ai/dsh-llm'
+import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjections from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { MockAdapter, maxTokensResponse, textResponse, toolCallResponse } from './mock-adapter.ts'
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'test': { kind: 'test' } & ContextFormed
+  }
+}
 
 const roots: Context[] = []
 afterEach(async () => { for (const ctx of roots.splice(0)) await ctx.fiber.dispose() })
@@ -34,7 +41,7 @@ describe('agent/output-limit', () => {
     const f = await setup(adapter)
     f.ctx.on('agent/output-limit', async ({ agent }) => {
       expect(agent.session.snapshotEvents().some(event => event.type === 'assistant/message')).toBe(true)
-      agent.session.append('user/message', createUserMessage({ source: { kind: 'plugin', plugin: 'fixture-recovery' },
+      agent.session.append('user/message', createUserMessage({ source: { kind: 'test' },
         content: [{ type: 'text', text: 'Continue only the unfinished part.' }],
       }), { surfaceOp: 'append' })
       return { kind: 'retry' }

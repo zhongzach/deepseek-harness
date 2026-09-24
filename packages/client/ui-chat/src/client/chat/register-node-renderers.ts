@@ -1,5 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import type { PerformanceUsageMode } from '../../chat-settings.ts'
+import type { ChatPresentationPolicy } from '../presentation-policy.ts'
 import { NS } from '../locale.ts'
 import { AssistantNodeView } from './AssistantNodeView.tsx'
 import { CommandNodeView, ManualCompactionNodeView } from './CommandNodeView.tsx'
@@ -10,13 +12,21 @@ import {
 import { SystemPromptNodeView } from './SystemPromptRow.tsx'
 import { TurnProcessNodeView } from './TurnProcessNodeView.tsx'
 import { TurnTailNodeView } from './TurnTailNodeView.tsx'
+import { TurnTriggerNodeView } from './TurnTriggerNodeView.tsx'
 
 /**
  * Register this package's business renderers behind the keyed Chat Node seat.
+ * Renderers whose output depends on the work-details mode receive the policy
+ * through their own registration; the seat and the other renderers do not.
  * @param ctx - owning UI Conversation context.
- * @param turnMetrics - Host-backed visibility of per-Turn token and timing controls.
+ * @param performanceUsage - live statistics detail preference.
+ * @param presentation - live presentation policy.
  */
-export function registerChatNodeRenderers(ctx: Context, turnMetrics: ObservableSnapshot<boolean>): void {
+export function registerChatNodeRenderers(
+  ctx: Context,
+  performanceUsage: ObservableSnapshot<PerformanceUsageMode>,
+  presentation: ObservableSnapshot<ChatPresentationPolicy>,
+): void {
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
     { name: 'conversation.chat.node', key: 'user', locale: NS }, UserMessageNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
@@ -28,9 +38,15 @@ export function registerChatNodeRenderers(ctx: Context, turnMetrics: ObservableS
     children: { 'conversation.chat.context.presentation': { kind: 'chain', scope: 'session' } },
   }, ContextMessageNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
-    { name: 'conversation.chat.node', key: 'system-prompt', locale: NS }, SystemPromptNodeView))
+    { name: 'conversation.chat.node', key: 'turn-trigger', locale: NS }, TurnTriggerNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
-    { name: 'conversation.chat.node', key: 'assistant-step', locale: NS }, AssistantNodeView))
+    { name: 'conversation.chat.node', key: 'system-prompt', locale: NS }, SystemPromptNodeView))
+  ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
+    name: 'conversation.chat.node',
+    key: 'assistant-step',
+    locale: NS,
+    inject: () => ({ hooks: { presentation } }),
+  }, AssistantNodeView))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'command',
@@ -53,7 +69,7 @@ export function registerChatNodeRenderers(ctx: Context, turnMetrics: ObservableS
     name: 'conversation.chat.node',
     key: 'turn-tail',
     locale: NS,
-    inject: () => ({ hooks: { showTurnMetrics: turnMetrics } }),
+    inject: () => ({ hooks: { performanceUsage } }),
     children: {
       'conversation.chat.turnTail': { kind: 'list', scope: 'session' },
       'conversation.chat.assistant-actions': { kind: 'list', scope: 'session' },

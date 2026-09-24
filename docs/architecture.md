@@ -44,7 +44,7 @@ Composition mechanics are in [app-boot](../packages/boot/app-boot/README.md#prof
 
 Supported Node applications launch through named `dsh` profiles. The shipped profiles are `web`, `headless`, `sdk`, `sdk-minimal`, and `acp`, selected with `dsh --profile <name>` or `dsh <name>`. `plugin` names the management command; a profile with that name requires `--profile plugin`. The TypeScript SDK resolves its same-version `dsh` dependency and selects `sdk`; custom plugin composition remains a profile plus ordered patch files, not another executable or inline application tree. `sdk-minimal` is a repository-owned standalone bundle behind the same launcher, not a caller-supplied Cordis tree.
 
-Vendored CLIs, build-only and test-only executables, direct in-process plugin mounting, and the private browser WebWorker preview are not Harness application launchers. [`verify-application-entrypoints`](../scripts/verify-application-entrypoints.ts) keeps every package bin, executable source, and root demo in an explicit class and rejects a Node application path that bypasses `dsh`.
+Vendored CLIs, build-only and test-only executables, direct in-process plugin mounting, and the private browser WebWorker preview are not Harness application launchers. [`verify-application-entrypoints`](../scripts/verify-application-entrypoints.ts) keeps every package bin, executable source, root demo, and the root `start:web` and `dev:web` scripts in an explicit class and rejects a Node application path that bypasses `dsh`.
 
 The Python SDK follows the same application architecture. Its runtime wheel packages the normal `dsh` CLI as `deepseek-harness-sdk-runtime-<platform>-<arch>`, and the client launches `dsh --profile sdk` with an explicit Harness home by default. The minimal example selects the shipped `sdk-minimal` profile. Python exposes profile selection and ordered patch files rather than a complete Cordis tree; persistent external plugins are installed through `dsh plugin`. The removed private direct-config carrier has no compatibility bin or fallback parser.
 
@@ -113,7 +113,7 @@ One inbox feeds the driver; injected context waits for a waking message. AgentLo
 
 `agent/pre-step` admits, rewrites, or rejects claimed input; an empty or rejected first claim opens no step. Its `startsRequestSeries` flag starts a logged request series. After assembly and `step/start`, `agent/request` and a bound `prepareCall()` resolve the route before committing the system prompt or users; cancellation during either phase commits neither. Admission uses the prepared call’s capabilities. Each attempt reconciles the rendered assembly, admits users only once, records request configuration, and derives immutable model history from the log. Retries repeat neither assembly nor `agent/pre-step`. Surface replacements and image-offload decisions start a new series, including on resumed admission; unchanged resumes retain the series. System prompts travel as logged `system/message` nodes: the first admitted step reserves the system head, empty text clears active system nodes, and provider capability controls append versus consolidation. [Agent-loop](../packages/core/agent-loop/README.md#understand-the-implementation) owns header emission, flag-preserving wrappers, prompt reconciliation, and cache-prefix rules; [the system-prompt decision](../.agents/notes/implemented/architecture/2026-09-02-system-prompt-as-surface-node.md) explains the logged-node design.
 
-The loop sends immutable requests while keeping cancellation live. A policy can recover truncated output through `agent/output-limit` after recording new model-visible context; absent recovery preserves the terminal outcome. It reuses message-freeze evidence only for identities it has fully frozen; [agent-loop](../packages/core/agent-loop/README.md) owns the request construction rules.
+The loop sends immutable requests while keeping cancellation live. A policy can recover truncated output through `agent/output-limit` after recording new model-visible context; absent recovery preserves the terminal outcome. It reuses message-freeze evidence only for identities it has fully frozen; [agent-loop](../packages/core/agent-loop/README.md) owns the request construction and cancellation-cause rules.
 
 Details: the [sequence diagram](agent-lifecycle.md), the [tool pipeline](tool-execution-pipeline.md), and [cancellation and error recovery](subsystems/core.md#the-agent-handle).
 
@@ -147,7 +147,7 @@ New behavior attaches to a documented extension point. Changing the loop itself 
 | Add shell execution | register a `ctx.shell` backend; the local one spawns through `ctx.subprocess` |
 | Add persistent terminal execution | register a `ctx.terminals` backend plus `dsh-tool-terminal` |
 | Add a human command | register on `ctx.commands`; it dispatches without a model turn |
-| Add background work | register on `ctx.jobs`; `job_*` tools collect or stop it |
+| Manage background jobs | register on `ctx.jobs`; `job_*` tools read or stop jobs |
 | Start a Session from an external webhook | register a trusted rule on `ctx.webhookRuntime` and mount a provider adapter |
 | Add filesystem access or policy | register a `ctx.fs` provider or listen to `fs/*` events |
 | Confine spawned processes | use a `ctx.sandbox` backend; consumers wrap argv before spawning |
@@ -162,4 +162,4 @@ New behavior attaches to a documented extension point. Changing the loop itself 
 | Store sessions in a new backend | implement `SessionPersistence` (`create`/`open`/`stat`/`list`/`export`) over the shared handle scaffolding |
 | Scope a registration to one agent | use that agent's `agent.ctx` |
 
-The [extension cookbook](cookbook/extension-cookbook.md) maps features to capabilities and indexes the step-by-step guides for [packages](cookbook/adding-a-package.md), [tools](cookbook/adding-a-tool.md), [LLM adapters](cookbook/adding-an-llm-adapter.md), and [settings cards](cookbook/adding-a-settings-card.md). The [Conversation subsystem](subsystems/conversation.md) owns Chat-node assembly.
+The [extension cookbook](cookbook/extension-cookbook.md) maps features to capabilities and indexes the step-by-step guides for [packages](cookbook/adding-a-package.md), [tools](cookbook/adding-a-tool.md), [LLM adapters](cookbook/adding-an-llm-adapter.md), and [settings pages](cookbook/adding-a-settings-card.md). The [Conversation subsystem](subsystems/conversation.md) owns Chat-node assembly.

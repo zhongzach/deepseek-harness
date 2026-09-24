@@ -1,55 +1,36 @@
-/** Host loader entry for the browser implementation exported from `./client`. */
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
+/** Welcome acknowledgement and the composition onboarding toggle stored in the plugin configuration. */
 import type {} from '@deepseek-ai/dsh-settings'
 
-/** Durable settings namespace for product-wide GUI onboarding facts. */
-const ONBOARDING_SETTINGS_NAMESPACE = 'ui-onboarding'
+import type { Volatile, Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
 
 /**
- * Plugin config: the product-wide onboarding facts a composition decides.
- * They land as the `ui-onboarding` namespace's composition `base` layer, so
- * the browser reads them through the same settings boundary as the
- * per-person acknowledgement, and a person's own settings document can still
- * override them.
+ * Runtime preferences projected to the browser: the per-person
+ * acknowledgement plus the product-wide onboarding facts a composition
+ * decides. The composition toggle rides this entry's configuration base
+ * layer, so the browser reads everything through the same configuration
+ * form, and a person's own settings document can still override it.
  */
 export interface Config {
+  /** Last acknowledged welcome notice version. */
+  welcomeNoticeVersion: Volatile<string | undefined>
   /**
    * Show the internal-testing welcome notice until its current copy version
    * is acknowledged. A downstream composition that owns its own onboarding
    * turns it off; the shipped GUI keeps it on.
    */
-  welcomeNotice?: boolean
+  welcomeNotice: Volatile<boolean>
 }
 
-/** Runtime schema for the plugin config. */
-export const Config: z<Config> = z.object({
-  welcomeNotice: z.boolean().default(true),
+/** Live welcome preference and composition onboarding toggle. */
+export const Config = z.object({
+  welcomeNoticeVersion: z.string().volatile(),
+  welcomeNotice: z.boolean().default(true).volatile(),
 })
 
-interface OnboardingSettings {
-  /** Last version acknowledged by the current product welcome step. */
-  welcomeNoticeVersion?: string
-  /** Whether the welcome step shows at all (composition base; default on). */
-  welcomeNotice?: boolean
-}
-
-const OnboardingSettingsSchema: z<OnboardingSettings> = z.object({
-  welcomeNoticeVersion: z.string(),
-  welcomeNotice: z.boolean(),
-})
-
-/**
- * Register the durable GUI-onboarding section when a settings provider exists.
- * @param ctx - host context.
- * @param config - product-wide onboarding facts (composition base layer).
+/** The browser consumes the configuration form projection.
+ * @param ctx Plugin context used for optional settings presentation.
  */
-export function apply(ctx: Context, config: Config = {}): void {
-  ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.register(
-      ONBOARDING_SETTINGS_NAMESPACE,
-      OnboardingSettingsSchema,
-      { base: { welcomeNotice: config.welcomeNotice ?? true } },
-    )
-  })
+export function apply(ctx: Context): void {
+  ctx.inject(['settings'], (child) => { child.effect(() => child.settings.configure({ auto: false }, ctx.fiber)) })
 }

@@ -31,7 +31,7 @@ kind: "package-reference"
 
 设置和凭据写入会在调用提供方之前等待[部署授权](../operation-authorization/README.zh.md)。策略收到独立描述符，其中机密值已移除、提交的字段路径被保留，含机密的复合分支只表示为键结构。拒绝保持持久化数据不变；修改描述符不能改变实际请求。策略意外抛出异常时，返回固定、可公开的消息，不返回内部细节。
 
-`settings.openSettingsDocument()` 准备提供方持有的文档，并用原生文本编辑器意图将其打开。`settings.canOpenAgentPresetDirectory()` 在 preset 页面显示时报告原生打开能力。`settings.openAgentPresetDirectory(id)` 只解析用户创作的 preset，并打开其目录，或在原生打开不可用时返回目录路径；两个打开方法都不接受浏览器提供的文件系统目标。
+`settings.openSettingsDocument()` 准备提供方持有的文档，并用原生文本编辑器打开；该方法不接受浏览器提供的文件系统目标。
 
 -----
 
@@ -40,7 +40,6 @@ kind: "package-reference"
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
-| `nativeOpen` | 平台探测 | Agent preset 目录能否交给原生桌面打开器 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-api-settings-controller)是所有受支持字段及其 JSDoc 的完整来源。
 

@@ -54,19 +54,21 @@
  *
  * @module @deepseek-ai/dsh-llm-pi-ai
  */
+import type {} from '@deepseek-ai/dsh-settings'
+
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 
 import type { Context } from '@deepseek-ai/cordis'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { assertUsableApiKey, LlmError, resolveImageAttachmentAccess } from '@deepseek-ai/dsh-llm'
 import type { AdapterRegistrationHandle, DirectoryRegistrationHandle, LlmConfigurableProvider } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-fs'
-import type {} from '@deepseek-ai/dsh-settings'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { PiAiAdapter } from './adapter.ts'
 import { authContextFrom, credentialStoreFrom } from './auth.ts'
 import { catalogProviderIds } from './catalog.ts'
 import { assertServiceable, Config, resolveProfiles } from './config.ts'
-import type { ResolvedPiAiProviderProfile } from './config.ts'
+import type { Options, ResolvedPiAiProviderProfile } from './config.ts'
 import type { PiAiAdapterOptions } from './adapter.ts'
 import { discoverModels } from './discovery.ts'
 import type { StoredModelDiscoveryProfile } from './discovery.ts'
@@ -76,6 +78,7 @@ export { PiAiAdapter } from './adapter.ts'
 export type { PiAiAdapterOptions, PiAiRequestPolicyInput } from './adapter.ts'
 export { Config } from './config.ts'
 export type {
+  Options,
   PiAiCompatProfile,
   PiAiModality,
   PiAiModelOverride,
@@ -98,7 +101,7 @@ export interface PiAiExtension {
   /** Localize or order selector descriptions while retaining ids accepted by the captured model. */
   describeReasoning?: PiAiAdapterOptions['describeReasoning']
   /** Return an immutable runtime projection; never persist it or mutate the supplied settings. */
-  configure?: (config: Config) => Config
+  configure?: (options: Options) => Options
   /** Validate and freeze request-local translation before credential resolution. */
   prepareRequest?: PiAiAdapterOptions['prepareRequest']
 }
@@ -131,6 +134,7 @@ function registrationFacts(profiles: ReadonlyMap<string, ResolvedPiAiProviderPro
  */
 function directoryEntries(
   profiles: ReadonlyMap<string, ResolvedPiAiProviderProfile>,
+  settingsNs: string,
 ): LlmConfigurableProvider[] {
   const catalog = new Set(catalogProviderIds())
   const entries = new Map<string, LlmConfigurableProvider>()
@@ -138,7 +142,7 @@ function directoryEntries(
     entries.set(provider, {
       provider,
       displayName,
-      settingsNs: NS,
+      settingsNs,
       settingsPath: ['providers', provider],
       // Membership of the installed catalog, not of the settings document:
       // narrowing a shipped provider's models stores a profile too, and that
@@ -164,9 +168,10 @@ export function apply(ctx: Context, config: Config): void {
  * @param extension - pure configuration projection and request-local parameter policy.
  */
 export function applyWithExtension(ctx: Context, config: Config, extension: PiAiExtension): void {
-  const projected = (value: Config): Config => extension.configure?.(value) ?? value
-  let current: () => Config = () => config
-  let lastRaw: Config | undefined
+  const projected = (options: Options): Options => extension.configure?.(options) ?? options
+  ctx.inject(['settings'], (child) => { child.effect(() => child.settings.configure({ auto: false }, ctx.fiber)) })
+  const settingsNs = ctx.fiber.entry?.options.id ?? NS
+  let lastRaw: ReturnType<Config['providers']['get']> | undefined
   let memoized: ReadonlyMap<string, ResolvedPiAiProviderProfile> | undefined
   /**
    * The resolved profiles for the current configuration, memoized by the raw
@@ -178,14 +183,26 @@ export function applyWithExtension(ctx: Context, config: Config, extension: PiAi
    * Scalar configuration errors still reject resolution.
    */
   const profiles = (): ReadonlyMap<string, ResolvedPiAiProviderProfile> => {
-    const raw = current()
+    const raw = config.providers.get()
     if (raw === lastRaw && memoized !== undefined) return memoized
-    const next = resolveProfiles(projected(raw).providers, 'deferred')
+    const next = resolveProfiles(projected({ providers: structuredClone(raw) } as Options).providers, 'deferred')
     lastRaw = raw
     memoized = next
     return next
   }
   profiles()
+  ctx.on('internal/config', function (this: import('@deepseek-ai/cordis').Fiber, _raw, next) {
+    const raw: unknown = next()
+    if (this !== ctx.fiber) return raw
+    const candidate = Config(raw as import('./config.ts').Options)
+    // Validation sees the same projected effective configuration that model
+    // resolution serves, so a deployment default never trips serviceability.
+    assertServiceable(
+      projected({ providers: structuredClone(candidate.providers.get()) } as Options),
+      projected({ providers: structuredClone(config.providers.get()) } as Options),
+    )
+    return raw
+  })
 
   const resolveApiKey = async (
     provider: string,
@@ -255,7 +272,7 @@ export function applyWithExtension(ctx: Context, config: Config, extension: PiAi
   let directory: DirectoryRegistrationHandle | undefined
   let directoryFacts: unknown
   const ensureDirectory = (): void => {
-    const entries = directoryEntries(profiles())
+    const entries = directoryEntries(profiles(), settingsNs)
     if (deepEqualJson(entries, directoryFacts)) return
     // Atomic replace, never dispose-then-register: a route another adapter
     // family already declares (a profile keyed `deepseek-official`) would
@@ -288,7 +305,7 @@ export function applyWithExtension(ctx: Context, config: Config, extension: PiAi
   // except the stored credential and deployment-owned headers: the curated UI
   // accepts neither, so an already-configured route supplies both inside the
   // Host rather than widening the discovery request.
-  ctx.llm.registerModelDiscovery(NS, (request, signal) => discoverModels(
+  ctx.llm.registerModelDiscovery(settingsNs, (request, signal) => discoverModels(
     { ...request, ...signal === undefined ? {} : { signal } },
     () => storedDiscoveryProfile(request.provider),
   ))
@@ -323,46 +340,14 @@ export function applyWithExtension(ctx: Context, config: Config, extension: PiAi
   }
   ensureRegistrationFacts()
 
-  ctx.inject(['settings'], (settingsCtx) => {
-    let registering = true
-    settingsCtx.settings.installSection(ctx, NS, Config, config, {
-      validate: (value) => {
-        // Stored catalog drift must not prevent registration of the repair UI.
-        if (registering) {
-          resolveProfiles(projected(value).providers, 'deferred')
-        } else {
-          assertServiceable(projected(value), projected(current()))
-        }
-      },
-      setSource: (source) => {
-        current = source
-      },
-      onChange: () => {
-        // Named here rather than left to the settings watcher: `assertServiceable`
-        // cannot see the llm registry, so a profile claiming a route another
-        // adapter family owns is stored successfully and only fails at this swap.
-        // Without its own diagnostic that refusal reaches the operator as a
-        // generic "settings: watcher failed", naming neither the route nor why it
-        // is not serving. The previous routes keep serving either way.
-        try {
-          ensureRegistrationFacts()
-        } catch (error) {
-          ctx.logger.error('llm-pi-ai: keeping the previously registered routes after a refused update')
-          ctx.logger.error(error)
-        }
-        // The directory follows the profiles the registry accepted, so a route
-        // that failed to register is not advertised as configurable. A refused
-        // directory swap is contained here for the same reason the registry's
-        // is: the previous entries keep serving, and `directoryFacts` stays put
-        // so returning to a working configuration re-applies.
-        try {
-          ensureDirectory()
-        } catch (error) {
-          ctx.logger.error('llm-pi-ai: keeping the previous configurable-provider directory after a refused update')
-          ctx.logger.error(error)
-        }
-      },
-    })
-    registering = false
+  // The registry refuses a route another adapter family owns, but only at this
+  // swap: the refusal is contained here so the previous routes and directory
+  // entries keep serving, and returning to a working configuration re-applies.
+  ctx.on('loader/volatile-update', () => {
+    try { ensureRegistrationFacts(); ensureDirectory() }
+    catch (error) {
+      ctx.logger.error('llm-pi-ai: configuration conflicts with an existing provider route')
+      ctx.logger.error(error)
+    }
   })
 }

@@ -16,8 +16,7 @@ describe('settings shell styles', () => {
   it('keeps a compact fixed desktop height with a short-viewport fallback', () => {
     const panel = block('.panel')
     expect(panel).toMatch(/width:\s*800px/)
-    expect(panel).toMatch(/height:\s*640px/)
-    expect(panel).toMatch(/max-height:\s*calc\(100vh - 48px\)/)
+    expect(panel).toMatch(/height:\s*min\(640px, calc\(100vh - 2 \* max\(24px, var\(--dsh-frame-top-clearance, 24px\)\)\)\)/)
     expect(panel).toMatch(/overflow:\s*hidden/)
   })
 
