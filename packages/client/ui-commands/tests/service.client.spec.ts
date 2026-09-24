@@ -1114,15 +1114,15 @@ describe('dismissPopups', () => {
       command.register(themeContribution())
       const firstScope = mint('s1')
       const secondScope = mint('s2')
-      const otherScope = mint('s3')
-      mint('unopened')
+      const otherScope = mint('other')
+      mint('ghost')
       const consume = vi.fn(() => true as const)
       for (const scope of [firstScope, secondScope, otherScope]) {
         scope.ctx.on('slash/input-consume-token', consume)
       }
       menuPick(source, 'model', proj('s1'))
       menuPick(source, 'model', proj('s2'))
-      menuPick(source, 'theme', proj('s3'))
+      menuPick(source, 'theme', proj('other'))
       const first = command.popupFor(firstScope.ctx)
       const second = command.popupFor(secondScope.ctx)
       const other = command.popupFor(otherScope.ctx)
