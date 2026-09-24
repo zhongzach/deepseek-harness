@@ -115,6 +115,20 @@ describe('createSidebarRightStore — the sequence', () => {
     expect(Object.keys(layout().tabs)).toHaveLength(0)
   })
 
+  it('collapses the emptied half of a split back into its sibling pane', () => {
+    const { actions, layout } = harness()
+    actions.openContent(SESSION, { kind: 'text', contentId: 'file:a', title: 'a' }, () => {})
+    actions.splitPane(SESSION)
+    expect(dockPaneIds(layout())).toHaveLength(2)
+    const half = layout().activePaneId
+    const onlyTab = getPane(layout(), half).tabs[0]!
+    actions.closeTab(SESSION, onlyTab)
+    // The split has an exit: the emptied pane collapses, the survivor keeps its tabs.
+    expect(dockPaneIds(layout())).toHaveLength(1)
+    expect(layout().tabs[onlyTab]).toBeUndefined()
+    expect(getPane(layout(), layout().activePaneId).tabs.length).toBeGreaterThan(0)
+  })
+
   it.each(['guide', 'files'])('opens %s in the requested pane and merges a moved duplicate there', (kind) => {
     const { actions, layout } = harness()
     const address = pageAddress(kind)

@@ -70,6 +70,24 @@ describe('retained default navigation', () => {
     expect(f.layout().tabs[book.id]).toBeUndefined()
     expect(f.navigation()).toHaveLength(2)
   })
+  it('protects the retained page on the last pane but lets a split exit through it', () => {
+    const f = setup(); f.openFile()
+    // Sole docked pane: the retained page is protected (its close routes stay hidden).
+    expect(f.navigation()).toHaveLength(1)
+    const book = f.navigation()[0]!
+    expect(canCloseTab(f.surface(), book.id, 'files')).toBe(false)
+    f.actions.splitPane(SESSION)
+    expect(dockPaneIds(f.layout())).toHaveLength(2)
+    expect(f.navigation()).toHaveLength(2)
+    // After a split every copy is closable; closing one empties its pane and
+    // the pane collapses back to the single retained page.
+    const half = f.navigation()[1]!
+    expect(canCloseTab(f.surface(), half.id, 'files')).toBe(true)
+    f.actions.closeTab(SESSION, half.id)
+    expect(dockPaneIds(f.layout())).toHaveLength(1)
+    expect(f.navigation()).toHaveLength(1)
+    expect(canCloseTab(f.surface(), f.navigation()[0]!.id, 'files')).toBe(false)
+  })
   it('repairs an older open layout and releases protection when the policy is removed', () => {
     const f = setup(false), document = f.openFile()
     expect(f.navigation()).toHaveLength(0)

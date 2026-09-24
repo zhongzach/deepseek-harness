@@ -67,9 +67,17 @@ type SurfacePlan = (state: LayoutState, mint: Mint, makeTab: (id: TabId) => TabR
  * @param retainedKind - optional default navigation page retained in docked panes.
  * @returns false for a retained navigation page, missing tab, or sole docked guide.
  */
+/**
+ * Decide whether an explicit close may remove a tab.
+ * @param surface - current surface.
+ * @param tabId - tab requested for closing.
+ * @param retainedKind - optional default navigation page retained in docked panes.
+ * @returns false for a retained navigation page on the LAST docked pane (a
+ * split keeps it closable so the split has an exit), a missing tab, or sole docked guide.
+ */
 export function canCloseTab(surface: SurfaceState, tabId: TabId, retainedKind?: string): boolean {
   const tab = surface.layout.tabs[tabId]
-  if (retainedKind !== undefined && tab !== undefined && tab.kind === retainedKind && tab.contentId === pageAddress(tab.kind) && findTabPane(surface.layout, tabId).host === 'dock') return false
+  if (retainedKind !== undefined && tab !== undefined && tab.kind === retainedKind && tab.contentId === pageAddress(tab.kind) && findTabPane(surface.layout, tabId).host === 'dock' && dockPaneIds(surface.layout).length === 1) return false
   return tab !== undefined && !(tab.kind === GUIDE_KIND && soleDockedTab(surface.layout, tabId))
 }
 
@@ -394,7 +402,15 @@ export function createSidebarRightStore(
         d.bySession = seat(d, sessionId, s => advance(s, (state) => {
           const initial = seed()
           if (!canCloseTab(s, tabId, initial.retain ? initial.kind : undefined)) return []
-          if (!soleDockedTab(state, tabId)) return [{ type: 'closeTab', tabId }]
+          if (!soleDockedTab(state, tabId)) {
+            // The exit from a split: a docked pane emptied by this close
+            // collapses back into its sibling, so the column never strands a
+            // dead half after the closable half of a split is gone.
+            const pane = findTabPane(state, tabId)
+            return pane.host === 'dock' && pane.tabs.length === 1
+              ? [{ type: 'closeTab', tabId }, { type: 'merge', paneId: pane.id }]
+              : [{ type: 'closeTab', tabId }]
+          }
           // The collapse also leaves fullscreen: the reopened column shows only
           // the reseeded default page, which never earns the whole window.
           return [{ type: 'closeTab', tabId }, ...planSetMode(state, 'push'), ...planSetExpanded(state, false)]

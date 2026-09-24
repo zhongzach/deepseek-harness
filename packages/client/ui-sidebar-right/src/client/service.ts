@@ -174,10 +174,13 @@ export interface ISidebarRight {
    */
   close(tabId: TabId): void
   /**
-   * The active tab of the active pane.
-   * @returns the record, or `undefined` when no seat is mounted.
+   * The session's docked pane ids in layout order, for placement decisions a
+   * caller must make itself (e.g. "the other half of this split"). Read-only;
+   * empty when the session has no mounted surface.
+   * @param sessionId - the session whose dock tree is read.
+   * @returns docked pane ids, empty while none.
    */
-  active(): TabRecord | undefined
+  dockedPaneIds(sessionId: SessionId): readonly PaneId[]
   /**
    * Whether the column is currently showing its panel.
    * @returns `true` while expanded; `false` while collapsed to its rail.
@@ -419,6 +422,17 @@ export class SidebarRightController implements ISidebarRight {
     const { sessionId, actions } = this.require()
     if (this.adopted.has(sessionId)) { this.closeIn(sessionId, tabId); return }
     actions.closeTab(sessionId, tabId)
+  }
+
+  /**
+   * The session's docked pane ids in layout order, for the caller's own
+   * placement decisions (e.g. "the other half of this split"). Read-only.
+   * @param sessionId - the session whose dock tree is read.
+   * @returns docked pane ids, empty with no mounted surface.
+   */
+  dockedPaneIds(sessionId: SessionId): readonly PaneId[] {
+    const layout = this.adopted.get(sessionId)?.store.getSnapshot().bySession[sessionId]?.layout
+    return layout === undefined ? [] : dockPaneIds(layout)
   }
 
   /**
