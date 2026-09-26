@@ -109,7 +109,7 @@ describe('LayoutController', () => {
 describe('LayoutController product actions', () => {
   it('forwards shelf and explicit sidebar actions to the same root instance', () => {
     const panels = fakePanels()
-    const service = new LayoutController(panels, () => true)
+    const service = new LayoutController(panels, () => true, createSnapshotStore({ activePanelId: null }))
     service.collapseSidebar()
     service.expandSidebar()
     service.openShelf()
