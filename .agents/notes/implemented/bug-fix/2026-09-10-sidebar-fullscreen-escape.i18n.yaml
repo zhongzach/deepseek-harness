@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-10-sidebar-fullscreen-escape.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-10-sidebar-fullscreen-escape.md
-2026-09-10-sidebar-fullscreen-escape.md: 1b6426080741b5163cfc1758920e761fc976bb83
-2026-09-10-sidebar-fullscreen-escape.zh.md: adcc15db428bdaf431e9cbf504861b11eb5fa44e
+/agent-note-escape-returns-from-sidebar-fullscreen:
+  en: f1b0730bf7407219
+  zh: ac2befcf4d881b16
+/agent-note-escape-returns-from-sidebar-fullscreen/problem:
+  en: 964e2129f5dfcb34
+  zh: e0280c1a311a9a28
+/agent-note-escape-returns-from-sidebar-fullscreen/decision:
+  en: 76c0580fc552811b
+  zh: c31afd25fbac25f2
+/agent-note-escape-returns-from-sidebar-fullscreen/alternatives-considered:
+  en: e83ae88e421e2016
+  zh: 49a7fac419b9b839
+/agent-note-escape-returns-from-sidebar-fullscreen/consequences:
+  en: e5433d740d41a1a3
+  zh: 084ed102d4613772
+/agent-note-escape-returns-from-sidebar-fullscreen/verification:
+  en: d3ef103dee111725
+  zh: dd87298cd856ce94

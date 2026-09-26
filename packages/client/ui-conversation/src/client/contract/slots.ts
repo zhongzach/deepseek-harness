@@ -404,6 +404,8 @@ export interface ComposerBarInjected {
   insertReference: ((reference: ReferenceInsert, selection: EditSelection) => boolean) | undefined
   stop: (() => void) | undefined
   hooks: {
+    /** Readable sequence while the fixed Stop command is registered. */
+    stopShortcut: ObservableSnapshot<readonly string[]>
     /**
      * Live busy-state submission preference: the delivery mode plain Enter
      * and the primary Send button use while the addressed agent is busy.

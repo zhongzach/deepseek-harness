@@ -1,6 +1,52 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/api/operation-authorization/README.md
-README.md: b84e22feda746c29d50fcde64025f1f2eafa76ae
-README.zh.md: 18d78fe02a339be596e0c05ab2a757f0202c94b1
+/:
+  en: 76e3569f5d362f7c
+  zh: b10e8bbb22df7009
+/deepseek-ai-dsh-api-operation-authorization:
+  en: 018a69a43d2a47ab
+  zh: 790a171c0be6cc56
+/deepseek-ai-dsh-api-operation-authorization/summary:
+  en: 6d6023b71b4f22d0
+  zh: 15f28dcb67d1180d
+/deepseek-ai-dsh-api-operation-authorization/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-api-operation-authorization/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/deepseek-ai-dsh-api-operation-authorization/use-this-package/when-to-use-it:
+  en: 6437f0a4d3487d5d
+  zh: 47284f594d2d6c87
+/deepseek-ai-dsh-api-operation-authorization/use-this-package/entry-point:
+  en: 8aaf5376ec9d2565
+  zh: 377945046965a953
+/deepseek-ai-dsh-api-operation-authorization/understand-the-implementation:
+  en: 7daa0312ce4a6c49
+  zh: fb797e4c200c5f0f
+/deepseek-ai-dsh-api-operation-authorization/further-exploration:
+  en: 225a1a82952de390
+  zh: 383b2e726e41f5ed
+/deepseek-ai-dsh-api-operation-authorization/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-api-operation-authorization/model-experience/api-admission:
+  en: 5f79cb5004d6ddee
+  zh: cc1dfa2136c4ce8c
+/deepseek-ai-dsh-api-operation-authorization/model-experience/api-admission/what-the-model-sees:
+  en: ad394b013a068bec
+  zh: 28b1ba082e431b50
+/deepseek-ai-dsh-api-operation-authorization/model-experience/api-admission/token-effect:
+  en: 4e6d1cbaa268c393
+  zh: efa6d4f9a8893fa9
+/deepseek-ai-dsh-api-operation-authorization/model-experience/api-admission/kv-cache-effect:
+  en: e6695152c2e2eec1
+  zh: 5d7271936683f127
+/deepseek-ai-dsh-api-operation-authorization/known-limitations-and-deferred-work:
+  en: f72efc43fe2a5dca
+  zh: bc5ff0319f1eafc0
+/deepseek-ai-dsh-api-operation-authorization/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 15f6c118fa60a1ee

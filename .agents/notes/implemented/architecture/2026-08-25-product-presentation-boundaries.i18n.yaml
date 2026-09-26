@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-25-product-presentation-boundaries.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-25-product-presentation-boundaries.md
-2026-08-25-product-presentation-boundaries.md: cd659c303289c702ea6dffbc55f8364d39cc2537
-2026-08-25-product-presentation-boundaries.zh.md: 104b3614ecce6b0fa072b3e2720d2ae6ad6ae246
+/agent-note-product-presentation-boundaries-for-preboot-and-durable-context:
+  en: 4282afaf2938604e
+  zh: 07c8bb8ffb1486b1
+/agent-note-product-presentation-boundaries-for-preboot-and-durable-context/problem:
+  en: 43b38fe8ea2e71d4
+  zh: d0d75c27e9dbcac3
+/agent-note-product-presentation-boundaries-for-preboot-and-durable-context/decision:
+  en: 2cf8126d0ecd9a06
+  zh: 0c1a296cfb3aebcf
+/agent-note-product-presentation-boundaries-for-preboot-and-durable-context/invariants:
+  en: c8f193366d23dd7f
+  zh: 22af3e5af6205b5f
+/agent-note-product-presentation-boundaries-for-preboot-and-durable-context/verification:
+  en: 4b5fc2b63287c88f
+  zh: d6e86f7d02a22c93
+/agent-note-product-presentation-boundaries-for-preboot-and-durable-context/consequences:
+  en: feac7aa999c682ac
+  zh: 71e3011f15384310
+/agent-note-product-presentation-boundaries-for-preboot-and-durable-context/alternatives-considered:
+  en: c774dd7bace55618
+  zh: 4c8d3ffcb4ae5e94

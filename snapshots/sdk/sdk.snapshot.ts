@@ -62,7 +62,6 @@ import {
   type SdkPromptContentBlock,
 } from '@deepseek-ai/dsh-sdk-client'
 import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
-import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
 
 const corpusRoot = fileURLToPath(new URL('../', import.meta.url))
 
@@ -126,8 +125,8 @@ interface SdkAssertions {
 }
 
 const SDK_ASSERTIONS: Readonly<Record<string, SdkAssertions>> = {
-  'max-tokens-continue-pwsh': {
-    patches: [join(corpusRoot, 'sdk', 'max-tokens-continue-pwsh', 'shell.cordis.yml')],
+  'dynamic-tool-updates': {
+    expectedFinalResponse: 'DONE',
   },
   'tool-error-details': {
     patches: [fileURLToPath(new URL('./tool-error-details/runtime.cordis.yml', import.meta.url))],
@@ -350,9 +349,7 @@ async function hydrateReplayFixtures(scenario: CorpusScenario, cwd: string): Pro
   await mkdir(root, { recursive: true })
   return Promise.all((await fixtureFiles(scenario)).map(async (source) => {
     const destination = join(root, basename(source))
-    // Windows accepts forward slashes, including inside JSON-encoded tool arguments.
-    // Raw backslashes would corrupt the fixture before the SDK runtime can start.
-    await writeFile(destination, (await readFile(source, 'utf8')).replaceAll('{{cwd}}', cwd.replaceAll('\\', '/')))
+    await writeFile(destination, (await readFile(source, 'utf8')).replaceAll('{{cwd}}', cwd))
     return destination
   }))
 }
@@ -820,9 +817,7 @@ describe('TypeScript SDK snapshots over the jsonrpc runtime', () => {
   })
 
   for (const scenario of sdkScenarios) {
-    const unavailablePlatform = scenario.manifest.platform === 'posix' && process.platform === 'win32'
-      || scenario.manifest.platform === 'pwsh' && resolvePwshPath() === undefined
-    const scenarioTest = unavailablePlatform || recording
+    const scenarioTest = recording
       && (scenario.manifest.recording === 'authored' || scenario.manifest.sessionFormat !== undefined)
       ? it.skip
       : it
@@ -850,6 +845,40 @@ describe('TypeScript SDK snapshots over the jsonrpc runtime', () => {
       )
       reconcileCatalogCreationTimes(ordered.map(log => log.content), 'validate')
       const actualContext = contextOf(ordered, cwd)
+      if (scenario.name === 'dynamic-tool-updates') {
+        const selectedTypes = new Set(['request/header', 'request/context', 'developer/message', 'tool/call', 'tool/result'])
+        const events = results.flatMap(result => result.events).filter(event => selectedTypes.has(event.type))
+        const subscribed = notifications.flatMap(notification => {
+          const event = notificationEvent(notification)
+          return event !== undefined && typeof event.type === 'string' && selectedTypes.has(event.type) ? [event] : []
+        })
+        expect(subscribed, 'SDK notifications retain the dynamic-tool events').toEqual(events)
+        expect(records(ordered[0]!.content).filter(event => typeof event.type === 'string' && selectedTypes.has(event.type)),
+          'SDK events agree with the durable log').toEqual(events)
+        const headers = events.filter(event => event.type === 'request/header')
+        expect(headers).toHaveLength(3)
+        const toolNames = headers.map(event => (event.data as { header: { tools: LoggedTool[] } }).header.tools.map(tool => tool.name))
+        expect(toolNames.map(names => names.includes('snapshot_ping'))).toEqual([false, true, false])
+        expect(toolNames[1]!.filter(name => !toolNames[0]!.includes(name))).toEqual(['snapshot_ping'])
+        expect(toolNames[2]).toEqual(toolNames[0])
+        const updates = events.filter(event => event.type === 'developer/message')
+        expect(updates).toMatchObject([
+          { data: { headerSeq: headers[1]!.seq, message: {
+            role: 'developer', source: { kind: 'tool-registry' },
+            content: [{ type: 'tool-addition', toolName: 'snapshot_ping' }],
+          } }, surfaceOp: 'append' },
+          { data: { message: {
+            role: 'developer', source: { kind: 'tool-registry' },
+            content: [{ type: 'tool-removal', toolName: 'snapshot_ping' }],
+          } }, surfaceOp: 'append' },
+        ])
+        expect(updates[1]!.data).not.toHaveProperty('headerSeq')
+        expect(events.filter(event => event.type === 'tool/call').map(event => event.data['name']))
+          .toEqual(['read', 'snapshot_ping'])
+        expect(events.filter(event => event.type === 'tool/result').at(-1)).toMatchObject({ data: { message: {
+          toolCallId: 'call_dynamic_ping', isError: false, content: [{ type: 'text', text: 'pong' }],
+        } } })
+      }
       if (scenario.name === 'subagent-activation-limit') {
         expect(ordered).toHaveLength(2)
         const denied = records(ordered[0]!.content).find(record => record.type === 'tool/result'

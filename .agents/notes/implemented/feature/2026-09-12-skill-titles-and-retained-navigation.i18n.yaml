@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-12-skill-titles-and-retained-navigation.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-12-skill-titles-and-retained-navigation.md
-2026-09-12-skill-titles-and-retained-navigation.md: 1038782e7cac5076262b28fe409fe42174eee472
-2026-09-12-skill-titles-and-retained-navigation.zh.md: 34fc727aa1b1d6d0821b68304068f7168147cd05
+/agent-note-human-facing-skill-titles-and-retained-navigation:
+  en: 935909eb917b7ba2
+  zh: 9baf984949f5d9a3
+/agent-note-human-facing-skill-titles-and-retained-navigation/problem:
+  en: 7120f1ebee0af336
+  zh: bcdcfafaf682063b
+/agent-note-human-facing-skill-titles-and-retained-navigation/decision:
+  en: 9b2682e342ad31f9
+  zh: 1d10e2c7bba76e2d
+/agent-note-human-facing-skill-titles-and-retained-navigation/verification:
+  en: 183e82476c8f3e87
+  zh: 719e4e8c91e1717b
+/agent-note-human-facing-skill-titles-and-retained-navigation/alternatives-considered:
+  en: cb994362b0e1b24d
+  zh: 7407cef5422a67fa
+/agent-note-human-facing-skill-titles-and-retained-navigation/consequences:
+  en: f53f60be6a6d2b56
+  zh: 49b49daab0e7d9fb

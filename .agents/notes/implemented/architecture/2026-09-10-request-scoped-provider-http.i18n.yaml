@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-10-request-scoped-provider-http.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-10-request-scoped-provider-http.md
-2026-09-10-request-scoped-provider-http.md: b4277f11ea67e751bca69e74b670916ab72df4ca
-2026-09-10-request-scoped-provider-http.zh.md: 183df107472cf732c951c880c6e7749525153d4b
+/agent-note-request-scoped-provider-http-middleware:
+  en: 1a0ff78fa96ac1ea
+  zh: 4f96b9ad7f090a20
+/agent-note-request-scoped-provider-http-middleware/problem:
+  en: 6aff4d4f89c2caff
+  zh: 7bead2f9a824cd47
+/agent-note-request-scoped-provider-http-middleware/decision:
+  en: 60d055d6994fc8b9
+  zh: 87f139c4de845dc3
+/agent-note-request-scoped-provider-http-middleware/alternatives-considered:
+  en: d744b373b79c6556
+  zh: cdd010d30dbc1312
+/agent-note-request-scoped-provider-http-middleware/consequences:
+  en: 487e7a28b9b657e5
+  zh: e6080105ab75341b

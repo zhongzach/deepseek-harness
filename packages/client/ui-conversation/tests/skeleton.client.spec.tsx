@@ -294,6 +294,7 @@ function mount(
           openSource={vi.fn()}
           insertReference={vi.fn(() => false)}
           useBusyEnter={bindSnapshotSelector(createSnapshotStore<'queue' | 'steer'>('queue'))}
+          useStopShortcut={bindSnapshotSelector(createSnapshotStore<readonly string[]>([]))}
           useNotices={bindSnapshotSelector(wiring.notices)}
           useLexicon={bindSnapshotSelector(wiring.lexicon)}
           useMenuLauncher={bindSnapshotSelector(createSnapshotStore<string | null>(null))}
@@ -672,7 +673,7 @@ describe('ConversationRoot resident composer', () => {
     expect(b.view.queryByTestId('view-new-view')).toBeNull()
     expect(b.view.getByRole('tab', { name: 'Chat' }).getAttribute('aria-selected')).toBe('true')
     expect(b.view.getByRole('tab', { name: 'New view' }).getAttribute('aria-selected')).toBe('false')
-    // ui-layout's window drag band deepens by matching this marker (:has).
+    // The browser drag lane anchors its header tab-strip probe on this marker.
     expect(b.view.getByRole('tablist').hasAttribute('data-conversation-tabs')).toBe(true)
   })
 

@@ -27,7 +27,7 @@ When users type `/` or `@` at the caret in the Web GUI, this package opens a gro
 
 Replacement providers can inline the build-only `./client/controller` entry without mounting the default plugin or adding it to the browser module table. It exports a caller-owned controller class and types, shares the static Client store library, and carries no service registration. The composed provider owns every controller's Session lifetime.
 
-Mount this plugin alongside `ui-conversation`; the menu then appears in the input overlay when the user types a trigger under the caret. Grouped candidates render under title rows, or under the section headings a source attaches to its own rows; a pick routes to the source, and the consuming surface applies the result — a slash command opens its popup or executes, a reference inserts its inline token. A row shows its icon, its title (the candidate `label`, or the `name` when no label is given), the `name` as a trailing alias when the label is not the name in another letter case, and the description right-aligned; a query matches either the name or the label.
+Mount this plugin alongside `ui-conversation`; the menu then appears in the input overlay when the user types a trigger under the caret. Grouped candidates render under title rows, or under the section headings a source attaches to its own rows; a pick routes to the source, and the consuming surface applies the result — a slash command opens its popup or executes, a reference inserts its inline token. Menu icons and navigation chevrons use the `--dsw-alias-menu-icon` color. A row shows its icon, its title (the candidate `label`, or the `name` when no label is given), the `name` as a trailing alias when the label is not the name in another letter case, and the description right-aligned; a query matches either the name or the label.
 
 ### Keyboard and mouse
 
@@ -39,6 +39,8 @@ A source may implement `openReference(session, reference)` to open a draft refer
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
+
+Menus use the shared `MenuSurface` material, including the macOS backing for background blur; custom content follows the [menu rules](../../../docs/web-styling.md#component-rules).
 
 <details>
 <summary>Implementation internals — click to expand</summary>

@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-14-product-workspace-ui-adapters.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-14-product-workspace-ui-adapters.md
-2026-09-14-product-workspace-ui-adapters.md: 4a45d15bc451dc6edeeeb55d0f07b82bf94885ac
-2026-09-14-product-workspace-ui-adapters.zh.md: 494ecf99e29ea840e26a58a35f84fe4ffeceb354
+/agent-note-product-workspace-ui-adapters:
+  en: 16ba51861f5c6b49
+  zh: f34b11dce32b0b5c
+/agent-note-product-workspace-ui-adapters/problem:
+  en: f82baf3952c6a0e4
+  zh: a02ab92f07c8da0e
+/agent-note-product-workspace-ui-adapters/decision:
+  en: 5d901b4a940d60ea
+  zh: e80f2c0242d4fe55
+/agent-note-product-workspace-ui-adapters/alternatives-considered:
+  en: fb756a9988778225
+  zh: 56e55fef9bbd447f
+/agent-note-product-workspace-ui-adapters/consequences:
+  en: 8b188f6eebc57310
+  zh: 7c85d593ca6481e4
+/agent-note-product-workspace-ui-adapters/testing:
+  en: 01bab8c182634161
+  zh: 4f3e58ddd8a73496

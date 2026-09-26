@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-20-deployment-owned-session-events.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-20-deployment-owned-session-events.md
-2026-08-20-deployment-owned-session-events.md: 0ffad1baa75969352f753d2560762887d98bf847
-2026-08-20-deployment-owned-session-events.zh.md: d292105281bcac19acd734939bb7b358f781cd8b
+/agent-note-deployment-owned-session-event-compatibility:
+  en: c103a134ff8d4d67
+  zh: 764eac45e1a79163
+/agent-note-deployment-owned-session-event-compatibility/problem:
+  en: a22fb81289780940
+  zh: 882cf8528000d21f
+/agent-note-deployment-owned-session-event-compatibility/decision:
+  en: 36f37585a13a4110
+  zh: 929404707d19c9f3
+/agent-note-deployment-owned-session-event-compatibility/alternatives-considered:
+  en: 6e7fb87234589498
+  zh: 92934c398a9afce3
+/agent-note-deployment-owned-session-event-compatibility/consequences:
+  en: 7178ae7dd3589945
+  zh: 339f8eb3745eaeca

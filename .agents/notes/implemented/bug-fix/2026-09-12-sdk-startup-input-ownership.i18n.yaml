@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-12-sdk-startup-input-ownership.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-12-sdk-startup-input-ownership.md
-2026-09-12-sdk-startup-input-ownership.md: 0e906b833ff7c632aa96151d0630f381421bf43e
-2026-09-12-sdk-startup-input-ownership.zh.md: 7ff32be1e6b2a1e3a959fc0c58639e4ac8cf1585
+/agent-note-sdk-startup-input-ownership:
+  en: cc9e6070528c720e
+  zh: aa587d11194f0a66
+/agent-note-sdk-startup-input-ownership/problem:
+  en: 333a08ccb1b35720
+  zh: 7c115dc28248ec77
+/agent-note-sdk-startup-input-ownership/decision:
+  en: 7399847a09feb18c
+  zh: b85b9ea81d9e67f2
+/agent-note-sdk-startup-input-ownership/alternatives-considered:
+  en: 3396429433cf1e61
+  zh: 62b5b5af1e110768
+/agent-note-sdk-startup-input-ownership/consequences:
+  en: c83d78630d0b448b
+  zh: 5c72bc56420de703

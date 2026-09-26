@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-15-settings-navigation-icon-slot.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-15-settings-navigation-icon-slot.md
-2026-09-15-settings-navigation-icon-slot.md: 33112a33e4f75b7681e3e874a314f4d809a6c38e
-2026-09-15-settings-navigation-icon-slot.zh.md: f72831e4666876b43ff27aba10a40bc779800bce
+/agent-note-settings-navigation-icon-contributions:
+  en: 423406a4df0fe97c
+  zh: 061c74d578ac667b
+/agent-note-settings-navigation-icon-contributions/problem:
+  en: 09a117e42ce651f8
+  zh: fe7cf4517730cad6
+/agent-note-settings-navigation-icon-contributions/decision:
+  en: 59c1fff12af6e468
+  zh: 971c61cd626bf781
+/agent-note-settings-navigation-icon-contributions/alternatives-considered:
+  en: ac099b655afd5822
+  zh: 7e6c691164677089
+/agent-note-settings-navigation-icon-contributions/consequences:
+  en: 0a77f90334bfdd00
+  zh: fa03dc09d7098424

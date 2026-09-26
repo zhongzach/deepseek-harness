@@ -25,13 +25,15 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
+桌面 Mod+B 通过与控件共用的布局操作切换左侧栏。模态弹窗打开时此快捷键不可用；终端输入优先。
+
 产品可在标准栏位旁注册 `shelf` 和 `titlebar`，没有注册时对应区域为空。书架以 300px 打开，可调整至 1040px，关闭时子树保持挂载。侧栏为 264～420px，默认 280px，收起后保留 56px 控制栏。窗口低于 1024px 时自动收起，打开右面板也会收起手动展开的侧栏。右面板首次打开使用窗口宽度的 45%，随后保留用户像素偏好，上限为 70%。框架先缩减书架宽度，再缩减或关闭右轨道，以保护中栏的 400px 空间。拖拽没有过渡延迟；右面板关闭或全屏时不显示右侧手柄。
 
 全局面板占据 root 作用域的 `main` keyed slot；`conversation` 是为会话界面保留的 key。`ctx.layout.selectPanel(id)` 选中已注册面板，`null` 则选中会话界面，但不改变当前会话。默认组合不注册任何全局面板。
 
 ### 窗口 chrome 座
 
-在 macOS 桌面（`html[data-platform='darwin']`，仅由桌面 preload 设置）下，收起的侧边栏整列隐藏而非保留控制栏，框架在左上角挂载 root 作用域的单一 `shell.leading` 座——位于 hiddenInset 红绿灯旁，覆盖所有主面板；ui-sidebar 以重新打开与 New Session 控件占据该座。座挂载期间框架发布 `--dsh-frame-leading-clearance`：窗口 chrome 占据的行内带宽，自框架左边缘起量；内容抵达左上角的主面板以它做内边距，避免落在红绿灯或控件之下。框架还始终在根元素上发布 `--dsh-frame-top-clearance`（48px）：窗口顶带之下的固定下沉量；主面板中的入口型页面（插件管理器等类似页面，非对话）以它做顶部内边距，浮层原语（portal 菜单、底部锚定浮层、设置面板）以它做视口顶部安全边距——放在根元素上让 portal 到 document.body 的浮层也能读到。全宽窗口拖拽带为 52px；选中会话界面且其 header 显示视图 tab 条时，加深至 76px 的 header 块（标题行加 tab 条），header 空白处可拖拽，控件保持可点。
+在 macOS 桌面（`html[data-platform='darwin']`，仅由桌面 preload 设置）下，收起的侧边栏整列隐藏而非保留控制栏，框架在左上角挂载 root 作用域的单一 `shell.leading` 座——位于 hiddenInset 红绿灯旁，覆盖所有主面板；ui-sidebar 以重新打开与 New Session 控件占据该座。座挂载期间框架发布 `--dsh-frame-leading-clearance`：窗口 chrome 占据的行内带宽，自框架左边缘起量；内容抵达左上角的主面板以它做内边距，避免落在红绿灯或控件之下。框架还始终在根元素上发布 `--dsh-frame-top-clearance`（48px）：窗口顶带之下的固定下沉量；主面板中的入口型页面（插件管理器等类似页面，非对话）以它做顶部内边距，浮层原语（portal 菜单、底部锚定浮层、设置面板）以它做视口顶部安全边距——放在根元素上让 portal 到 document.body 的浮层也能读到。框架自己不声明任何 darwin drag：每个 chrome 行给自身打上 `data-window-drag`，ui-web base.css 把该标记变成唯一那条 darwin drag 规则，于是行自己的盒子就是窗口的可拖几何——行的空白段可拖，控件保持可点。框架仅剩的那条 drag 规则属于 Windows 标题栏行。
 
 Windows Electron 的 `data-windows-titlebar` 标记在所有列上方预留顶栏高度，并移除收起后的侧栏轨道。内容区仅左上角保留 16px 圆角，其余角和内部交界处保持直角。框架发布 `--dsh-windows-content-radius` 和 `--dsh-windows-sidebar-width`，供 ui-sidebar-right 的全屏圆角及侧栏避让使用。普通 Web 文档不会获得该标记；macOS 保留其独立布局。
 
@@ -49,7 +51,7 @@ Windows Electron 的 `data-windows-titlebar` 标记在所有列上方预留顶�
 
 `selectPanel(id)` 在改变选中态前检查实时 `main` 注册表；缺失的 key 会抛错并保留当前面板。`beginNavigation()` 为异步 UI 导航返回 abort signal。后续调用、有效面板选择（包括重复选择）或布局释放会中止该 signal，但不取消底层会话创建。消费方在提交导航或搬移草稿前检查 signal。
 
-一次注册声明六个子 slot，并绑定 `ctx.layout` 的 `selectPanel`、`toggleSidebar`、`openRightbar(track, fullscreen)` 与 `closeRightbar`。同一个 root 存储把 `panelInfo` 选中态与 `layoutInfo` 测量、宽度偏好、呈现报告分开。`usePanelInfo` 订阅引用稳定的选中态对象，AppFrame 订阅引用稳定的布局对象。`rightbar` owner 提供实际 `width`、`viewportWidth`，以及表示能否以普通模式呈现的 `canShow`；占用方在空间不足时执行确定性的收起，变宽不自行重新展开。全屏隐藏宽度手柄，但不自行释放占用方要求保留的轨道。AppFrame 保持各列容器挂载。右栏的 root 控制器仅在选中会话界面时，经 `SessionProvider` 渲染 `rightbar.session`；内容卸载时的报告释放轨道。独立的标题组件仅在会话界面可见时使用所选会话标题，以构建配置的产品标题或本地化 `common.brand.localBuild` 为回退值；语言变化会更新该回退值。主题呈现器是第二个 effect：从解析后的快照做纯 DOM 写入——初始状态经 getter 读取一次，此后仅事件驱动，不经过 React。它先应用调色板、字号与 token 变量，再把渲染出的背景测量为唯一的颜色依据。全屏呈现禁用网格和手柄过渡；占用方完全覆盖框架后才报告新的列布局。退出全屏时，框架先保持无过渡并安装目标布局：关闭移除右轨道，恢复保留右轨道。后续普通几何操作恢复正常过渡。独立书架使用自己的宽度偏好与收起状态，`titlebar` 接收产品窗口控件。
+一次注册声明七个子 slot，并绑定 `ctx.layout` 的 `selectPanel`、`toggleSidebar`、`openRightbar(track, fullscreen)` 与 `closeRightbar`。同一个 root 存储把 `panelInfo` 选中态与 `layoutInfo` 测量、宽度偏好、呈现报告分开。`ctx.layout.panelInfo` 与标准 `usePanelInfo` hook 共用同一个选中态来源；AppFrame 订阅引用稳定的布局对象。`rightbar` owner 提供实际 `width`、`viewportWidth`，以及表示能否以普通模式呈现的 `canShow`；占用方在空间不足时执行确定性的收起，变宽不自行重新展开。全屏隐藏宽度手柄，但不自行释放占用方要求保留的轨道。AppFrame 保持各列容器挂载。右栏的 root 控制器仅在选中会话界面时，经 `SessionProvider` 渲染 `rightbar.session`；内容卸载时的报告释放轨道。独立的标题组件仅在会话界面可见时使用所选会话标题，以构建配置的产品标题或本地化 `common.brand.localBuild` 为回退值；语言变化会更新该回退值。主题呈现器是第二个 effect：从解析后的快照做纯 DOM 写入——初始状态经 getter 读取一次，此后仅事件驱动，不经过 React。它先应用调色板、字号与 token 变量，再把渲染出的背景测量为唯一的颜色依据。全屏呈现禁用网格和手柄过渡；占用方完全覆盖框架后才报告新的列布局。退出全屏时，框架先保持无过渡并安装目标布局：关闭移除右轨道，恢复保留右轨道。后续普通几何操作恢复正常过渡。独立书架使用自己的宽度偏好与收起状态，`titlebar` 接收产品窗口控件。
 
 </details>
 

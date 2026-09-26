@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-12-output-limit-recovery.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-12-output-limit-recovery.md
-2026-09-12-output-limit-recovery.md: 9e03bdcd23c2098732efff633a43e4757042afac
-2026-09-12-output-limit-recovery.zh.md: b8dceb5f4053897a52631a01b8723ead1978eda1
+/agent-note-context-backed-output-limit-recovery:
+  en: ffac91d01709af0c
+  zh: a48559b54a364694
+/agent-note-context-backed-output-limit-recovery/problem:
+  en: efde7f46a3e27525
+  zh: 18099011dce9827e
+/agent-note-context-backed-output-limit-recovery/decision:
+  en: 64b9bd4aa1e315b0
+  zh: 4e67ac0054c36044
+/agent-note-context-backed-output-limit-recovery/alternatives-considered:
+  en: 9fcb031325d4968f
+  zh: c44f88f57ae9dbd6
+/agent-note-context-backed-output-limit-recovery/consequences:
+  en: 83846efbb6eb456f
+  zh: 504d925b0eccfbf0

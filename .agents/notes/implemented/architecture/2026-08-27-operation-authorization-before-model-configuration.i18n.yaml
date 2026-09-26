@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-27-operation-authorization-before-model-configuration.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-27-operation-authorization-before-model-configuration.md
-2026-08-27-operation-authorization-before-model-configuration.md: a4c32f02b6db98dc2244e10f56a44317c6d18438
-2026-08-27-operation-authorization-before-model-configuration.zh.md: 53df08193031f077382c39b93cafb99be3608a36
+/agent-note-operation-authorization-before-model-configuration:
+  en: f010772722276309
+  zh: e9cf2e35813e5af1
+/agent-note-operation-authorization-before-model-configuration/problem:
+  en: d59a75dfdd65f2aa
+  zh: 226976fb216c1c05
+/agent-note-operation-authorization-before-model-configuration/decision:
+  en: d13cf827c626fc48
+  zh: 96cabe7eb825143e
+/agent-note-operation-authorization-before-model-configuration/alternatives-considered:
+  en: 1f8e41a6bcb2897b
+  zh: 66a622cddddad556
+/agent-note-operation-authorization-before-model-configuration/consequences:
+  en: 5513cb02b2de8726
+  zh: 0c973d8f4fed1265

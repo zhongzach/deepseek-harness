@@ -85,6 +85,7 @@ function mountBar(shell: SessionInputShell, over?: { running?: boolean; disabled
     openSource: vi.fn(),
     insertReference: vi.fn(() => false),
     useBusyEnter: bindSnapshotSelector(createSnapshotStore<'queue' | 'steer'>('queue')),
+    useStopShortcut: bindSnapshotSelector(createSnapshotStore<readonly string[]>([])),
     useNotices: bindSnapshotSelector(shell.notices),
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(createSnapshotStore<string | null>(null)),

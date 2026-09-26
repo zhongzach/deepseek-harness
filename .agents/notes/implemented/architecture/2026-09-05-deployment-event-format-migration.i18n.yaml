@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-05-deployment-event-format-migration.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-05-deployment-event-format-migration.md
-2026-09-05-deployment-event-format-migration.md: eface073e66952c7423e9ab3c93ba11cb29632ce
-2026-09-05-deployment-event-format-migration.zh.md: ab78e00a7b1af64ff0bb7934ea64da601acb470c
+/agent-note-validated-deployment-events-across-session-format-generations:
+  en: 67679fdc4e707bc3
+  zh: 3e9175b0a4cd477e
+/agent-note-validated-deployment-events-across-session-format-generations/problem:
+  en: 72012ce30d2147ae
+  zh: 7d176a941402b525
+/agent-note-validated-deployment-events-across-session-format-generations/decision:
+  en: db1896ded42300d8
+  zh: d384d2eb4dee564d
+/agent-note-validated-deployment-events-across-session-format-generations/alternatives-considered:
+  en: 37cade8ee7a1318f
+  zh: 78abf68b0fa5e551
+/agent-note-validated-deployment-events-across-session-format-generations/consequences:
+  en: 4a87c2b4436880ec
+  zh: 31efa8480865d471

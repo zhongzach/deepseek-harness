@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-04-composer-launcher-and-reference-markers.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-04-composer-launcher-and-reference-markers.md
-2026-09-04-composer-launcher-and-reference-markers.md: f90a0a9a4722bdca5864b0488d9b6c6919354ad3
-2026-09-04-composer-launcher-and-reference-markers.zh.md: 8c8080f043cf5fa0164c3a68abf456497c65ac27
+/agent-note-composer-launchers-and-reference-markers:
+  en: bc44408e8ba646e0
+  zh: 5638b262a9ca80cf
+/agent-note-composer-launchers-and-reference-markers/problem:
+  en: e1267a06eb7e180c
+  zh: df1ddf0d77924ef6
+/agent-note-composer-launchers-and-reference-markers/decision:
+  en: 26b15808ee036712
+  zh: f65c5c6166ed4326
+/agent-note-composer-launchers-and-reference-markers/alternatives-considered:
+  en: 0ca00909c8f35e3b
+  zh: 1a5e723cec5b7b59
+/agent-note-composer-launchers-and-reference-markers/consequences:
+  en: 00a9b69f5b29efb9
+  zh: e081d5aae6023afa

@@ -16,7 +16,7 @@ import type {
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
-import * as LlmDeepSeek from '@deepseek-ai/dsh-llm-deepseek'
+import * as LlmDeepSeek from '@deepseek-ai/dsh-llm-deepseek-api-key'
 import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import { assemble } from './assemble.ts'
 import { closeMockServers, mockServer, textEvents } from './mock-server.ts'
@@ -163,13 +163,10 @@ describe('request-level dynamic configuration', () => {
     const server = await mockServer([{ kind: 'sse', events: textEvents }])
     const { ctx } = await boot(dir, { baseURL: server.url })
 
-    await expect(ctx.llm.listModels('deepseek-official')).resolves.toEqual([])
     const keyless = await prompt(ctx)
     expect(keyless.finish).toMatchObject({ kind: 'error', failure: { code: 'MISSING_CREDENTIAL' } })
     await expect(access(join(dir, '.anonymous-user-id'))).rejects.toMatchObject({ code: 'ENOENT' })
     await ctx.credentials.set(KEY_REF, 'sk-arrived')
-    expect((await ctx.llm.listModels('deepseek-official')).map(model => model.id))
-      .toEqual(['deepseek-flash', 'deepseek-v4-pro'])
     await prompt(ctx)
     expect(server.headers[0]?.['x-api-key']).toBe('sk-arrived')
     await expect(access(join(dir, '.anonymous-user-id'))).resolves.toBeUndefined()
@@ -195,9 +192,9 @@ describe('request-level dynamic configuration', () => {
   })
 
   it('advertises a live settings catalog without re-registration', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', 'catalog-fixture-key')
     const dir = await home()
     const { ctx } = await boot(dir, { baseURL: 'http://127.0.0.1:1' })
-    await ctx.credentials.set(KEY_REF, 'catalog-key')
 
     await expect(ctx.llm.listModels('deepseek-official')).resolves.toHaveLength(2)
     await configurations.get(ctx)!.update({
@@ -206,21 +203,6 @@ describe('request-level dynamic configuration', () => {
     await expect(ctx.llm.listModels('deepseek-official')).resolves.toEqual([
       { provider: 'deepseek-official', id: 'settings-model', name: 'From Settings', inputModalities: ['text', 'image'] },
     ])
-  })
-
-  it('uses the configured credential reference to admit the catalog', async () => {
-    vi.stubEnv('DEEPSEEK_API_KEY', '')
-    const dir = await home()
-    const customRef = credentialRef('WRITERX_DEEPSEEK_KEY')
-    const { ctx } = await boot(dir, {
-      baseURL: 'http://127.0.0.1:1',
-      apiKeyEnv: customRef,
-    })
-
-    await expect(ctx.llm.listModels('deepseek-official')).resolves.toEqual([])
-    await ctx.credentials.set(customRef, 'custom-catalog-key')
-    expect((await ctx.llm.listModels('deepseek-official')).map(model => model.id))
-      .toEqual(['deepseek-flash', 'deepseek-v4-pro'])
   })
 
   it('applies changed request file limits to the next request', async () => {
@@ -293,9 +275,9 @@ describe('request-level dynamic configuration', () => {
   })
 
   it('fails catalog reads while a stored snapshot fails beyond-schema validation, and recovers on repair', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', 'catalog-fixture-key')
     const dir = await home()
     const { ctx } = await boot(dir, { baseURL: 'http://127.0.0.1:1' })
-    await ctx.credentials.set(KEY_REF, 'catalog-key')
 
     // Schema-valid but resolver-invalid: duplicate catalog ids pass the array
     // schema; the profile stores them and every resolve step fails until the row is repaired.

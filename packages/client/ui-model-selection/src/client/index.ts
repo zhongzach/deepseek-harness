@@ -51,6 +51,8 @@ function rowId(providerId: string, modelId: string): string {
 }
 
 const BUILTIN_DESCRIPTION_KEYS: Readonly<Record<string, ModelKey>> = {
+  'deepseek-account/deepseek-v4-flash': 'option.deepseekV4Flash.description',
+  'deepseek-account/deepseek-v4-pro': 'option.deepseekV4Pro.description',
   'deepseek-official/deepseek-v4-flash': 'option.deepseekV4Flash.description',
   'deepseek-official/deepseek-v4-pro': 'option.deepseekV4Pro.description',
 }
@@ -68,8 +70,9 @@ function descriptionOf(
 function optionsOf(directory: ModelDirectoryState, t: TranslateNS<'model'>): SelectOption[] {
   const rows: SelectOption[] = []
   for (const group of directory.groups) {
+    const name = group.id === 'deepseek-account' ? t('provider.account') : group.name
     for (const section of modelPresentationSections(group)) {
-      const groupDetail = section.presented ? `${group.name} · ${section.name}` : group.name
+      const groupDetail = section.presented ? `${name} · ${section.name}` : name
       for (const model of section.models) {
         const description = descriptionOf(group.id, model, t)
         rows.push({
@@ -93,7 +96,7 @@ function optionsOf(directory: ModelDirectoryState, t: TranslateNS<'model'>): Sel
   for (const failure of directory.failures) {
     rows.push({
       id: `failure/${failure.id}`,
-      label: failure.name,
+      label: failure.id === 'deepseek-account' ? t('provider.account') : failure.name,
       detail: t('option.loadError', { message: failure.message }),
     })
   }
@@ -145,10 +148,9 @@ export function apply(ctx: ClientContext): void {
   // through the bound translate; the seat component reads the standard seat.
   const t = ctx.locale.bind(NS)
 
-  // The composer-block reason is this plugin's own copy, read at raise time so
-  // a locale change reaches the next publish.
+  // The unavailable-model fallback is this plugin's own copy, read at raise
+  // time so a locale change reaches the next refusal.
   ctx.plugin(ModelDirectoryResolver, {
-    blockReason: () => t('blocked.composer'),
     notSelectableReason: () => t('error.notSelectable'),
   })
 
