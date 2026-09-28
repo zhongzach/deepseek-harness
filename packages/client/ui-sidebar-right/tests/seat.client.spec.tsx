@@ -513,6 +513,60 @@ describe('RightbarSeat presentation', () => {
     expect(h.instance.getSnapshot()).toBe(stored)
     expect(h.layout().expanded).toBe(false)
   })
+
+  it('collapses duplicated retained catalog tabs across split panes, keeping splits with real content', async () => {
+    const h = await mountSeat()
+    act(() => {
+      h.runtime.ctx.sidebarRightTabs.register({
+        id: 'test/files', kind: 'files', priority: 'extension', title: () => '书稿', retainAsDefault: true,
+        guide: [{ id: 'files', order: 10, title: () => '书稿' }],
+      })
+      h.runtime.slots.register({ name: 'sidebar.right.pane.tab', key: 'test/files' }, () => null)
+    })
+    act(() => { h.controller.openTab('files') })
+    const single = dockPaneIds(h.layout())
+    expect(single).toHaveLength(1)
+    expect(getPane(h.layout(), single[0]!).tabs.map(id => h.layout().tabs[id]!.kind)).toEqual(['files'])
+    // With a retained singleton catalog the column offers no split affordance.
+    expect(h.view.container.querySelector('[data-dockkit-split-button]')).toBeNull()
+
+    // A bare split seeds the retained catalog into the new pane too: the
+    // duplicate closes and the emptied pane merges back ( WriterX singleton ).
+    act(() => { h.controller.split() })
+    expect(dockPaneIds(h.layout())).toHaveLength(1)
+    expect(Object.values(h.layout().tabs).filter(tab => tab.kind === 'files')).toHaveLength(1)
+
+    // A drag split moves the document and seeds the new pane in one pass:
+    // the split survives with the doc, only its seeded catalog copy drops.
+    const doc = h.open('b.txt')
+    act(() => { h.actions.dropTab(SESSION, doc.id, dockPaneIds(h.layout())[0]!, 'right') })
+    expect(dockPaneIds(h.layout())).toHaveLength(2)
+    expect(getPane(h.layout(), dockPaneIds(h.layout())[0]!).tabs.map(id => h.layout().tabs[id]!.kind)).toEqual(['files'])
+    expect(getPane(h.layout(), dockPaneIds(h.layout())[1]!).tabs.map(id => h.layout().tabs[id]!.kind)).toEqual(['text'])
+  })
+
+  it('marks a catalog-only column, keeps fullscreen for documents, and auto-exits catalog fullscreen', async () => {
+    const h = await mountSeat()
+    act(() => {
+      h.runtime.ctx.sidebarRightTabs.register({
+        id: 'test/files', kind: 'files', priority: 'extension', title: () => '书稿', retainAsDefault: true,
+        guide: [{ id: 'files', order: 10, title: () => '书稿' }],
+      })
+      h.runtime.slots.register({ name: 'sidebar.right.pane.tab', key: 'test/files' }, () => null)
+    })
+    act(() => { h.controller.openTab('files') })
+    // Catalog-only: the panel is marked (the stylesheet drops the strip) and
+    // the fullscreen control is not rendered.
+    expect(h.view.container.querySelector('[data-catalog-only]')).not.toBeNull()
+    expect(h.view.container.querySelector('[data-sidebar-right-mode]')).toBeNull()
+    // A persisted/forced catalog fullscreen drops back to the track.
+    act(() => { h.actions.setMode(SESSION, 'fullscreen') })
+    expect(h.layout().mode).toBe('push')
+    // A document tab clears the mark and returns the fullscreen control.
+    h.open('b.txt')
+    expect(h.view.container.querySelector('[data-catalog-only]')).toBeNull()
+    expect(h.view.container.querySelector('[data-sidebar-right-mode]')).not.toBeNull()
+  })
 })
 
 describe('RightbarSeat fullscreen entry', () => {

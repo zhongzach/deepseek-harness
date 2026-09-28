@@ -65,6 +65,13 @@
   --dsh-dockkit-dock-layer: 40;
 }
 
+/* fork (WriterX): a catalog-only column has no tab strip — the catalog body
+   carries its own header, so the duplicated chrome rows merge into one. A
+   document tab arriving in the column brings the strip back. */
+.panel[data-catalog-only] :global([data-dockkit-strip]) {
+  display: none;
+}
+
 /* No whole-box subtraction here: Electron drag regions are window geometry,
    not stacking, so a strip row inside this fullscreen content that marks itself
    `data-window-drag` (ui-dockkit) still owns the drag over its own box, and

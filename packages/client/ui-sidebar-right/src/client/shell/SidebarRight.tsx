@@ -258,6 +258,13 @@ function FullscreenGlyph(): ReactNode {
   )
 }
 
+/** fork (WriterX): whether every docked tab is the retained catalog page. */
+function catalogOnlyLayout(layout: LayoutState, retainedKind: string | undefined): boolean {
+  if (retainedKind === undefined) return false
+  const panes = dockPaneIds(layout)
+  return panes.length > 0 && panes.every(paneId => getPane(layout, paneId).tabs.every(tabId => getTab(layout, tabId).kind === retainedKind))
+}
+
 /** Restore-from-fullscreen glyph from the shared product artwork. */
 function ExitFullscreenGlyph(): ReactNode {
   return (
@@ -269,25 +276,28 @@ function ExitFullscreenGlyph(): ReactNode {
 }
 
 /** The panel's two controls, placed by the kit at the top-right pane's strip end. */
-function PanelChrome({ sessionId, fullscreen, actions, t, shortcuts, toggleFullscreen }: Pick<PanelProps, 'sessionId' | 'actions' | 't' | 'fullscreen' | 'shortcuts' | 'toggleFullscreen'>): ReactNode {
+function PanelChrome({ sessionId, fullscreen, canFullscreen, actions, t, shortcuts, toggleFullscreen }: Pick<PanelProps, 'sessionId' | 'actions' | 't' | 'fullscreen' | 'shortcuts' | 'toggleFullscreen'> & { canFullscreen: boolean }): ReactNode {
   const next: DockMode = fullscreen ? 'push' : 'fullscreen'
   const modeLabel = fullscreen ? t('chrome.exitFullscreen') : t('chrome.toFullscreen')
   const mode = shortcuts.find(entry => entry.id === 'pane.fullscreen.toggle')
   const toggle = shortcuts.find(entry => entry.id === 'sidebar.right.toggle')
   return (
     <>
-      <Tooltip label={modeLabel} shortcutKeys={mode?.keys} side="bottom" delayMs={500}>
-        <button
-          type="button"
-          className={css.iconButton}
-          aria-label={modeLabel}
-          aria-keyshortcuts={mode?.aria}
-          data-sidebar-right-mode={next}
-          onClick={toggleFullscreen}
-        >
-          {fullscreen ? <ExitFullscreenGlyph /> : <FullscreenGlyph />}
-        </button>
-      </Tooltip>
+      {/* fork (WriterX): fullscreen serves documents; the singleton catalog never offers it. */}
+      {canFullscreen && (
+        <Tooltip label={modeLabel} shortcutKeys={mode?.keys} side="bottom" delayMs={500}>
+          <button
+            type="button"
+            className={css.iconButton}
+            aria-label={modeLabel}
+            aria-keyshortcuts={mode?.aria}
+            data-sidebar-right-mode={next}
+            onClick={toggleFullscreen}
+          >
+            {fullscreen ? <ExitFullscreenGlyph /> : <FullscreenGlyph />}
+          </button>
+        </Tooltip>
+      )}
       <Tooltip label={t('chrome.collapse')} shortcutKeys={toggle?.keys} side="bottom" delayMs={500}>
         <button
           type="button"
@@ -313,6 +323,9 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
   const { expanded } = surface.layout
   const definitions = panel.useTabTypes(value => value)
   const hideAddTabKinds = new Set(definitions.filter(definition => definition.hideAddTab).map(definition => definition.kind))
+  // fork (WriterX): a catalog-only column drops the dock strip — the catalog
+  // body carries its own header, so the two chrome rows merge into one.
+  const catalogOnly = catalogOnlyLayout(surface.layout, panel.retainedKind)
   return (
     <div
       ref={panelRef}
@@ -322,6 +335,7 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
       data-sidebar-right-session={sessionId}
       data-sidebar-right-panel={fullscreen ? 'fullscreen' : 'push'}
       data-sidebar-right-open={expanded || undefined}
+      data-catalog-only={catalogOnly || undefined}
       // Off-edge is out of reach: the stylesheet's visibility flip takes the
       // hidden panel out of the tab order, and this takes it out of the
       // accessibility tree.
@@ -330,7 +344,10 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
       <div className={css.panelBody}>
         <DockLayout
           state={surface.layout}
-          canSplit={canSplit(surface.layout) && dockPaneIds(surface.layout).length < 2}
+          // fork (WriterX): with a retained singleton catalog the column never
+          // splits — the split affordance and edge drop zones both stay off.
+          canSplit={panel.retainedKind === undefined && canSplit(surface.layout) && dockPaneIds(surface.layout).length < 2}
+          hideSplitWhenBlocked={panel.retainedKind !== undefined}
           dropZones="horizontal"
           minPaneFraction={0.2}
           canAddTab={paneId => guideIn(surface.layout, paneId) === undefined
@@ -345,7 +362,7 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
           renderTabMenuItems={(tab, dismiss) =>
             renderSlot('sidebar.right.tab.menu.item', { tab, dismiss })}
           chrome={<PanelChrome
-            sessionId={sessionId} fullscreen={fullscreen} actions={actions} t={t}
+            sessionId={sessionId} fullscreen={fullscreen} canFullscreen={!catalogOnly} actions={actions} t={t}
             shortcuts={panel.shortcuts} toggleFullscreen={panel.toggleFullscreen}
           />}
           onRoom={reportRoom}
@@ -424,6 +441,33 @@ export function RightbarSeat({
   useLayoutEffect(() => {
     if (shown && !fullscreen && !canShow) actions.setExpanded(sessionId, false)
   }, [actions, sessionId, shown, fullscreen, canShow])
+
+  // fork (WriterX): the retained default tab is the product's singleton
+  // catalog — every split pane seeds its own copy, and pre-shelf-column
+  // layouts persisted duplicates. Collapse extra copies back into the first
+  // docked pane; the emptied pane merges itself away in the same store pass.
+  useLayoutEffect(() => {
+    if (surface === undefined || retainedKind === undefined) return
+    const layout = surface.layout
+    const panes = dockPaneIds(layout)
+    if (panes.length < 2) return
+    let kept = false
+    for (const paneId of panes) {
+      for (const tabId of getPane(layout, paneId).tabs) {
+        const tab = getTab(layout, tabId)
+        if (tab.kind !== retainedKind || tab.contentId !== pageAddress(retainedKind)) continue
+        if (!kept) { kept = true; continue }
+        if (canCloseTab(surface, tabId, retainedKind)) actions.closeTab(sessionId, tabId)
+      }
+    }
+  }, [actions, sessionId, surface, retainedKind])
+
+  // fork (WriterX): fullscreen is for documents; a catalog-only column (incl.
+  // layouts persisted before the shelf column existed) drops back to its track.
+  const catalogOnly = surface !== undefined && catalogOnlyLayout(surface.layout, retainedKind)
+  useLayoutEffect(() => {
+    if (catalogOnly && surface?.layout.mode === 'fullscreen') actions.setMode(sessionId, 'push')
+  }, [actions, sessionId, catalogOnly, surface])
 
   // The open/close slide needs no pulse of its own: the shell's window drag
   // watcher (ui-web) measures the marked rows every frame the surface moves and

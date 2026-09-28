@@ -212,7 +212,11 @@ function advance(surface: SurfaceState, plan: SurfacePlan, seed: () => SidebarRi
   const initial = after.expanded ? seed() : undefined
   if (initial?.retain) {
     const activePane = after.activePaneId
-    for (const paneId of dockPaneIds(after)) {
+    // fork (WriterX): the retained page is the product's singleton catalog —
+    // plant or repair it in the first docked pane only. Sibling split panes
+    // keep their own content and never grow a second copy; the seat shell
+    // closes any duplicate that older layouts persisted.
+    for (const paneId of dockPaneIds(after).slice(0, 1)) {
       const pane = getPane(after, paneId), activeTab = pane.activeTabId
       const held = panePage(after, paneId, initial.kind)
       const retained = held === undefined
