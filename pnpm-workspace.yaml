@@ -18,6 +18,11 @@ overrides:
   'extract-zip>yauzl': '3.4.0'
   '@deepseek-ai/cosmokit': 'link:vendor/cosmokit'
   '@deepseek-ai/schemastery': 'link:vendor/schemastery'
+  # 锁定上游 rc.2 lockfile 的解析结果：closure 同步触发的 semver 漂移
+  # （util-types 2.0.2→2.0.3 等）会让 ui-primitives/markdown/parse.ts 类型不过。
+  'micromark-util-types': '2.0.2'
+  'micromark-factory-space': '2.0.1'
+  'micromark-core-commonmark': '2.0.3'
 
 peerDependencyRules:
   allowedVersions:
