@@ -26,6 +26,12 @@ export interface WorkspaceNavigationPolicy {
   onEmptyStart?: () => void
   /** Whether a blank-session workspace pick transfers its draft; defaults to true. */
   transferDraftOnSwitch?: boolean
+  /**
+   * Whether first-use startup (no Workspace and no Session) prepares and opens
+   * the default Workspace; defaults to true. A product whose empty state asks
+   * the reader to create or choose a project first sets false.
+   */
+  initializeDefaultWorkspace?: boolean
 }
 
 interface MainSelection {
@@ -364,7 +370,8 @@ class UiWorkspaceService extends Service implements UiWorkspace {
       sessionId = await this.reuseBlank(workspace.workspaceId, summary.id)
     }
     let target = workspace?.workspaceId ?? recentWorkspace(workspaces.items, sessions.byId)
-    if (target === undefined && workspaces.items.length === 0 && sessions.ids.length === 0) {
+    if (target === undefined && workspaces.items.length === 0 && sessions.ids.length === 0
+      && this.policy?.initializeDefaultWorkspace !== false) {
       const prepared = await this.initializeDefaultWorkspace(navigation)
       if (navigation.aborted) return
       target = prepared?.workspaceId

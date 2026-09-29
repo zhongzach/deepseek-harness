@@ -337,6 +337,20 @@ describe('UiWorkspaceService', () => {
     expect(b.notify).not.toHaveBeenCalled()
   })
 
+  it('leaves first use empty when the product policy declines the default Workspace', async () => {
+    const b = bench()
+    const undo = b.uiWorkspace.registerNavigationPolicy({ initializeDefaultWorkspace: false })
+    b.sessions.list.set(sessionState())
+    b.workspaces.list.set(workspaceState())
+    await setImmediate()
+    expect(b.workspaces.initializeDefault).not.toHaveBeenCalled()
+    expect(b.sessions.create).not.toHaveBeenCalled()
+    expect(b.sessions.retain).not.toHaveBeenCalled()
+    expect(b.notify).not.toHaveBeenCalled()
+    undo()
+    await b.ctx.fiber.dispose()
+  })
+
   it('leaves an ineligible empty installation without a Session or failure notice', async () => {
     const b = bench({ workspaces: workspaceState(), sessions: sessionState() })
     await setImmediate()

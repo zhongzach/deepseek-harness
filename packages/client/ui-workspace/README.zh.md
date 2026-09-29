@@ -170,7 +170,7 @@ export function apply(ctx: Context): void {
 
 ### 视图状态
 
-产品可以安装一份可释放的 `registerNavigationPolicy`，处理没有可用 Workspace 时的新会话操作，并禁止跨 Workspace 搬移草稿。目录流的 `onPicked(path, beforeOpen?)` 可把准备回调传给已解析的 Session，仍受现有导航取消机制约束。`sidebar.workspaces.rename` 可仅替换 Workspace 改名对话框；没有占用方时渲染原生回退。这些扩展不修改 Session cwd 或 Workspace 归属。
+产品可以安装一份可释放的 `registerNavigationPolicy`，处理没有可用 Workspace 时的新会话操作，禁止跨 Workspace 搬移草稿，并可拒绝首次使用的默认 Workspace（`initializeDefaultWorkspace: false`，适用于空状态要求读者先新建或选择项目的产品；启动时不选中任何内容，也不调用 `workspaces.initializeDefault`）。该策略须在两个启动基线就绪前安装。目录流的 `onPicked(path, beforeOpen?)` 可把准备回调传给已解析的 Session，仍受现有导航取消机制约束。`sidebar.workspaces.rename` 可仅替换 Workspace 改名对话框；没有占用方时渲染原生回退。这些扩展不修改 Session cwd 或 Workspace 归属。
 
 Workspace 基线就绪后，浏览器持久化的展开状态和 Session 顺序记录只保留当前 Workspace id、Ungrouped 和单列表记账。`WorkspaceView.sessionIds` 提供真实 Workspace 的成员关系，而不提供 Session 显示顺序。视图操作接收完整记账顺序，而不是筛选后的行。尚无 Session 摘要的新成员会等待摘要，已保存的位置则在摘要暂时缺失时保留。归档显隐仅在派生行时应用。置顶和拖拽写入完整顺序，普通派生不执行写入。当前选中的空白 Session 仍是一次显式位置写入；Workspace 重连时同样如此，此时保留其他已保存成员，直到基线确定成员关系。侧边栏收成窄栏或搜索替代列表主体时，排序仍保持挂载。最近更新从当前摘要派生，不读取已保存位置；时间相同时按 Session id 稳定排序。
 
