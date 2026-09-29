@@ -4,6 +4,7 @@
  * Session's durable selection projection, then submit through the same
  * selectModel call. A switch made in either entry updates this shared state.
  */
+import type { TrackProductEvent } from '@deepseek-ai/dsh-client-product-analytics/client'
 import type {
   ModelCatalogFailure, ModelProviderGroup, ModelSelection, ModelSelectionProjection,
 } from '@deepseek-ai/dsh-api-session-controller/types'
@@ -73,6 +74,8 @@ export class ModelDirectory {
    * @param catalog - Host-generation catalog shared by every Session.
    * @param projected - durable model selection projected from Session history.
    * @param notSelectableReason - localized fallback when a disabled catalog row has no provider reason.
+   * @param isBlank - whether this Session has no first message yet.
+   * @param track - desktop-only callback after a successful user selection.
    */
   constructor(
     private readonly sessions: Pick<TypertClientRemote['session'], 'selectModel'>,
@@ -81,6 +84,8 @@ export class ModelDirectory {
     private readonly catalog: ModelCatalogDirectory,
     private readonly projected: ObservableSnapshot<unknown>,
     private readonly notSelectableReason: () => string,
+    private readonly isBlank: () => boolean,
+    private readonly track?: TrackProductEvent,
   ) {
     this.unsubscribeCatalog = catalog.store.subscribe(() => { this.syncInputs() })
     this.unsubscribeSelection = projected.subscribe(() => { this.syncInputs() })
@@ -114,6 +119,9 @@ export class ModelDirectory {
       this.store.update((s) => { s.status = 'error'; s.error = message })
       throw new Error(message)
     }
+    const previous = this.store.getSnapshot().current
+    const previousEffort = previous?.reasoningEffort ?? (previous === null ? undefined : this.catalog.reasoningFor(previous)?.defaultEffort)
+    const nextEffort = selection.reasoningEffort ?? this.catalog.reasoningFor(selection)?.defaultEffort
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'selecting'; s.pending = selection; s.error = null })
     const result = await this.sessions.selectModel({
@@ -134,6 +142,14 @@ export class ModelDirectory {
         s.error = `${result.error.code}: ${result.error.message}`
       })
       return result
+    }
+    if (previous !== null) {
+      const from = `${previous.provider}/${previous.model}`
+      const to = `${selection.provider}/${selection.model}`
+      if (from !== to) this.track?.('model_switch', { ...this.isBlank() ? {} : { session_id: this.sessionId }, switch_from: from, switch_to: to })
+      if (from === to && previousEffort !== nextEffort) this.track?.('thinking_level_switch', {
+        ...this.isBlank() ? {} : { session_id: this.sessionId }, model_name: to, switch_from: previousEffort ?? 'default', switch_to: nextEffort ?? 'default',
+      })
     }
     this.store.update((s) => { s.status = 'ready'; s.pending = null; s.error = null })
     this.syncInputs()
