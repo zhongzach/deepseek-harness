@@ -3875,7 +3875,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.session.row.hover\', () => ctx.slots.register(\n      { name: \'sidebar.session.row.hover\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:159',
+    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:161',
   },
   {
     key: 'sidebar.session.row.leading',
@@ -4031,8 +4031,8 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     key: 'sidebar.workspace.row.meta',
     kind: 'list',
     scope: 'root',
-    summary: 'Secondary text after one real Workspace row\'s title, in ascending `order`.',
-    doc: 'Secondary text after one real Workspace row\'s title, in ascending\n`order`. Empty by default; an entry that has nothing to show returns null.',
+    summary: 'Short text at the end of one real Workspace row, in ascending `order`, set in the Session time\'s type so the row stays one line; hover and an open menu hand the cell to the row actions.',
+    doc: 'Short text at the end of one real Workspace row, in ascending `order`,\nset in the Session time\'s type so the row stays one line; hover and an\nopen menu hand the cell to the row actions. Empty by default; an entry\nthat has nothing to show returns null.',
     registerOptions: [
       {
         name: 'id',
@@ -4075,7 +4075,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     occupants: [],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.workspace.row.meta\', () => ctx.slots.register(\n      { name: \'sidebar.workspace.row.meta\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:154',
+    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:156',
   },
   {
     key: 'sidebar.workspaces',
@@ -4226,7 +4226,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    const copyLabel = \'Copy Session ID\' // Localize in the contributing package.\n    ctx.slots.inject(\'sidebar.workspaces.session.menu.item\', () => ctx.slots.register(\n      { name: \'sidebar.workspaces.session.menu.item\', id: \'copy-session-id\', order: 500 },\n      ({ sessionId, useMenuOpenState }) => {\n        const [, setMenuOpen] = useMenuOpenState()\n        return React.createElement(\n          \'button\',\n          { type: \'button\', role: \'menuitem\', onClick: () => { setMenuOpen(false); void navigator.clipboard.writeText(sessionId) } },\n          copyLabel,\n        )\n      },\n    ))\n  },\n}',
-    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:191',
+    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:193',
   },
   {
     key: 'sidebar.workspaces.session.row.action',
@@ -4279,7 +4279,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.workspaces.session.row.action\', () => ctx.slots.register(\n      { name: \'sidebar.workspaces.session.row.action\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:209',
+    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:211',
   },
   {
     key: 'titlebar',

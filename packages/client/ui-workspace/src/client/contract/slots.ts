@@ -148,8 +148,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'sidebar.workspace.row.icon': { kind: 'chain'; scope: 'root'; owner: WorkspaceRowOwnerProps }
     /**
-     * Secondary text after one real Workspace row's title, in ascending
-     * `order`. Empty by default; an entry that has nothing to show returns null.
+     * Short text at the end of one real Workspace row, in ascending `order`,
+     * set in the Session time's type so the row stays one line; hover and an
+     * open menu hand the cell to the row actions. Empty by default; an entry
+     * that has nothing to show returns null.
      */
     'sidebar.workspace.row.meta': { kind: 'list'; scope: 'root'; owner: WorkspaceRowOwnerProps }
     /**

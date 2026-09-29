@@ -281,6 +281,29 @@
   display: none;
 }
 
+/* Owner text at a Workspace row's end (`sidebar.workspace.row.meta`), in the
+   Session time's type, so the row stays one 34px line; hover and an open menu
+   hand the cell to the row actions, exactly like the Session time. */
+.projectMeta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 45%;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.projectMeta:empty,
+.projectRow:hover .projectMeta,
+.projectRow.menuOpen .projectMeta {
+  display: none;
+}
+
 /* Hover swaps the trailing cell to the action buttons, which already carry
    the pin/archive glyphs — hide the static markers so they do not double. */
 .sessionRow:hover .pinIndicator,

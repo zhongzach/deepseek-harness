@@ -269,8 +269,8 @@ export function ProjectRowItem({
       </span>
       <span className={css.projectText}>
         <span className={css.title}>{label}</span>
-        {seat !== undefined && renderSlot('sidebar.workspace.row.meta', seat)}
       </span>
+      {seat !== undefined && <span className={css.projectMeta}>{renderSlot('sidebar.workspace.row.meta', seat)}</span>}
       <span className={css.rowActions}>
         {actions !== undefined && (
           <Menu
