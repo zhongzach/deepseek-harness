@@ -539,6 +539,7 @@ describe('ConversationRoot resident composer', () => {
     expect(b.slotCalls).toContain('conversation.session.header.actions')
     expect(b.slotCalls).toContain('conversation.session.header.utilities')
     expect(b.slotCalls).toContain('conversation.session.header.corner')
+    expect(b.slotCalls).not.toContain('conversation.hero.footer')
   })
 
   it('sticky composer seat wraps the whole overlay chain, not only the fallback stack', () => {
@@ -703,6 +704,10 @@ describe('ConversationRoot resident composer', () => {
     // The agent-preset chip sits in the same row, for the same reason: both
     // choices are only open before the first message.
     expect(b.slotCalls).toContain('conversation.hero.agentPreset')
+    // The Hero footer follows the composer card, inside the same centered stack.
+    const footer = b.view.getByTestId('view-conversation.hero.footer')
+    expect(b.view.getByRole('textbox').compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(footer.parentElement?.contains(b.view.getByRole('textbox'))).toBe(true)
   })
 
   it('prompt failure renders the promptError strip (ordinary failure, no transaction UI)', () => {

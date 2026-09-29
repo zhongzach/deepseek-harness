@@ -168,6 +168,7 @@ export function ConversationContent(props: ConversationContentProps) {
       {hero && heroWorkspaceRow}
       {zone !== undefined && renderSlot('conversation.input.dock', zone)}
       {inputBar}
+      {hero && sessionId !== undefined && renderSlot('conversation.hero.footer', {})}
     </div>
   )
 
