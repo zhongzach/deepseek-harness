@@ -216,7 +216,9 @@ function rowHalf(e: { clientY: number; currentTarget: HTMLElement }): 'before' |
  * @param props.t - the browser root's locale seat.
  * @returns the row element.
  */
-export function ProjectRowItem({ group, containsCurrentDescendant = false, onToggle, onCreate, actions, drag, home, newShortcut, t }: {
+export function ProjectRowItem({
+  group, containsCurrentDescendant = false, onToggle, onCreate, actions, drag, home, newShortcut, renderSlot, renderSlotChain, t,
+}: {
   group: GroupNode
   newShortcut?: ShortcutCatalogEntry | undefined
   containsCurrentDescendant?: boolean
@@ -229,10 +231,13 @@ export function ProjectRowItem({ group, containsCurrentDescendant = false, onTog
   /** Host account home; POSIX home-rooted hover paths display as `~`. */
   home?: string | undefined
   t: RowTranslate
-}) {
+} & PropsRenderSlots<'sidebar.workspace.row.icon' | 'sidebar.workspace.row.meta'>) {
   const row = group
   // The ungrouped bucket has no workspace title: its label is dictionary copy.
   const label = row.workspaceId === undefined ? t('group.ungrouped') : row.label
+  // Only a real Workspace mounts the row seats; the ungrouped bucket keeps the plain folder.
+  const seat = row.workspaceId === undefined ? undefined : { workspaceId: row.workspaceId, expanded: row.expanded }
+  const folder = row.expanded ? <IconFolderOpenRegular /> : <IconFolderCloseRegular />
   const active = containsCurrentDescendant || (group.expanded && group.containsCurrent)
   const [menuOpen, setMenuOpen] = useState(false)
   const workspaceMenuItems = [
@@ -257,13 +262,14 @@ export function ProjectRowItem({ group, containsCurrentDescendant = false, onTog
       onDragEnd={drag?.end}
     >
       <span className={clsx(css.slot, css.folder, active && css.folderActive)}>
-        {row.expanded ? <IconFolderOpenRegular /> : <IconFolderCloseRegular />}
+        {seat === undefined ? folder : renderSlotChain('sidebar.workspace.row.icon', seat, { fallback: folder })}
       </span>
       <span className={clsx(css.slot, css.chevron)}>
         <IconTriangleRightFillRegular className={clsx(css.arrow, row.expanded && css.arrowOpen)} />
       </span>
       <span className={css.projectText}>
         <span className={css.title}>{label}</span>
+        {seat !== undefined && renderSlot('sidebar.workspace.row.meta', seat)}
       </span>
       <span className={css.rowActions}>
         {actions !== undefined && (

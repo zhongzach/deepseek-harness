@@ -12,7 +12,7 @@ import type { MenuOpenState, SessionRowOwnerProps } from '../src/client/contract
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type { RowDragProps } from '../src/client/rows/Rows.tsx'
 import {
-  ProjectRowItem, SearchResultItem, SessionNodeItem as SessionNodeItemComponent,
+  ProjectRowItem as ProjectRowItemComponent, SearchResultItem, SessionNodeItem as SessionNodeItemComponent,
 } from '../src/client/rows/Rows.tsx'
 import type { GroupNode, SearchResultNode, SessionNode } from '../src/client/tree.ts'
 import { en, zh } from '../src/client/locales.ts'
@@ -41,6 +41,18 @@ function SessionNodeItem({ renderSlot = renderNoRowEntries, onRenameRequest = ()
   SessionNodeItemProps, 'renderSlot' | 'onRenameRequest'
 > & Partial<Pick<SessionNodeItemProps, 'renderSlot' | 'onRenameRequest'>>) {
   return <SessionNodeItemComponent {...props} renderSlot={renderSlot} onRenameRequest={onRenameRequest} />
+}
+
+type WorkspaceRowSlots = PropsRenderSlots<'sidebar.workspace.row.icon' | 'sidebar.workspace.row.meta'>
+type ProjectRowItemProps = ComponentProps<typeof ProjectRowItemComponent>
+const renderNoWorkspaceEntries: WorkspaceRowSlots['renderSlot'] = () => null
+const renderWorkspaceFallback: WorkspaceRowSlots['renderSlotChain'] = (_key, _owner, opts) => opts?.fallback ?? null
+
+// Direct Workspace-row specs start with empty row seats (the shipped folder and no secondary text).
+function ProjectRowItem({ renderSlot = renderNoWorkspaceEntries, renderSlotChain = renderWorkspaceFallback, ...props }: Omit<
+  ProjectRowItemProps, 'renderSlot' | 'renderSlotChain'
+> & Partial<Pick<ProjectRowItemProps, 'renderSlot' | 'renderSlotChain'>>) {
+  return <ProjectRowItemComponent {...props} renderSlot={renderSlot} renderSlotChain={renderSlotChain} />
 }
 
 /** Half detection reads the row rect; jsdom rects are all-zero by default. */
@@ -139,6 +151,31 @@ describe('workspace browser rows', () => {
     expect(row.querySelector('[data-state="warning"]')).toBeTruthy()
     expect(row.querySelector('[data-state="ongoing"]')).toBeNull()
     expect(screen.getByText(label)).toBeTruthy()
+  })
+
+  it('lets owners replace a Workspace glyph and add secondary text, never on the ungrouped bucket', () => {
+    const group: GroupNode = {
+      key: 'book', workspaceId: wid('book'), cwd: '/books/book', createdAt: 0, label: 'Book',
+      sessionCount: 1, expanded: false, containsCurrent: false, sessions: [],
+    }
+    const seats: unknown[] = []
+    const renderSlot: WorkspaceRowSlots['renderSlot'] = (key, owner) => { seats.push([key, owner]); return <span>1 章 · 2,191 字</span> }
+    const renderSlotChain: WorkspaceRowSlots['renderSlotChain'] = (key, owner) => { seats.push([key, owner]); return <span data-testid="book-glyph" /> }
+    const seatProps = { renderSlot, renderSlotChain }
+    const view = render(<ProjectRowItem group={group} onToggle={vi.fn()} onCreate={vi.fn()} t={t} {...seatProps} />)
+    expect(view.getByTestId('book-glyph')).toBeTruthy()
+    expect(view.getByText('1 章 · 2,191 字')).toBeTruthy()
+    expect(seats).toEqual([
+      ['sidebar.workspace.row.icon', { workspaceId: wid('book'), expanded: false }],
+      ['sidebar.workspace.row.meta', { workspaceId: wid('book'), expanded: false }],
+    ])
+    cleanup(); seats.length = 0
+    const plain = render(<ProjectRowItem group={group} onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)
+    expect(plain.container.querySelector('[data-row-key="workspace:book"] svg')).toBeTruthy()
+    cleanup()
+    const bucket: GroupNode = { ...group, key: 'ungrouped', workspaceId: undefined }
+    render(<ProjectRowItem group={bucket} onToggle={vi.fn()} onCreate={vi.fn()} t={t} {...seatProps} />)
+    expect(seats).toEqual([])
   })
 
   it('renders an active Workspace and keeps its create action separate from toggling', () => {

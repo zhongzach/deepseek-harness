@@ -223,6 +223,8 @@ type SessionTreeProps = Pick<
   | 'sidebar.workspaces.session.row.action'
   | 'sidebar.session.row.leading'
   | 'sidebar.session.row.hover'
+  | 'sidebar.workspace.row.icon'
+  | 'sidebar.workspace.row.meta'
 > & {
   shortcuts: readonly import('@deepseek-ai/dsh-client-shortcuts/client').ShortcutCatalogEntry[]
   /** Always-mounted Session list snapshot. */
@@ -283,7 +285,7 @@ function SessionTree({
   rowState, onLeaveArchivedOnly,
   workspaceReady, animationResetKey, usePanelInfo,
   onRenameRequest, onDeleteRequest, onSessionRenameRequest,
-  renderSlot,
+  renderSlot, renderSlotChain,
   insertWorkspaceBefore,
   nestWorkspaces, groupExpansion, setGroupExpanded,
   setSessionOrder, home, t,
@@ -496,6 +498,8 @@ function SessionTree({
         <ProjectRowItem
           newShortcut={shortcuts.find(row => row.id === 'session.new')}
           group={group}
+          renderSlot={renderSlot}
+          renderSlotChain={renderSlotChain}
           containsCurrentDescendant={currentAncestors.has(group.key)}
           home={home}
           t={t}
@@ -863,6 +867,7 @@ export function WorkspaceBrowser({
   setDirectoryBusy,
   dismissForkError,
   renderSlot,
+  renderSlotChain,
   t,
 }: WorkspaceBrowserProps) {
   const home = useHostInfo(info => info.home)
@@ -1386,6 +1391,7 @@ export function WorkspaceBrowser({
                 useSessionStatus={useSessionStatus}
                 onSessionRenameRequest={requestSessionRename}
                 renderSlot={renderSlot}
+                renderSlotChain={renderSlotChain}
                 workspaces={orderedWorkspaces}
                 ungroupedSessionIds={orderedUngroupedSessionIds}
                 workspaceReady={workspaceReady}

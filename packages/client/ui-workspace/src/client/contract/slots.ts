@@ -111,6 +111,18 @@ export interface SessionRowScheduleOwnerProps {
   readonly sessionId: SessionId
 }
 
+/**
+ * Owner share of the two Workspace-row seats. Only real Workspace rows mount
+ * them (the ungrouped bucket never does); the occupant resolves whatever it
+ * shows from the Workspace identity through its own hooks.
+ */
+export interface WorkspaceRowOwnerProps {
+  /** Workspace this row shows. */
+  readonly workspaceId: WorkspaceId
+  /** Whether the row's group is expanded (the shipped glyph is an open or closed folder). */
+  readonly expanded: boolean
+}
+
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /** Directory-flow hole under the conversation empty-state picker (declared by the WorkspacePicker entry). */
@@ -129,6 +141,17 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * seat renders there, and its live status appears on the hover card only.
      */
     'sidebar.session.row.leading': { kind: 'list'; scope: 'root'; owner: SessionRowScheduleOwnerProps }
+    /**
+     * Glyph of one real Workspace row, in the cell before its title. The first
+     * entry whose selector claims the row replaces the folder glyph; with no
+     * claiming entry the row keeps its open or closed folder.
+     */
+    'sidebar.workspace.row.icon': { kind: 'chain'; scope: 'root'; owner: WorkspaceRowOwnerProps }
+    /**
+     * Secondary text after one real Workspace row's title, in ascending
+     * `order`. Empty by default; an entry that has nothing to show returns null.
+     */
+    'sidebar.workspace.row.meta': { kind: 'list'; scope: 'root'; owner: WorkspaceRowOwnerProps }
     /**
      * Section of the Session row's hover card between its relative time and
      * its trailing status line. Mounted only while that card is open.
@@ -469,6 +492,8 @@ export type WorkspaceBrowserProps =
     | 'sidebar.workspaces.session.row.action'
     | 'sidebar.session.row.leading'
     | 'sidebar.session.row.hover'
+    | 'sidebar.workspace.row.icon'
+    | 'sidebar.workspace.row.meta'
   >
   & PropsStore<WorkspaceViewStoreHandle>
   & Omit<WorkspaceBrowserInjected, 'hooks'>

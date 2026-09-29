@@ -140,6 +140,8 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     useDirectoryFlow: bindSnapshotSelector({ getSnapshot: () => true, subscribe: () => () => {} }),
     useHostInfo: selector => selector({ home: undefined, isLoopback: true }),
     renderSlot: renderDirectoryFlowOnly,
+    // No Workspace-row glyph entries: every row keeps its shipped folder.
+    renderSlotChain: ((_key: string, _owner: object, opts?: { fallback?: unknown }) => opts?.fallback ?? null) as WorkspaceBrowserProps['renderSlotChain'],
     t,
     ...overrides,
   }
