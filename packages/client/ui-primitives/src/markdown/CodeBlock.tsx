@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { writeClipboard } from '../clipboard.ts'
 import { CodeToolbar, type CodeToolbarLabels } from '../CodeToolbar.tsx'
 import {
-  StreamingHighlightSession, grammarLoadCount, highlightToHtml, subscribeGrammarLoaded,
+  StreamingHighlightSession, grammarLoadCount, highlightToHtml, subscribeGrammarLoaded, supportsHighlighting,
 } from './highlight.ts'
 import type { HighlightSpan, StreamingHighlightFrame } from './highlight.ts'
 import { useViewportHighlighting } from './useViewportHighlighting.ts'
@@ -72,7 +72,11 @@ export function CodeBlock({
   code, lang, streaming, className, contentRef, lineNumbers = false, showHeader = true, copyLabel, copiedLabel, toolbarLabels, wrap,
 }: CodeBlockProps) {
   const trimmed = code.endsWith('\n') ? code.slice(0, -1) : code
-  const sourceLines = lineNumbers ? trimmed.split('\n') : undefined
+  // A fence with no highlightable language is plain text (prose, notes, templates). It keeps the same
+  // default look, but carries `data-code-plain` and one `.line` span per source line so an owner can
+  // restyle text — spacing blank lines, a reading font — without touching real code.
+  const plain = !supportsHighlighting(lang)
+  const sourceLines = lineNumbers || plain ? trimmed.split('\n') : undefined
   const rootRef = useRef<HTMLDivElement>(null)
   const highlighting = useViewportHighlighting(rootRef, lang)
   // Re-render when a lazy grammar finishes loading, so a fence that showed plain
@@ -187,8 +191,9 @@ export function CodeBlock({
   return (
     <div ref={rootRef} className={clsx(css.block, 'md-code-block', lineNumbers && css.numbered, toolbarLabels !== undefined && css.card, className)}
       data-line-numbers={lineNumbers || undefined}
+      data-code-plain={plain || undefined}
       data-code-wrap={toolbarLabels === undefined ? undefined : wrapped}
-      style={sourceLines === undefined ? undefined : {
+      style={!lineNumbers || sourceLines === undefined ? undefined : {
         '--dsl-code-block-line-number-width': `${Math.max(2, String(sourceLines.length).length)}ch`,
       } as CSSProperties}>
       {/* These paired attributes are stable semantic hooks for owner styling and DOM tests. */}

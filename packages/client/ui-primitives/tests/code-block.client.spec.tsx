@@ -167,6 +167,17 @@ describe('CodeBlock', () => {
     expect(view.getByText('plain text')).toBeTruthy()
   })
 
+  it('marks plain text for owner styling, one line span per source line, without changing its text', () => {
+    const view = render(<CodeBlock code={'第一段。\n\n第二段。\n'} />)
+    const root = view.container.querySelector('.md-code-block')!
+    expect(root.getAttribute('data-code-plain')).toBe('true')
+    expect(root.getAttribute('style')).toBeNull()
+    expect([...root.querySelectorAll('pre code > .line')].map(line => line.textContent)).toEqual(['第一段。', '', '第二段。'])
+    expect(root.querySelector('pre')!.textContent).toBe('第一段。\n\n第二段。')
+    const code = render(<CodeBlock code={'const a = 1\n'} lang="ts" />)
+    expect(code.container.querySelector('.md-code-block')!.hasAttribute('data-code-plain')).toBe(false)
+  })
+
   it('shows the language banner and copies the pre textContent', async () => {
     vi.useFakeTimers()
     const writeText = vi.fn().mockResolvedValue(undefined)

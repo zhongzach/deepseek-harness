@@ -32,7 +32,7 @@
     <li>
       <p>
         #text "item with nested blocks"
-      <div class="_block_9aea57 md-code-block">
+      <div class="_block_9aea57 md-code-block" data-code-plain="true">
         <div class="_bannerWrap_9aea57">
           <div class="_banner_9aea57" data-code-block-banner="true">
             <div class="_infostring_9aea57">
@@ -42,4 +42,5 @@
         <div class="_content_9aea57" data-code-block-content="true">
           <pre class="_plain_9aea57">
             <code>
-              #text "fenced inside list"
+              <span class="line">
+                #text "fenced inside list"
