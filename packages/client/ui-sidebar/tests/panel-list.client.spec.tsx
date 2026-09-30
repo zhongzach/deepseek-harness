@@ -47,6 +47,7 @@ async function bench(collapsed = false) {
     closeShelf: vi.fn(),
     toggleShelf: vi.fn(),
     resizeShelf: vi.fn(),
+    resizeRightbar: vi.fn(),
     selectPanel: vi.fn((activePanelId: MainPanelId | null) => { runtime.panelInfo.set({ activePanelId }) }),
     openRightbar: vi.fn(),
     closeRightbar: vi.fn(),
