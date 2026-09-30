@@ -37,6 +37,19 @@ describe('createLayoutStore', () => {
     expect(write).not.toHaveBeenCalled()
   })
 
+  it('opens the right panel at a width preference set before its first opening', () => {
+    const preferred = createLayoutStore().create()
+    preferred.actions.setViewportWidth(1600)
+    preferred.actions.setRightbar(320)
+    preferred.actions.openRightbar(true, false)
+    expect(preferred.store.getSnapshot().layoutInfo.rightbar).toBe(320)
+    // Without one, the first opening takes its fraction of the frame.
+    const fresh = createLayoutStore().create()
+    fresh.actions.setViewportWidth(1600)
+    fresh.actions.openRightbar(true, false)
+    expect(fresh.store.getSnapshot().layoutInfo.rightbar).toBe(720)
+  })
+
   it('clamps the sidebar to 264–420px', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setSidebar(1)

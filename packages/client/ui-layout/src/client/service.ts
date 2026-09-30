@@ -57,6 +57,13 @@ export interface ILayout {
    */
   resizeShelf(px: number): void
   /**
+   * Set the right panel's width preference, clamped like the resize handle to
+   * the current frame's range. A shown panel resizes at once; a hidden one
+   * opens at this width instead of its first-open fraction of the frame.
+   * @param px - requested width in pixels.
+   */
+  resizeRightbar(px: number): void
+  /**
    * Report the right panel's presentation without changing its expanded state.
    * @param track - whether the normal panel width reserves a grid track,
    *   including beneath a fullscreen overlay.
@@ -129,6 +136,12 @@ export class LayoutController implements ILayout {
    * @param px - requested width in pixels.
    */
   resizeShelf(px: number): void { this.panels.resizeShelf(px) }
+
+  /**
+   * Set the right panel's width preference.
+   * @param px - requested width in pixels.
+   */
+  resizeRightbar(px: number): void { this.panels.setRightbar(px) }
 
   /** Report the right panel's track and fullscreen presentation. */
   openRightbar(track: boolean, fullscreen: boolean): void {
