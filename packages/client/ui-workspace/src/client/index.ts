@@ -277,6 +277,7 @@ export function apply(ctx: Context): void {
         'sidebar.session.row.hover': { kind: 'list', scope: 'root' },
         'sidebar.workspace.row.icon': { kind: 'chain', scope: 'root' },
         'sidebar.workspace.row.meta': { kind: 'list', scope: 'root' },
+        'sidebar.workspaces.footer': { kind: 'list', scope: 'root' },
       },
       store: viewStore,
       inject: browserInjected,

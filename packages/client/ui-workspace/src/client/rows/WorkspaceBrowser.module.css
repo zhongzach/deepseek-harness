@@ -315,6 +315,15 @@
   padding-left: 0;
 }
 
+/* Footer seat after the last row; collapses when no entry renders. */
+.listFooter {
+  flex: none;
+}
+
+.listFooter:empty {
+  display: none;
+}
+
 /* Relative for the bottom fade overlay. */
 .treeBody {
   flex: 1;

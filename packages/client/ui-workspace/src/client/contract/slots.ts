@@ -123,6 +123,12 @@ export interface WorkspaceRowOwnerProps {
   readonly expanded: boolean
 }
 
+/** Owner share of the entries after the last Workspace row. */
+export interface WorkspacesFooterOwnerProps {
+  /** Open the add-Workspace flow, as the section header's add button does; absent while no directory flow is available. */
+  readonly addWorkspace: (() => void) | undefined
+}
+
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /** Directory-flow hole under the conversation empty-state picker (declared by the WorkspacePicker entry). */
@@ -154,6 +160,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * that has nothing to show returns null.
      */
     'sidebar.workspace.row.meta': { kind: 'list'; scope: 'root'; owner: WorkspaceRowOwnerProps }
+    /**
+     * Entries after the last row of the wide Workspace list, in ascending
+     * `order`, scrolling with the list; absent while searching. Empty by
+     * default, which leaves no box.
+     */
+    'sidebar.workspaces.footer': { kind: 'list'; scope: 'root'; owner: WorkspacesFooterOwnerProps }
     /**
      * Section of the Session row's hover card between its relative time and
      * its trailing status line. Mounted only while that card is open.
@@ -496,6 +508,7 @@ export type WorkspaceBrowserProps =
     | 'sidebar.session.row.hover'
     | 'sidebar.workspace.row.icon'
     | 'sidebar.workspace.row.meta'
+    | 'sidebar.workspaces.footer'
   >
   & PropsStore<WorkspaceViewStoreHandle>
   & Omit<WorkspaceBrowserInjected, 'hooks'>

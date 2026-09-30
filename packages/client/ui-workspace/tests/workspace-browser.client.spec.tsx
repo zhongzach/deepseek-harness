@@ -13,7 +13,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
-import type { DirectoryFlowOwnerProps, WorkspaceBrowserProps } from '../src/client/contract/slots.ts'
+import type { DirectoryFlowOwnerProps, WorkspaceBrowserProps, WorkspacesFooterOwnerProps } from '../src/client/contract/slots.ts'
 import { createWorkspaceShortcutControls } from '../src/client/shortcuts.ts'
 import { createWorkspaceViewStore, FLAT_SESSION_ORDER_KEY } from '../src/client/stores.ts'
 import { UNGROUPED_KEY } from '../src/client/tree.ts'
@@ -764,6 +764,32 @@ describe('WorkspaceBrowser', () => {
     act(() => { b.store.actions.setGroupBy('flat') })
     expect(rendered).toHaveBeenCalledWith('sidebar.workspaces.session.menu.item', owner)
     expect(rendered).toHaveBeenCalledWith('sidebar.workspaces.session.row.action', owner)
+  })
+
+  it('places footer entries after the last row in both list forms and hands them the add flow', () => {
+    const footerOwners: WorkspacesFooterOwnerProps[] = []
+    const renderSlot = ((name: string, owner: object, options?: { fallback?: ReactNode }) => {
+      if (name !== 'sidebar.workspaces.footer') return options?.fallback ?? null
+      const footer = owner as WorkspacesFooterOwnerProps
+      footerOwners.push(footer)
+      return <button type="button" onClick={footer.addWorkspace}>Add novel</button>
+    }) as WorkspaceBrowserProps['renderSlot']
+    const requestAddWorkspace = vi.fn()
+    const b = mount({
+      useSessions: hook(sessionState([summary('alpha-s', 1)])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s'])])),
+      renderSlot, requestAddWorkspace,
+    })
+    const entry = screen.getByRole('button', { name: 'Add novel' })
+    expect(screen.getByText('alpha').compareDocumentPosition(entry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(entry)
+    expect(requestAddWorkspace).toHaveBeenCalledOnce()
+    act(() => { b.store.actions.setGroupBy('flat') })
+    expect(screen.getByText('alpha-s').compareDocumentPosition(screen.getByRole('button', { name: 'Add novel' }))
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Without a directory flow there is nothing to add, as the header button hides.
+    rerender(b, { useDirectoryFlow: bindSnapshotSelector({ getSnapshot: () => false, subscribe: () => () => {} }) })
+    expect(footerOwners.at(-1)?.addWorkspace).toBeUndefined()
   })
 
   it('shows five sessions by default and clears transient show-all when the Workspace collapses', () => {

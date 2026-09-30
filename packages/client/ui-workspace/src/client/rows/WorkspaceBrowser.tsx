@@ -261,6 +261,8 @@ type SessionTreeProps = Pick<
   revealSessionId?: SessionId | undefined
   /** Acknowledge that the chosen Session row has been revealed. */
   onSessionRevealed: (sessionId: SessionId) => void
+  /** Trailing content after the last row, scrolling with the list (the footer seat). */
+  footer?: ReactNode
 }
 
 /** The list-empty placeholder — a glyph over the text; the archived-only view names its filter and offers the way back. */
@@ -289,7 +291,7 @@ function SessionTree({
   insertWorkspaceBefore,
   nestWorkspaces, groupExpansion, setGroupExpanded,
   setSessionOrder, home, t,
-  revealSessionId, onSessionRevealed, shortcuts,
+  revealSessionId, onSessionRevealed, shortcuts, footer,
 }: SessionTreeProps) {
   const panelActive = usePanelInfo(info => info.activePanelId !== null)
   const statuses = useSessionStatus(s => s)
@@ -623,6 +625,7 @@ function SessionTree({
           <EmptySessions rowState={rowState} onLeaveArchivedOnly={onLeaveArchivedOnly} t={t} />
         )}
         {groupRows}
+        {footer}
       </AnimatedRows>
       <span className={css.fade} />
     </div>
@@ -633,9 +636,10 @@ function SessionTree({
 function FlatList({
   list, sessionIds, rowState, onLeaveArchivedOnly, useSessionStatus, open, onSessionRenameRequest,
   usePanelInfo, setSessionOrder, workspaceReady, animationResetKey,
-  revealSessionId, onSessionRevealed, renderSlot, t,
+  revealSessionId, onSessionRevealed, renderSlot, t, footer,
 }: Pick<
   SessionTreeProps,
+  | 'footer'
   | 'useSessionStatus'
   | 'open'
   | 'onSessionRenameRequest'
@@ -726,6 +730,7 @@ function FlatList({
             />
           )
         })}
+        {footer}
       </AnimatedRows>
       <span className={css.fade} />
     </div>
@@ -895,6 +900,12 @@ export function WorkspaceBrowser({
   // Live occupancy of this surface's directory-flow hole (the same source the
   // flow reads): a composition without a picking affordance can add nothing.
   const directoryFlowAvailable = useDirectoryFlow(occupied => occupied)
+  // Entries after the last row scroll with the list; an empty seat leaves no box.
+  const listFooter = (
+    <div className={css.listFooter}>
+      {renderSlot('sidebar.workspaces.footer', { addWorkspace: directoryFlowAvailable ? requestAddWorkspace : undefined })}
+    </div>
+  )
   const groupBy = useStore(s => s.groupBy)
   const orderBy = useStore(s => s.orderBy)
   // Persisted view blobs written before the archived filter existed rehydrate
@@ -1380,6 +1391,7 @@ export function WorkspaceBrowser({
                 setSessionOrder={saveSessionOrder}
                 revealSessionId={revealSessionId}
                 onSessionRevealed={acknowledgeSessionReveal}
+                footer={listFooter}
                 t={t}
               />
             )
@@ -1408,6 +1420,7 @@ export function WorkspaceBrowser({
                 revealSessionId={revealSessionId}
                 onSessionRevealed={acknowledgeSessionReveal}
                 home={home}
+                footer={listFooter}
                 t={t}
                 onRenameRequest={(workspaceId, displayTitle) => {
                   setRenameTarget({
