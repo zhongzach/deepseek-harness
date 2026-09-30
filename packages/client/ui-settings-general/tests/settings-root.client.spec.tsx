@@ -163,6 +163,11 @@ function mount({
   return { view, renderSlot, bump, listeners, reconnect, setConnectionState, setDesktopUpdate, setShortcuts, setOnboardingActive }
 }
 
+/** Let one animation frame pass (the onboarding hand-over decision waits a frame). */
+async function nextFrame(): Promise<void> {
+  await act(async () => { await new Promise((resolve) => { requestAnimationFrame(() => { resolve(undefined) }) }) })
+}
+
 function openPanel() {
   const trigger = screen.getByRole('button', { name: 'Settings' })
   trigger.focus()
@@ -447,13 +452,39 @@ describe('SettingsPanel navigation', () => {
     expect(inactive).toHaveLength(0)
   })
 
-  it('takes the panel down when an onboarding step appears beneath it', () => {
+  it('takes the panel down when an onboarding step appears beneath it', async () => {
     const { setOnboardingActive } = mount({ onboardingActive: false })
     openPanel()
     expect(screen.getByRole('dialog')).toBeDefined()
 
     // The step's overlay marks only #root inert, and the panel is portalled beside it.
     setOnboardingActive(true)
+    await nextFrame()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('keeps the panel open when an appearing step has nothing to show and completes at once', async () => {
+    const { renderSlot, setOnboardingActive } = mount({ onboardingActive: false })
+    openPanel()
+    setOnboardingActive(true)
+    // A desktop shell owning credentials, or a product skipping the step: each step
+    // completes from its mount effect, before the next frame.
+    for (const id of ['welcome', 'credential']) {
+      const step = renderSlot.mock.calls.filter(call => call[0] === 'settings.onboarding').at(-1)
+      expect(step?.[1]).toMatchObject({ stepId: id })
+      act(() => { (step?.[1] as { complete: () => void }).complete() })
+    }
+    await nextFrame()
+    expect(screen.getByRole('dialog')).toBeDefined()
+  })
+
+  it('still takes the panel down when a self-completing step hands over to one with a surface', async () => {
+    const { renderSlot, setOnboardingActive } = mount({ onboardingActive: false })
+    openPanel()
+    setOnboardingActive(true)
+    const skipped = renderSlot.mock.calls.filter(call => call[0] === 'settings.onboarding').at(-1)
+    act(() => { (skipped?.[1] as { complete: () => void }).complete() })
+    await nextFrame()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
