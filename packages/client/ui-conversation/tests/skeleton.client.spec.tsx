@@ -33,7 +33,7 @@ import type { InputBarProps } from '../src/client/skeleton/InputBar.tsx'
 import type {
   ComposerBarOwnerProps, ConversationContentInputProps, ConversationContentProps,
   ConversationHeaderLineageOwnerProps, ConversationSessionHeaderSlotProps, ConversationSessionSlotProps, ConversationSlotProps,
-  ConversationViewsProps,
+  ConversationViewsProps, HeroWorkspaceIconOwnerProps,
 } from '../src/client/contract/slots.ts'
 import type { ViewTab } from '../src/client/contract/views.ts'
 
@@ -83,10 +83,16 @@ function fireResize(el: Element): void {
   }
 }
 
+/** Occupant of the Hero workspace chip's icon seat; unset leaves the seat to its folder fallback. */
+let heroIconEntry: ((owner: HeroWorkspaceIconOwnerProps) => ReactNode) | undefined
+const heroIconOwners: HeroWorkspaceIconOwnerProps[] = []
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   resizeObservers.length = 0
+  heroIconEntry = undefined
+  heroIconOwners.length = 0
 })
 beforeEach(() => {
   localStorage.clear()
@@ -199,6 +205,10 @@ function mount(
       seatOwners.push({ key, owner })
     }
     if (key === 'conversation.hero.workspace') { pickerOwner = owner; return null }
+    if (key === 'conversation.hero.workspace.icon') {
+      heroIconOwners.push(owner as HeroWorkspaceIconOwnerProps)
+      return heroIconEntry?.(owner as HeroWorkspaceIconOwnerProps) ?? opts?.fallback ?? null
+    }
     if (key === 'conversation.session.header.lineage') {
       lineageOwners.push(owner as ConversationHeaderLineageOwnerProps)
       return opts?.fallback ?? null
@@ -708,6 +718,19 @@ describe('ConversationRoot resident composer', () => {
     const footer = b.view.getByTestId('view-conversation.hero.footer')
     expect(b.view.getByRole('textbox').compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(footer.parentElement?.contains(b.view.getByRole('textbox'))).toBe(true)
+  })
+
+  it('lets a product replace the Hero workspace chip icon, keeping the folder when the seat is empty', () => {
+    const native = mount(sessionSnapshotOf({ blank: true }))
+    const chip = native.view.getByRole('button', { name: '选择工作区' })
+    expect(chip.querySelector('svg')).not.toBeNull()
+    expect(heroIconOwners.at(-1)).toEqual({ chosen: true })
+    cleanup()
+    heroIconEntry = owner => <span data-testid="book-icon">{owner.chosen ? 'book' : 'no-book'}</span>
+    const product = mount(sessionSnapshotOf({ blank: true }))
+    const replaced = product.view.getByRole('button', { name: '选择工作区' })
+    expect(replaced.querySelector('[data-testid="book-icon"]')?.textContent).toBe('book')
+    expect(replaced.querySelectorAll('svg')).toHaveLength(1)
   })
 
   it('prompt failure renders the promptError strip (ordinary failure, no transaction UI)', () => {

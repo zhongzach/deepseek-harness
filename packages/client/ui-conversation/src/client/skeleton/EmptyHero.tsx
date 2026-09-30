@@ -2,7 +2,7 @@
 // phase does not remount its textarea.
 
 import { useState } from 'react'
-import type { ReactNode, RefObject } from 'react'
+import type { ReactElement, ReactNode, RefObject } from 'react'
 import {
   FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, IconChevronDownOutlineRegular, IconFolderCloseRegular, IconFolderOpenRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -33,15 +33,20 @@ export function workspaceLabel(cwd: string): string {
  * @param props.label - chip label (see {@link workspaceLabel}); omitted → placeholder.
  * @param props.menuOpen - menu expansion echo.
  * @param props.onClick - menu toggle.
+ * @param props.renderIcon - optional seat around the folder icon (the icon slot, which falls back to it).
  * @returns the chip button element.
  */
-export function WorkspaceChip({ buttonRef, label, menuOpen = false, onClick, t }: {
+export function WorkspaceChip({ buttonRef, label, menuOpen = false, onClick, renderIcon, t }: {
   buttonRef?: RefObject<HTMLButtonElement>
   label?: string | undefined
   menuOpen?: boolean
   onClick?: () => void
+  renderIcon?: (folder: ReactElement) => ReactNode
   t: HeroTranslate
 }) {
+  const folder = label === undefined
+    ? <IconFolderCloseRegular className={css.folder} size={16} />
+    : <IconFolderOpenRegular className={css.folder} size={16} />
   return (
     <button
       ref={buttonRef}
@@ -52,9 +57,7 @@ export function WorkspaceChip({ buttonRef, label, menuOpen = false, onClick, t }
       aria-expanded={menuOpen}
       onClick={onClick}
     >
-      {label === undefined
-        ? <IconFolderCloseRegular className={css.folder} size={16} />
-        : <IconFolderOpenRegular className={css.folder} size={16} />}
+      {renderIcon === undefined ? folder : renderIcon(folder)}
       <span className={css.workspaceLabel}>{label ?? t('hero.chooseWorkspace')}</span>
       <IconChevronDownOutlineRegular className={css.chevron} size={12} />
     </button>

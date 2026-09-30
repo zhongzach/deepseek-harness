@@ -44,7 +44,7 @@ target package 通过 declaration merge 扩展 snapshot 与 Location data map，
 <a id="shell-and-standard-props"></a>
 ## Shell 与标准 props
 
-产品可通过 `conversation.hero.headline` 替换完整 Hero 标题行，通过 `conversation.hero.footer` 列表在 Hero 输入框卡片下方放置条目（会话作用域，仅空白会话；进入对话阶段后不渲染），通过 `conversation.input.launcher` 替换输入框前置按钮。入口获得锁定状态以及按当前选区打开来源、插入引用的回调；Lexical 负责焦点、版本校验、撤销与引用布局。Host 配置可在 `ui-conversation` 设置基础层提供带 `zh`/`en` 字段的 `inputPlaceholder` 和 `heroPlaceholder`，前置条件、计划与插话提示仍优先。引用可携带展示用 `marker`（`@` 或 `#`）与 `skill` 图标，提交序列化仍由来源 codec 控制。
+产品可通过 `conversation.hero.headline` 替换完整 Hero 标题行，通过 `conversation.hero.footer` 列表在 Hero 输入框卡片下方放置条目（会话作用域，仅空白会话；进入对话阶段后不渲染），通过 `conversation.hero.workspace.icon` 替换工作区按钮的文件夹图标（root 作用域；owner 的 `chosen` 表示按钮是否已指明工作区；无人占用时保留文件夹），通过 `conversation.input.launcher` 替换输入框前置按钮。入口获得锁定状态以及按当前选区打开来源、插入引用的回调；Lexical 负责焦点、版本校验、撤销与引用布局。Host 配置可在 `ui-conversation` 设置基础层提供带 `zh`/`en` 字段的 `inputPlaceholder` 和 `heroPlaceholder`，前置条件、计划与插话提示仍优先。引用可携带展示用 `marker`（`@` 或 `#`）与 `skill` 图标，提交序列化仍由来源 codec 控制。
 
 共享图片插槽属性将展示选择与持久化引用分开：`thumbnail` 请求完整缩放的附件列表缩略图，`compact` 请求裁剪的图片方块。每张图片可通过可选的 `label` 提供无障碍展示名称；加载和缓存标识仍使用原始附件引用。[ui-attachment](../ui-attachment/README.zh.md) 负责渲染与灯箱。
 

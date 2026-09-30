@@ -187,6 +187,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.composer': { kind: 'chain'; scope: 'session'; owner: ComposerChainProps }
     /** Workspace picker shown by the blank-session Hero. */
     'conversation.hero.workspace': { kind: 'single'; scope: 'root'; owner: EmptyWorkspaceOwnerProps }
+    /** Optional replacement for the Hero workspace chip's folder icon; an unoccupied seat keeps the folder. */
+    'conversation.hero.workspace.icon': { kind: 'single'; scope: 'root'; owner: HeroWorkspaceIconOwnerProps }
     /** Brand mark shown before the blank-session headline. */
     'conversation.hero.brand.mark': { kind: 'single'; scope: 'root'; owner: HeroBrandMarkOwnerProps }
     /** Product-owned replacement for the complete blank-session headline. */
@@ -244,6 +246,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
         'conversation.hero.brand.mark': { kind: 'single'; scope: 'root' }
         'conversation.hero.headline': { kind: 'single'; scope: 'root' }
         'conversation.hero.workspace': { kind: 'single'; scope: 'root' }
+        'conversation.hero.workspace.icon': { kind: 'single'; scope: 'root' }
         'conversation.hero.agentPreset': { kind: 'single'; scope: 'session-maybe' }
         'conversation.hero.footer': { kind: 'list'; scope: 'session' }
       }
@@ -278,6 +281,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Input actions are absent without a current Session. */
     inputActions: InputActions | undefined
   }
+}
+
+/** Owner share of the Hero workspace chip's icon seat. */
+export interface HeroWorkspaceIconOwnerProps {
+  /** Whether the chip names a chosen workspace (the native icon is then an open folder) or shows its placeholder. */
+  chosen: boolean
 }
 
 /** Owner share of the Hero agent-preset control. */

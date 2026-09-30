@@ -115,6 +115,7 @@ export function ConversationContent(props: ConversationContentProps) {
         label={chipTitle}
         menuOpen={pickerOpen}
         onClick={() => { setPickerOpen(open => !open) }}
+        renderIcon={folder => renderSlot('conversation.hero.workspace.icon', { chosen: chipTitle !== undefined }, { fallback: folder })}
         t={t}
       />
       {renderSlot('conversation.hero.workspace', {

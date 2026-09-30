@@ -66,7 +66,8 @@ export type {
   ConversationSessionInjected, ConversationSessionSlotProps, ConversationSlotProps, ConversationViewsProps,
   ConversationWidthControlsInputProps, ConversationWidthControlsProps,
   ConversationStore, ConvViewOwnerProps, ConvViewProps, EmptyWorkspaceOwnerProps,
-  HeroAgentPresetOwnerProps, HeroBrandMarkOwnerProps, InputContextOwnerProps, InputControlOwnerProps, InputZone,
+  HeroAgentPresetOwnerProps, HeroBrandMarkOwnerProps, HeroWorkspaceIconOwnerProps,
+  InputContextOwnerProps, InputControlOwnerProps, InputZone,
   MessageImageLoader, MessageImageSource, MessageImagesOwnerProps, RenderMessageImages, UseConversation,
   UseConversationViews,
 } from './contract/slots.ts'
