@@ -29,8 +29,8 @@ describe('reasoning schema boundary', () => {
     // the resolved projection.
     metadata.purpose = 'later'
     expect(resolved.get('acme-gateway')?.modelMetadata.get('m')?.purpose).toBe('display-only')
-    const overridden = resolveProfiles({ deepseek: { modelOverrides: { 'deepseek-v4-flash': { metadata } } } })
-    expect(overridden.get('deepseek')?.modelMetadata.get('deepseek-v4-flash')).toEqual(metadata)
+    const overridden = resolveProfiles({ deepseek: { modelOverrides: { 'deepseek-v4-pro': { metadata } } } })
+    expect(overridden.get('deepseek')?.modelMetadata.get('deepseek-v4-pro')).toEqual(metadata)
     expect(configWith({ metadata: { invalid: 123 } })).toThrow()
   })
   it('accepts an empty provider section and propagates unexpected catalog failures', () => {
