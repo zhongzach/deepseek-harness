@@ -148,6 +148,8 @@ The selector must be a pure function of the owner currency. Its non-null return 
 
 `conversation.input.activity` hosts one control between the model selector and Send. Its `onActiveChange` callback expands that control across the toolbar and hides ordinary accessory controls and the context meter while preserving the editor and submit action. Closing the activity restores those controls with context details closed. The empty hero dock remains collapsed when it has no content. The occupant releases expansion on unmount and owns any activity-specific feedback.
 
+`conversation.input.context` optionally replaces the context-occupancy meter below the composer card. Its owner carries `percent`, the current Session's occupancy from 0 to 100 or `null` until usage and capacity are known, and `meter`, the native meter element, so an occupant can keep it in some states. An unoccupied seat shows the native meter; an occupant that renders nothing leaves the seat empty. The seat stays hidden while an input activity is expanded.
+
 <a id="model-experience"></a>
 ## Model Experience
 

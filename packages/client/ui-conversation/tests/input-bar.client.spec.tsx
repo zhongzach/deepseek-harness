@@ -29,6 +29,7 @@ import { SessionInputShell } from '../src/client/input/facade.ts'
 import { $replaceDetectSpanWithText, $selectDetectSpan } from '../src/client/input/editor/span-map.ts'
 import type {
   ComposerAttachment, ComposerAttachmentsOwnerProps, ComposerLauncherOwnerProps, DraftFileUploads, InputActivityOwnerProps,
+  InputContextOwnerProps,
 } from '../src/client/contract/slots.ts'
 import type { DraftAttachmentId } from '../src/client/contract/input.ts'
 import { InputBar } from '../src/client/skeleton/InputBar.tsx'
@@ -98,6 +99,8 @@ interface BenchOptions {
   rightItems?: React.ReactNode
   activityEntry?: (owner: InputActivityOwnerProps) => React.ReactNode
   contextPressure?: ContextPressureProjection
+  /** Occupant of the context seat; absent renders the native meter fallback. */
+  contextEntry?: (owner: InputContextOwnerProps) => React.ReactNode
   footer?: React.ReactNode
   attachments?: readonly ComposerAttachment[]
   /** Upload states served for file-kind drafts (absent = every file is ready). */
@@ -173,6 +176,7 @@ function bench(over?: BenchOptions) {
     if (key === 'conversation.input.model') return over?.modelEntry ?? null
     if (key === 'conversation.input.launcher') return opts?.fallback ?? null
     if (key === 'conversation.input.activity') return over?.activityEntry?.(owner as InputActivityOwnerProps) ?? null
+    if (key === 'conversation.input.context') return over?.contextEntry?.(owner as InputContextOwnerProps) ?? opts?.fallback ?? null
     return null
   }) as never
   const props: InputBarProps = {
@@ -1739,7 +1743,7 @@ describe('command launcher chrome and control seats', () => {
       'conversation.input.permission',
       'conversation.input.plan', 'conversation.input.left',
       'conversation.input.right', 'conversation.input.model', 'conversation.input.activity',
-      'conversation.composer.dock',
+      'conversation.composer.dock', 'conversation.input.context',
     ])
     expect(view.queryByLabelText('Plan mode')).toBeNull()
     expect(view.queryByLabelText('Model')).toBeNull()
@@ -1859,6 +1863,33 @@ it('lets a toolbar activity replace accessories without replacing the draft edit
   expect(view.getByRole('button', { name: '发送消息' })).toBeTruthy()
   fireEvent.click(view.getByRole('button', { name: 'close activity' }))
   expect(view.getByRole('button', { name: 'model choice' })).toBeTruthy()
+})
+
+it('lets a product occupy the context seat with the occupancy percent, and keeps the native meter otherwise', () => {
+  const native = bench({ contextPressure: { pressureTokens: 32_000, contextWindow: 128_000 } })
+  expect(native.view.getByRole('button', { name: '上下文已用 25%' })).toBeTruthy()
+  expect(native.slotCalls.filter(call => call.key === 'conversation.input.context').at(-1)?.owner).toMatchObject({ percent: 25 })
+  native.view.unmount()
+  const seen: (number | null)[] = []
+  const product = bench({
+    contextPressure: { pressureTokens: 96_000, contextWindow: 128_000 },
+    contextEntry: (owner) => { seen.push(owner.percent); return <span>对话较长</span> },
+  })
+  expect(product.view.getByText('对话较长')).toBeTruthy()
+  expect(product.view.queryByRole('button', { name: '上下文已用 75%' })).toBeNull()
+  expect(seen.at(-1)).toBe(75)
+  product.view.unmount()
+  // An occupant may keep the native meter it receives beside its own content.
+  const kept = bench({
+    contextPressure: { pressureTokens: 32_000, contextWindow: 128_000 },
+    contextEntry: owner => <>{owner.meter}<span>另附说明</span></>,
+  })
+  expect(kept.view.getByRole('button', { name: '上下文已用 25%' })).toBeTruthy()
+  expect(kept.view.getByText('另附说明')).toBeTruthy()
+  kept.view.unmount()
+  const unknown: (number | null)[] = []
+  bench({ contextEntry: (owner) => { unknown.push(owner.percent); return null } }).view.unmount()
+  expect(unknown.at(-1)).toBeNull()
 })
 
 it('places context usage below the composer and hides it until the activity closes', () => {

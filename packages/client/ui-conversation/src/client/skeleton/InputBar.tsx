@@ -38,6 +38,7 @@ import {
 import { resolveSubmitMode } from '../input/submission-policy.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
 import { ContextMeter } from './ContextMeter.tsx'
+import { contextOccupancy } from '../context-occupancy.ts'
 import { observeControlRow } from './control-row-layout.ts'
 import css from './InputBar.module.css'
 
@@ -100,6 +101,8 @@ export const InputBar = memo(function InputBar({
   // The deployment's image-intake limits (absent while no attachment service
   // is composed — the pre-check below then defers entirely to the host).
   const imageLimits = useProjection('imageLimits')
+  const contextPercent = useProjection('contextPressure', pressure => contextOccupancy(pressure)?.percent ?? null)
+  const contextMeter = <ContextMeter useProjection={useProjection} t={t} />
   // Prompt failures are ordinary failures (no create/attach transaction exists
   // anymore): the toast announces promptError, the draft stays in the machine,
   // and the user resubmits. A remount over a session whose machine still holds
@@ -538,7 +541,9 @@ export const InputBar = memo(function InputBar({
         {variant === 'composer' && input !== undefined && sessionId !== undefined
           ? renderSlot('conversation.composer.dock', {})
           : null}
-        {activity ? null : <ContextMeter useProjection={useProjection} t={t} />}
+        {activity ? null : sessionId === undefined
+          ? contextMeter
+          : renderSlot('conversation.input.context', { percent: contextPercent, meter: contextMeter }, { fallback: contextMeter })}
       </div>
     </div>
   )

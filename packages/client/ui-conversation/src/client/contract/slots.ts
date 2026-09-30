@@ -207,6 +207,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.input.right': { kind: 'list'; scope: 'session' }
     /** Compact action after the model selector; it can expand across the toolbar while retaining the editor and submit action. */
     'conversation.input.activity': { kind: 'single'; scope: 'session'; owner: InputActivityOwnerProps }
+    /** Optional replacement for the composer's context-occupancy meter; an unoccupied seat renders the native meter. */
+    'conversation.input.context': { kind: 'single'; scope: 'session'; owner: InputContextOwnerProps }
     /** Resident composer body, including the no-Session inert state. */
     'conversation.composer.bar': { kind: 'single'; scope: 'session-maybe'; owner: ComposerBarOwnerProps }
     /** Product launcher with current-selection-safe input actions. */
@@ -441,6 +443,14 @@ export interface InputControlOwnerProps {
 }
 
 /** A toolbar activity hides ordinary accessory controls while expanded; its occupant must release expansion on unmount. */
+/** Owner share of the context-occupancy seat below the composer card. */
+export interface InputContextOwnerProps {
+  /** Context occupancy of the current Session in percent (0–100), or null until capacity and usage are known. */
+  percent: number | null
+  /** The native occupancy meter, for occupants that keep it in some states. */
+  meter: ReactNode
+}
+
 export interface InputActivityOwnerProps extends InputControlOwnerProps {
   /** @param active - whether the occupant needs the toolbar width before the submit action. */
   onActiveChange: (active: boolean) => void
@@ -454,7 +464,7 @@ export type ComposerBarProps =
     | 'conversation.input.permission'
     | 'conversation.input.left' | 'conversation.input.plan'
     | 'conversation.input.right' | 'conversation.input.model' | 'conversation.input.activity'
-    | 'conversation.composer.dock'
+    | 'conversation.composer.dock' | 'conversation.input.context'
   >
   & InjectFace<ComposerBarInjected>
   & PropsLocale<'conversation'>
