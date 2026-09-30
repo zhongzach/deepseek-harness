@@ -55,7 +55,7 @@ On a loopback browser, the shell renders **Open configuration file** only when t
 
 ### Onboarding steps
 
-The onboarding ledger projects in ascending order and mounts exactly one step at a time. Registrants own durable completion, capability readiness, copy, mutations, and their visible wrapper, so independently registered flows cannot stack and the shell does not become a second configuration fact source. Visible steps own their dialog chrome and app-root `inert` lifecycle. A step that appears while the Settings panel is open takes the panel down one frame later if a step is still current then; a step with nothing to show that completes from its mount effect (a desktop shell owning credentials, a product skipping the step) leaves the panel open.
+The onboarding ledger projects in ascending order and mounts exactly one step at a time. Registrants own durable completion, capability readiness, copy, mutations, and their visible wrapper, so independently registered flows cannot stack and the shell does not become a second configuration fact source. Visible steps own their dialog chrome and app-root `inert` lifecycle. While the Settings panel is open, it goes down once a current step marks `#root` inert; a step with nothing to show (a desktop shell owning credentials, a product skipping the step, a step still loading its state) never marks the root and leaves the panel open.
 
 -----
 

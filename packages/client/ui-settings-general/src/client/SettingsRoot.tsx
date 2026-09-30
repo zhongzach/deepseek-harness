@@ -150,30 +150,21 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
     setCompletedOnboarding(new Set())
   }, [onboardingActive])
 
-  const onboardingStepSeen = useRef(onboardingStep)
-  const onboardingStepNow = useRef(onboardingStep)
-  onboardingStepNow.current = onboardingStep
-  const pendingOnboardingClose = useRef<number | undefined>(undefined)
-  useEffect(() => () => {
-    if (pendingOnboardingClose.current !== undefined) cancelAnimationFrame(pendingOnboardingClose.current)
-  }, [])
-  // An onboarding step owns the viewport and marks `#root` inert. The panel portals
-  // beside `#root`, outside that mark, so a step that appears while the panel is open
-  // takes the panel down rather than leaving it focusable behind the onboarding mask.
-  // The decision waits one frame: a step with nothing to show completes from its
-  // mount effect (a desktop shell owning credentials, a product skipping the step),
-  // and such a step must not close a panel the user opened as the Session list
-  // settled. Whatever step is still current then — the same one or a later one
-  // with a surface of its own — takes the panel down.
+  // A step with a surface owns the viewport and marks `#root` inert. The panel portals
+  // beside `#root`, outside that mark, so it goes down once a current step does that,
+  // rather than staying focusable behind the onboarding mask. A step with nothing to
+  // show (a desktop shell owning credentials, a product skipping the step, a step still
+  // loading its state) never marks the root and leaves a panel the user opened alone.
+  const stepCurrent = onboardingStep !== undefined
   useEffect(() => {
-    const appeared = onboardingStepSeen.current === undefined && onboardingStep !== undefined
-    onboardingStepSeen.current = onboardingStep
-    if (!appeared || !open || pendingOnboardingClose.current !== undefined) return
-    pendingOnboardingClose.current = requestAnimationFrame(() => {
-      pendingOnboardingClose.current = undefined
-      if (onboardingStepNow.current !== undefined) close()
-    })
-  }, [onboardingStep, open, close])
+    if (!open || !stepCurrent) return
+    const appRoot = document.getElementById('root')
+    if (appRoot === null) return
+    if (appRoot.hasAttribute('inert')) { close(); return }
+    const observer = new MutationObserver(() => { if (appRoot.hasAttribute('inert')) close() })
+    observer.observe(appRoot, { attributes: true, attributeFilter: ['inert'] })
+    return () => { observer.disconnect() }
+  }, [open, stepCurrent, close])
 
   useLayoutEffect(() => {
     const previous = previousConnectionState.current
