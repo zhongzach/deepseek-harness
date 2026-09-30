@@ -11,6 +11,30 @@
   height: 15px;
 }
 
+/* A labeled button sizes to its text, like the header's other text actions. */
+.labeled {
+  width: auto;
+  gap: 6px;
+  padding: 0 8px;
+}
+
+.label {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* A narrow header keeps the icon alone. */
+@container (max-width: 540px) {
+  .labeled {
+    width: 28px;
+    padding: 0;
+  }
+
+  .label {
+    display: none;
+  }
+}
+
 /* The left sidebar's panel icon, mirrored: the divider moves to the right side. */
 .icon {
   transform: scaleX(-1);

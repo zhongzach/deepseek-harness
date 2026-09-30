@@ -11,7 +11,8 @@
  * slot runtime allows because both seats are session-scoped.
  *
  * The glyph is the left sidebar's collapse icon mirrored: the same affordance,
- * on the other edge.
+ * on the other edge. A product naming what the panel holds can give the button
+ * a visible label through `chrome.expandLabel` (empty by default: icon only).
  */
 import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { InjectFace, HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
@@ -36,17 +37,19 @@ export function ExpandButton({ sessionId, useStore, actions, t, useShortcuts }: 
   const shortcut = useShortcuts(entries => entries.find(entry => entry.id === 'sidebar.right.toggle'))
   const expanded = useStore(state => state.bySession[sessionId]?.layout.expanded ?? false)
   if (expanded) return null
+  const label = t('chrome.expandLabel')
   return (
     <Tooltip label={t('chrome.expand')} shortcutKeys={shortcut?.keys} side="bottom" delayMs={500}>
       <Button
         size="sm"
-        className={css.button}
+        className={label === '' ? css.button : `${css.button} ${css.labeled}`}
         aria-label={t('chrome.expandAria')}
         aria-keyshortcuts={shortcut?.aria}
         data-sidebar-right-expand
         onClick={() => { actions.setExpanded(sessionId, true) }}
       >
         <IconPanelLeftOutlineRegular className={css.icon} />
+        {label !== '' && <span className={css.label}>{label}</span>}
       </Button>
     </Tooltip>
   )

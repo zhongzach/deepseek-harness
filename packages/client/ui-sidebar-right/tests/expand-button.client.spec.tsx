@@ -13,6 +13,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { ExpandButton } from '../src/client/shell/ExpandButton.tsx'
 import type { ExpandButtonProps } from '../src/client/shell/ExpandButton.tsx'
 import { createSidebarRightStore } from '../src/client/stores.ts'
+import { zh } from '../src/client/locales.ts'
 
 const SESSION = 's-test' as SessionId
 const unused = (): never => { throw new Error('This isolated component does not consume framework hooks') }
@@ -33,7 +34,7 @@ function hookOf<T>(inst: { subscribe: (fn: () => void) => () => void; getSnapsho
 }
 
 /** Mount the button over its real store and an empty shortcut catalog. */
-function mountButton(shortcuts: readonly ShortcutCatalogEntry[] = []) {
+function mountButton(shortcuts: readonly ShortcutCatalogEntry[] = [], t: (key: string) => string = key => key) {
   const instance = createSidebarRightStore(() => ({ kind: 'guide', title: 'Start' })).create()
   const props: ExpandButtonProps = {
     ...standard,
@@ -42,7 +43,7 @@ function mountButton(shortcuts: readonly ShortcutCatalogEntry[] = []) {
     useStore: hookOf(instance),
     actions: instance.actions,
     // Copy is the dictionary's contract; the key stands in for the translation.
-    t: (key: string) => key,
+    t,
   }
   const view = render(<ExpandButton {...props} />)
   const control = (): HTMLElement | null => view.container.querySelector('[data-sidebar-right-expand]')
@@ -50,6 +51,17 @@ function mountButton(shortcuts: readonly ShortcutCatalogEntry[] = []) {
 }
 
 describe('ExpandButton', () => {
+  it('is icon-only with the shipped dictionaries and shows a label a product supplies', () => {
+    const shipped = mountButton([], key => (zh as Record<string, string>)[key] ?? key)
+    expect(shipped.control()?.textContent).toBe('')
+    expect(shipped.control()?.getAttribute('aria-label')).toBe(zh['chrome.expandAria'])
+    cleanup()
+    const named = mountButton([], key => key === 'chrome.expandLabel' ? '作品目录' : (zh as Record<string, string>)[key] ?? key)
+    expect(named.control()?.textContent).toBe('作品目录')
+    expect(named.control()?.getAttribute('aria-label')).toBe(zh['chrome.expandAria'])
+    cleanup()
+  })
+
   it('advertises the configured expand binding', async () => {
     const { control, view } = mountButton([{ id: 'sidebar.right.toggle' as never, label: 'Toggle', aliases: [],
       binding: null, keys: ['Ctrl', 'B'], aria: 'Control+B', modified: true, conflicts: [], issue: null }])
