@@ -58,7 +58,7 @@ function RightbarColumn(props: { children?: ReactNode }) {
 
 /**
  * One drag handle: pointer capture, rAF-throttled dx reports against the drag-start origin.
- * `side` keys the hover-reveal CSS to the owning column.
+ * `side` identifies the column whose width it adjusts.
  */
 function DragHandle(props: { side: 'sidebar' | 'shelf' | 'rightbar'; left: number; onStart: () => void; onDrag: (dx: number) => void; onEnd: () => void }) {
   const [dragging, setDragging] = useState(false)

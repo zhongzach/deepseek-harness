@@ -247,10 +247,10 @@
 }
 
 /* Drag handles are frame children (columns clip overflow): an 8px hit strip
-   centered on the column border via inline left, above column content. Only
-   the product shelf draws a hover pill. The right handle sits above the right
-   panel (which states z-index 10) so it stays grabbable when the panel hangs
-   over the centre. */
+   centered on the column border via inline left, above column content. The
+   strips remain invisible. The right handle sits above the right panel
+   (which states z-index 10) so it stays grabbable when the panel hangs over
+   the centre. */
 .handle {
   position: absolute;
   top: 0;
@@ -262,7 +262,7 @@
   touch-action: none;
 }
 
-/* Rides the same curve as the tracks so the pill stays on the moving border
+/* Rides the same curve as the tracks so the hit strip stays on the moving border
    during collapse/expand; instant at steady state (viewport-driven moves)
    and while dragging. */
 .frame[data-animating] .handle {
@@ -285,38 +285,6 @@
   .frame[data-animating] .handle {
     transition: none;
   }
-}
-
-.handle[data-side='shelf']::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 12px;
-  height: 32px;
-  border-radius: 10px;
-  box-sizing: border-box;
-  background: var(--dsw-alias-button-floating-fill);
-  border: 0.5px solid var(--dsw-alias-border-l2-darkmode-thin);
-  /* Hover affordance: the pill hides until the pointer is over its
-     column, the strip itself, or a drag. */
-  opacity: 0;
-  transition:
-    opacity var(--ds-transition-duration-slow) var(--ds-ease-in-out),
-    background var(--ds-transition-duration-slow) var(--ds-ease-in-out);
-}
-
-.shelfCol:hover ~ .handle[data-side='shelf']::after,
-.handle[data-side='shelf']:hover::after,
-.handle[data-side='shelf'][data-dragging='true']::after {
-  opacity: 1;
-}
-
-.handle[data-side='shelf']:hover::after,
-.handle[data-side='shelf'][data-dragging='true']::after {
-  background: var(--dsw-alias-button-floating-hover);
-  border-color: var(--dsw-alias-border-l3);
 }
 
 /*
