@@ -84,9 +84,13 @@ class MemorySettings {
 function applyOp(node: unknown, op: { op: 'set' | 'unset'; path: readonly string[]; value?: unknown }): unknown {
   const [key, ...rest] = op.path
   if (key === undefined) return node
-  const clone: Record<string, unknown> | unknown[] = Array.isArray(node)
-    ? [...node]
-    : { ...(typeof node === 'object' && node !== null ? node : {}) }
+  let clone: Record<string, unknown> | unknown[]
+  if (Array.isArray(node)) {
+    const values: readonly unknown[] = node
+    clone = [...values]
+  } else {
+    clone = { ...(typeof node === 'object' && node !== null ? node : {}) }
+  }
   const child = rest.length === 0
     ? op.op === 'set' ? op.value : undefined
     : applyOp(Reflect.get(clone, key), { ...op, path: rest })

@@ -451,7 +451,6 @@ export interface InputControlOwnerProps {
   locked: boolean
 }
 
-/** A toolbar activity hides ordinary accessory controls while expanded; its occupant must release expansion on unmount. */
 /** Owner share of the context-occupancy seat below the composer card. */
 export interface InputContextOwnerProps {
   /** Context occupancy of the current Session in percent (0–100), or null until capacity and usage are known. */
@@ -460,6 +459,7 @@ export interface InputContextOwnerProps {
   meter: ReactNode
 }
 
+/** A toolbar activity hides ordinary accessory controls while expanded; its occupant must release expansion on unmount. */
 export interface InputActivityOwnerProps extends InputControlOwnerProps {
   /** @param active - whether the occupant needs the toolbar width before the submit action. */
   onActiveChange: (active: boolean) => void

@@ -456,7 +456,7 @@ export function RightbarSeat({
   // layouts persisted before the shelf column existed) drops back to its track.
   const catalogOnly = surface !== undefined && catalogOnlyLayout(surface.layout, retainedKind)
   useLayoutEffect(() => {
-    if (catalogOnly && surface?.layout.mode === 'fullscreen') actions.setMode(sessionId, 'push')
+    if (catalogOnly && surface.layout.mode === 'fullscreen') actions.setMode(sessionId, 'push')
   }, [actions, sessionId, catalogOnly, surface])
 
   // Read only when the fullscreen command runs, after this commit has settled.

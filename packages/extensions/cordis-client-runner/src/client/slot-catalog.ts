@@ -869,7 +869,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Compact action after the model selector; it can expand across the toolbar while retaining the editor and submit action.',
     registerOptions: [],
     ownerProps: [
-      'export interface InputActivityOwnerProps extends InputControlOwnerProps {\n  /** @param active - whether the occupant needs the toolbar width before the submit action. */\n  onActiveChange: (active: boolean) => void\n}',
+      '/** A toolbar activity hides ordinary accessory controls while expanded; its occupant must release expansion on unmount. */\nexport interface InputActivityOwnerProps extends InputControlOwnerProps {\n  /** @param active - whether the occupant needs the toolbar width before the submit action. */\n  onActiveChange: (active: boolean) => void\n}',
     ],
     ownerPropsReferences: [
       'InputControlOwnerProps',
@@ -951,7 +951,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Optional replacement for the composer\'s context-occupancy meter; an unoccupied seat renders the native meter.',
     registerOptions: [],
     ownerProps: [
-      '/** A toolbar activity hides ordinary accessory controls while expanded; its occupant must release expansion on unmount. */\n/** Owner share of the context-occupancy seat below the composer card. */\nexport interface InputContextOwnerProps {\n  /** Context occupancy of the current Session in percent (0–100), or null until capacity and usage are known. */\n  percent: number | null\n  /** The native occupancy meter, for occupants that keep it in some states. */\n  meter: ReactNode\n}',
+      '/** Owner share of the context-occupancy seat below the composer card. */\nexport interface InputContextOwnerProps {\n  /** Context occupancy of the current Session in percent (0–100), or null until capacity and usage are known. */\n  percent: number | null\n  /** The native occupancy meter, for occupants that keep it in some states. */\n  meter: ReactNode\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
