@@ -98,6 +98,8 @@ const NS = 'llm-pi-ai'
 
 /** Deployment defaults and parameter translation; stored settings and the request protocol remain owned by callers. */
 export interface PiAiExtension {
+  /** Supply only token capacities the deployment can substantiate; the same value governs usage-based overflow detection. */
+  contextInfo?: PiAiAdapterOptions['contextInfo']
   /** Localize or order selector descriptions while retaining ids accepted by the captured model. */
   describeReasoning?: PiAiAdapterOptions['describeReasoning']
   /** Return an immutable runtime projection; never persist it or mutate the supplied settings. */
@@ -234,6 +236,7 @@ export function applyWithExtension(ctx: Context, config: Config, extension: PiAi
   // a configuration change causes, and a sign-in survives one.
   const auth = { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }
   const adapter = new PiAiAdapter({
+    ...extension.contextInfo === undefined ? {} : { contextInfo: extension.contextInfo },
     ...extension.describeReasoning === undefined ? {} : { describeReasoning: extension.describeReasoning },
     ...extension.prepareRequest === undefined ? {} : { prepareRequest: extension.prepareRequest },
     profiles,

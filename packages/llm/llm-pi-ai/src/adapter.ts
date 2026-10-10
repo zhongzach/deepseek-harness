@@ -87,6 +87,8 @@ export interface PiAiRequestPolicyInput {
 
 /** Constructor options for {@link PiAiAdapter}: the two resolution hooks the plugin owns. */
 export interface PiAiAdapterOptions {
+  /** Describe a deployment-owned token window; undefined withholds speculative capacity from pressure and overflow checks. */
+  contextInfo?: (model: Model<Api>, profile: ResolvedPiAiProviderProfile) => LlmResolvedModelInfo['context']
   /** Describe supported ids without changing their dispatch meaning; annotations and names do not enter model requests. */
   describeReasoning?: (model: Model<Api>, profile: ResolvedPiAiProviderProfile, reasoning: LlmModelReasoningInfo) => LlmModelReasoningInfo
   /** Validate without sending, then return a request-local payload translator; never change messages, tools or identity. */
@@ -340,13 +342,16 @@ export class PiAiAdapter extends LlmAdapter {
     const presentation = profile.modelPresentations.get(model)
     const described = reasoningInfo(resolvedModel, defaultLevel)
     const reasoning = described.reasoning
+    const context = this.config.contextInfo === undefined
+      ? { contextWindow: resolvedModel.contextWindow }
+      : this.config.contextInfo(resolvedModel, profile)
     return {
       provider,
       id: model,
       name: resolvedModel.name,
       inputModalities: [...resolvedModel.input],
       ...presentation === undefined ? {} : { presentation },
-      context: { contextWindow: resolvedModel.contextWindow },
+      ...context === undefined ? {} : { context },
       ...configuredMaxTokens === undefined ? {} : { defaultMaxTokens: configuredMaxTokens },
       ...reasoning === undefined ? {} : { reasoning: this.config.describeReasoning?.(resolvedModel, profile, reasoning) ?? reasoning },
     }
@@ -450,7 +455,10 @@ export class PiAiAdapter extends LlmAdapter {
           },
         },
       })
-      const iterator = toStreamChunks(events, model.contextWindow, options.signal, model.id)[Symbol.asyncIterator]()
+      const contextWindow = this.config.contextInfo === undefined
+        ? model.contextWindow
+        : this.config.contextInfo(model, profile)?.contextWindow
+      const iterator = toStreamChunks(events, contextWindow, options.signal, model.id)[Symbol.asyncIterator]()
       let exhausted = false
       try {
         while (true) {

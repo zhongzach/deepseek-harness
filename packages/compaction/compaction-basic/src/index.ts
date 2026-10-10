@@ -14,6 +14,7 @@ import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
+import type { TokenMeasurement } from '@deepseek-ai/dsh-token-meter'
 // Type-only: makes the optional sibling service available to `ctx.get()`.
 import type {} from '@deepseek-ai/dsh-compaction-tool-result-pruner'
 import {
@@ -32,6 +33,7 @@ import type { SummarizationInput, SummaryResult } from './summarizer.ts'
 import type {
   BasicCompactionConfig,
   ModelCompactPolicyConfig,
+  ResolvedCompactSpec,
   ResolvedConfig,
 } from './types.ts'
 
@@ -316,6 +318,7 @@ export class BasicCompactionEngine extends CompactionEngine {
       info.context.contextWindow,
       reservedCompletionTokens(agent, info.defaultMaxTokens),
     )
+    this.onPressureMeasured(agent, measurement, spec)
     if (measurement.totalTokens < spec.thresholdTokens) return null
 
     // Once pressure qualifies, land the model-free pass before choosing a
@@ -323,6 +326,7 @@ export class BasicCompactionEngine extends CompactionEngine {
     if (prune !== undefined) {
       prune.pruneSession(agent.session)
       measurement = meter.measure(agent.session)
+      this.onPressureMeasured(agent, measurement, spec)
     }
     if (measurement.totalTokens < spec.thresholdTokens) return null
 
@@ -335,9 +339,12 @@ export class BasicCompactionEngine extends CompactionEngine {
         /* v8 ignore next -- paired with the defensive post-success branch above. */
         break
       }
+      if (!this.shouldCompactPressureRegion(agent, measurement, range)) return result
       result = await this.compactRegion(range.start, range.end, agent, signal)
       measurement = meter.measure(agent.session)
-      if (measurement.totalTokens < spec.thresholdTokens) return result
+      this.onPressureMeasured(agent, measurement, spec)
+      if (measurement.totalTokens < spec.thresholdTokens
+        || !this.shouldRepeatPressureCompaction(agent, measurement, spec)) return result
     }
 
     throw new Error(
@@ -345,6 +352,40 @@ export class BasicCompactionEngine extends CompactionEngine {
       + `(${measurement.totalTokens} estimated tokens >= threshold ${spec.thresholdTokens})`,
     )
   }
+
+  /**
+   * Observe the actual routed pressure budget without changing its measurement.
+   * @param agent - session owner.
+   * @param measurement - current replay-aware pressure.
+   * @param spec - resolved routed budget, including output reservation and headroom.
+   */
+  protected onPressureMeasured(_agent: Agent, _measurement: TokenMeasurement, _spec: ResolvedCompactSpec): void {}
+
+  /**
+   * Decide whether a pressure-selected region warrants a summary call; overflow and manual operations bypass this policy.
+   * @param agent - session owner.
+   * @param measurement - positional pricing used to select the region.
+   * @param range - inclusive surface region.
+   * @returns whether the current pressure pass may summarize it.
+   */
+  protected shouldCompactPressureRegion(
+    _agent: Agent,
+    _measurement: TokenMeasurement,
+    _range: { readonly start: SessionSeq; readonly end: SessionSeq },
+  ): boolean { return true }
+
+  /**
+   * Decide whether to repeat after a committed pressure summary while the previous provider usage anchor is still in effect.
+   * @param agent - session owner.
+   * @param measurement - pressure after the replacement.
+   * @param spec - routed pressure policy.
+   * @returns whether another attempt may run before the next ordinary request.
+   */
+  protected shouldRepeatPressureCompaction(
+    _agent: Agent,
+    _measurement: TokenMeasurement,
+    _spec: ResolvedCompactSpec,
+  ): boolean { return true }
 
   /**
    * Compact one inclusive positional range from the agent-owned surface using
