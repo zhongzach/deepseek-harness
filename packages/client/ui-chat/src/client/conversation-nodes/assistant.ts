@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-llm-retry/types'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type { AssistantChatData } from '../contract/chat-nodes.ts'
 import { CHAT_SYNTHETIC_SEQ_OFFSETS, chatNode } from './common.ts'
+import { normalizeThinkingBlocks } from './assistant-thinking.ts'
 import {
   emptyAssistantBlock, isTokenDelta, toAssistantBlock, toAssistantBlocks,
 } from './event-projection.ts'
@@ -197,7 +198,7 @@ function finalNode(
       time: event.time,
       turn: state.turn,
       step: state.step,
-      blocks: toAssistantBlocks(event.data.message.content),
+      blocks: normalizeThinkingBlocks(toAssistantBlocks(event.data.message.content), false),
       usage: event.data.usage,
       timing: {
         stepStartTime: context.start?.event.time ?? null,
@@ -210,7 +211,7 @@ function finalNode(
   const location = context.start?.location ?? context.matches.at(-1)?.location
   const boundary = location === undefined ? undefined : closedBoundary(location)
   if (boundary === undefined) return undefined
-  const blocks = compactBlocks(state.blocks)
+  const blocks = normalizeThinkingBlocks(compactBlocks(state.blocks), false)
   if (!hasInterruptionEvidence(blocks)) return undefined
   return {
     kind: 'assistant',
@@ -254,8 +255,8 @@ function projectAssistant(context: ConversationNodeContext<AssistantState>): Ass
   const state = context.state ?? fallbackState(context)
   if (state === undefined) return undefined
   const settled = finalNode(state, context)
-  const blocks = settled?.blocks ?? compactBlocks(state.blocks)
-  const visible = settled === undefined ? state.visibleBlocks > 0 : hasVisibleContent(blocks)
+  const blocks = settled?.blocks ?? normalizeThinkingBlocks(compactBlocks(state.blocks), true)
+  const visible = hasVisibleContent(blocks)
   const status = settled?.interrupted === true
     ? 'interrupted'
     : settled === undefined ? 'running' : 'settled'
@@ -340,7 +341,7 @@ export const assistantDefinition: ConversationNodeDefinition<AssistantState> = {
       return current == null ? null : { ...current, visibility: 'hidden' }
     }
     const settled = data.finalNode
-    const visible = settled === undefined ? state.visibleBlocks > 0 : hasVisibleContent(data.blocks)
+    const visible = hasVisibleContent(data.blocks)
     if (settled === undefined && !visible && current == null) return null
     // A successful message retains its live anchor alongside pending Tool calls.
     const anchorSeq = (settled?.interrupted === true ? settled.seq : state.firstVisibleSeq ?? settled?.seq)

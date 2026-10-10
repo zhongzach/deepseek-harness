@@ -90,6 +90,8 @@ When Chat ends with an open Turn control and that Turn has no visible input, the
 
 Work-details modes control process-group display and reasoning previews. Compact, Standard, and Detailed fold eligible completed Turns without hiding the final answer; Verbose retains the duration/status header without a collapse action and shows historical process rows directly. The [business-rule reference](src/client/conversation-nodes/README.md#display-modes) contains the mode table, title behavior, whole-Turn eligibility, clocks, and disclosure resets.
 
+Bare `<thinking>` or `<think>` wrappers at the start of an Assistant text block use the same reasoning disclosure as structured reasoning. Live display withholds incomplete delimiters, and text after the closing wrapper remains the reply. Fenced or inline code, quotations, embedded prose tags, user messages, and tool data remain literal. This is a display projection; provider streams and historical Session records remain unchanged, including on cold replay.
+
 -----
 
 <a id="grouped-rendering"></a>

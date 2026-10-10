@@ -504,6 +504,33 @@ describe('built-in conversation node Definitions', () => {
       .toMatchObject({ processStartSeq: 30.1, answerAnchorSeq: 30.1, answerStep: 4 })
   })
 
+  it('replays leading thinking wrappers as reasoning and preserves the same answer through live settlement and cold history', () => {
+    const prefix = [at(1, 'turn/start', { turn: 1 }), at(2, 'step/start', { turn: 1, step: 1 })]
+    const value = assembler(prefix)
+    const chunks = ['<thi', 'nking>核对章节材料', '</thi', 'nking>\n正文保留。']
+    for (const [index, text] of chunks.entries()) {
+      value.append(at(3 + index, 'assistant/live-chunk', { turn: 1, step: 1, chunk: { type: 'text-delta', index: 0, text } }))
+      value.flush()
+      const current = node(snapshot(value), 'assistant-step')?.data as AssistantChatData | undefined
+      const response = current?.blocks.filter(block => block.kind === 'text').map(block => block.text).join('') ?? ''
+      expect(response).not.toContain('<')
+    }
+    const raw = chunks.join('')
+    const final = at(8, 'assistant/message', { turn: 1, step: 1, message: assistantMessage('thinking-replay', raw) }, { surfaceOp: 'append' })
+    const original = JSON.stringify(final)
+    value.append(final); value.flush()
+    const expected = [{ kind: 'reasoning', text: '核对章节材料' }, { kind: 'text', text: '\n正文保留。' }]
+    const live = node(snapshot(value), 'assistant-step')?.data as AssistantChatData
+    expect(live.blocks).toEqual(expected)
+    expect(live.finalNode?.blocks).toEqual(expected)
+    const cold = assembler([...prefix, final, at(9, 'step/end', { turn: 1, step: 1 }),
+      at(10, 'turn/end', { turn: 1, reason: { kind: 'completed' } })])
+    const restored = node(snapshot(cold), 'assistant-step')?.data as AssistantChatData
+    expect(restored.blocks).toEqual(expected)
+    expect(restored.finalNode?.blocks).toEqual(expected)
+    expect(JSON.stringify(final)).toBe(original)
+  })
+
   it('counts Assistant messages, Tool calls, and subagent delegations per Turn', () => {
     const value = assembler([
       at(1, 'turn/start', { turn: 1 }),
