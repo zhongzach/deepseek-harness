@@ -166,6 +166,20 @@ button.crumb:hover {
   gap: 8px;
 }
 
+/* Where the Session lives, before the title crumbs. The occupant owns its
+   own separator, so the cluster's gap closes up behind it. */
+.headerContext {
+  display: flex;
+  flex: none;
+  align-items: center;
+  min-width: 0;
+  margin-right: -10px;
+}
+
+.headerContext:empty {
+  display: none;
+}
+
 .headerUtilities {
   display: flex;
   flex: none;
@@ -587,6 +601,7 @@ button.crumb:hover {
 }
 
 .headerHosted .headerLeading,
+.headerHosted .headerContext,
 .headerHosted .crumbs,
 .headerHosted .headerActions,
 .headerHosted .headerUtilities,

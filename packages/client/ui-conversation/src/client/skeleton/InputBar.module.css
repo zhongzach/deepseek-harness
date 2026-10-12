@@ -53,14 +53,16 @@
   width: 100%;
   max-width: var(--dsh-composer-card-max-width);
   padding-top: 8px;
-  /* Input stroke: the light neutral (l2, one step above the menus' l1),
-     drawn as the elevation hairline so it costs no layout; the shadow is the
-     soft elevation tier. Fill: the input surface token (elevated in dark). */
+  /* Input stroke: a full 1px line (l3) drawn in the box-shadow so it costs
+     no layout, over the lightest shadow tier: the card reads as a bordered
+     field on the page, not a floating capsule. The stroke color stays
+     rebindable (the workspace-trigger state clears it). Fill: the input
+     surface token (elevated in dark). */
   border: 0;
-  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2);
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l3);
   border-radius: var(--dsw-radius-panel);
   background: var(--dsw-specific-input-major);
-  box-shadow: var(--dsw-elevation-soft);
+  box-shadow: 0 0 0 1px var(--dsw-elevation-stroke-color), var(--dsw-shadow-lv1);
   /* The draft text follows the Settings font-size preference (the textarea,
      mirror, and backdrop all inherit from here, so the three layers stay in
      step); the line height keeps the default 10px leading via the shared px
@@ -310,7 +312,7 @@
   }
 }
 
-/* Attach circle (figma + control): 28px, selector fill, primary glyph. */
+/* Attach control: a 28px ghost square like the chips beside it. */
 .add {
   display: grid;
   place-items: center;
@@ -318,15 +320,15 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 999px;
-  corner-shape: round;
-  background: var(--dsw-specific-selector);
-  color: var(--dsw-alias-label-primary);
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
   cursor: pointer;
 }
 
 .add:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover-solid);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
 }
 
 .add:disabled {
@@ -366,22 +368,19 @@
   cursor: default;
 }
 
-/* Primary send (figma IconButton 34:10465): 34px circle, #3964FE light /
-   #679EFE dark — the info-fill pair (500→400), NOT button-primary (ink);
-   white glyph; empty text = 0.4 opacity. */
+/* Primary send: a 32px ink square, the product's one primary-action style
+   (ink in light, near-white in dark); the glyph takes the matching foreground
+   token so it inverts with the fill; empty text = 0.4 opacity. */
 .primary {
   display: grid;
   place-items: center;
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 999px;
-  corner-shape: round;
-  background: var(--dsw-alias-button-info-fill);
-  /* Static white, not the foreground token: the arrow stays white on the blue
-     fill in both themes (design 34:10465). */
-  color: #fff;
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
   cursor: pointer;
   transition: background-color 100ms ease;
   /* Opts out of the row's 2px downward shift (.row top pad): the send circle
@@ -391,7 +390,7 @@
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--dsw-alias-button-info-hover);
+  background: var(--dsw-alias-button-primary-hover);
 }
 
 .primary:disabled {

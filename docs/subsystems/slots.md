@@ -159,6 +159,7 @@ root
 │     │  ├─ conversation.header.leading
 │     │  └─ conversation.session.header
 │     │     ├─ conversation.session.header.lineage
+│     │     ├─ conversation.session.header.context
 │     │     ├─ conversation.session.header.actions
 │     │     ├─ conversation.session.header.utilities
 │     │     └─ conversation.session.header.corner

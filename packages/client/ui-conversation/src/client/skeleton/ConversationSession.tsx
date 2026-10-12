@@ -70,6 +70,9 @@ export function ConversationSessionHeader({
         {!hideChrome && (
           <>
             <div className={css.titleCluster}>
+              <div className={css.headerContext}>
+                {renderSlot('conversation.session.header.context', {})}
+              </div>
               <nav className={css.crumbs} aria-label={t('session.hierarchy')}>
                 {ancestry.map((summary, index) => {
                   const last = index === ancestry.length - 1

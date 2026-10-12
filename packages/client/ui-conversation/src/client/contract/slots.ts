@@ -152,6 +152,15 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
       scope: 'session'
       owner: ConversationHeaderLineageOwnerProps
     }
+    /**
+     * Where the Session lives (a project, a book), shown before the title
+     * crumbs. The occupant owns its text and trailing separator.
+     */
+    'conversation.session.header.context': {
+      kind: 'single'
+      scope: 'session'
+      owner: ConversationHeaderActionOwnerProps
+    }
     /** Title-adjacent Session actions in ascending order. */
     'conversation.session.header.actions': {
       kind: 'list'
@@ -547,6 +556,7 @@ export type ConversationSessionHeaderSlotProps =
   PropsRuntime<'conversation.session.header'>
   & PropsRenderSlots<
     'conversation.session.header.lineage'
+    | 'conversation.session.header.context'
     | 'conversation.session.header.actions'
     | 'conversation.session.header.utilities'
     | 'conversation.session.header.corner'
