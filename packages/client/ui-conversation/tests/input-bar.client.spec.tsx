@@ -1790,6 +1790,20 @@ describe('command launcher chrome and control seats', () => {
     expect(result.shell.caretSpan()).toEqual({ start: 8, end: 8 })
   })
 
+  it('hands a launcher the way into the file picker, the same one the fallback attach button opens', () => {
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    try {
+      const result = bench({ addFiles: vi.fn(() => null) })
+      // An occupant owns the whole add cluster, so it gets the picker to offer attachments itself.
+      launcherOwner(result.slotCalls).attachFiles?.()
+      expect(click).toHaveBeenCalledOnce()
+      fireEvent.click(result.view.container.querySelector<HTMLButtonElement>('button[aria-label="添加附件"], button[aria-label="Add attachment"]')!)
+      expect(click).toHaveBeenCalledTimes(2)
+    } finally {
+      click.mockRestore()
+    }
+  })
+
   it('refuses launcher verbs while locked without calling their injected faces', () => {
     const openSource = vi.fn()
     const insertReference = vi.fn(() => true)

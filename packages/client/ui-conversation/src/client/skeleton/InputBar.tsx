@@ -241,6 +241,8 @@ export const InputBar = memo(function InputBar({
   const canAcceptDrop = subagent === null && !locked && !machineBusy && addFiles !== undefined
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  // One way into the file picker: the fallback attach button and a launcher occupant's own entry.
+  const pickFiles = useCallback((): void => { fileInputRef.current?.click() }, [])
   const onPickFiles = (e: ChangeEvent<HTMLInputElement>): void => {
     const picked = e.target.files === null ? [] : [...e.target.files]
     // Reset so picking the same file again re-fires the change event.
@@ -444,7 +446,8 @@ export const InputBar = memo(function InputBar({
               locked: locked || machineBusy,
               openSource: openLauncherSource,
               insertReference: insertLauncherReference,
-            }, { fallback: (
+              attachFiles: subagent !== null || addFiles === undefined ? undefined : pickFiles,
+            }, { fallback: (<>
               <Tooltip label={t('input.commands')} side="top" delayMs={500}>
                 <button
                   type="button"
@@ -459,19 +462,19 @@ export const InputBar = memo(function InputBar({
                   <IconPlusOutlineMedium size={14} />
                 </button>
               </Tooltip>
-            ) })}
-            <Tooltip label={t('file.attach')} side="top" delayMs={500}>
-              <button
-                type="button"
-                className={css.add}
-                aria-label={t('file.attach')}
-                disabled={subagent !== null || locked || machineBusy || addFiles === undefined}
-                onMouseDown={keepFocus}
-                onClick={() => { fileInputRef.current?.click() }}
-              >
-                <IconPaperclipOutlineMedium size={14} />
-              </button>
-            </Tooltip>
+              <Tooltip label={t('file.attach')} side="top" delayMs={500}>
+                <button
+                  type="button"
+                  className={css.add}
+                  aria-label={t('file.attach')}
+                  disabled={subagent !== null || locked || machineBusy || addFiles === undefined}
+                  onMouseDown={keepFocus}
+                  onClick={pickFiles}
+                >
+                  <IconPaperclipOutlineMedium size={14} />
+                </button>
+              </Tooltip>
+            </>) })}
             <input
               ref={fileInputRef}
               type="file"

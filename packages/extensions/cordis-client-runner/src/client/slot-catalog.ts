@@ -1053,7 +1053,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Product launcher with current-selection-safe input actions.',
     registerOptions: [],
     ownerProps: [
-      '/** Product launcher callbacks bound to the active resident editor. */\nexport interface ComposerLauncherOwnerProps {\n  /** Whether input is locked or a submission transaction is active. */\n  locked: boolean\n  /** Open a source without changing the draft or its current selection. */\n  openSource: (source: string, trigger: \'/\' | \'@\') => void\n  /** Insert one structured reference at the current selection. */\n  insertReference: (reference: ReferenceInsert) => boolean\n}',
+      '/** Product launcher callbacks bound to the active resident editor. */\nexport interface ComposerLauncherOwnerProps {\n  /** Whether input is locked or a submission transaction is active. */\n  locked: boolean\n  /** Open a source without changing the draft or its current selection. */\n  openSource: (source: string, trigger: \'/\' | \'@\') => void\n  /** Insert one structured reference at the current selection. */\n  insertReference: (reference: ReferenceInsert) => boolean\n  /**\n   * Open the composer\'s file picker to attach files to the draft; undefined\n   * where attaching is unavailable. A launcher occupant owns the whole add\n   * cluster: the composer\'s own attach button is part of the seat\'s fallback.\n   */\n  attachFiles: (() => void) | undefined\n}',
     ],
     ownerPropsReferences: [
       'ReferenceInsert',

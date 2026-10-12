@@ -455,6 +455,12 @@ export interface ComposerLauncherOwnerProps {
   openSource: (source: string, trigger: '/' | '@') => void
   /** Insert one structured reference at the current selection. */
   insertReference: (reference: ReferenceInsert) => boolean
+  /**
+   * Open the composer's file picker to attach files to the draft; undefined
+   * where attaching is unavailable. A launcher occupant owns the whole add
+   * cluster: the composer's own attach button is part of the seat's fallback.
+   */
+  attachFiles: (() => void) | undefined
 }
 
 /** Owner share of the named plan, permission, and model controls. */
