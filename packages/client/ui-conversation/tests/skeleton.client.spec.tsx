@@ -399,7 +399,7 @@ function mount(
 describe('Hero chrome', () => {
   it('renders the English preview badge through the hero locale seat', () => {
     const renderSlot = vi.fn<HeroShellProps['renderSlot']>((_key, _owner, options) => options?.fallback ?? null)
-    const view = render(<HeroShell t={makeTranslate(en, commonEn)} renderSlot={renderSlot} />)
+    const view = render(<HeroShell t={makeTranslate(en, commonEn)} renderSlot={renderSlot} chosen={false} />)
     expect(view.getByText('Into the Unknown')).toBeTruthy()
     expect(view.getByText('Preview')).toBeTruthy()
     expect(renderSlot).toHaveBeenCalledTimes(2)
@@ -419,11 +419,11 @@ describe('Hero chrome', () => {
     // brand-mark slot inside the shipped headline never renders at all.
     const renderSlot = vi.fn<HeroShellProps['renderSlot']>((key, _owner, options) =>
       key === 'conversation.hero.headline' ? <span>My Product</span> : options?.fallback ?? null)
-    const view = render(<HeroShell t={makeTranslate(en, commonEn)} renderSlot={renderSlot} />)
+    const view = render(<HeroShell t={makeTranslate(en, commonEn)} renderSlot={renderSlot} chosen={false} />)
     expect(view.getByText('My Product')).toBeTruthy()
     expect(view.queryByText('Into the Unknown')).toBeNull()
     expect(view.queryByText('Preview')).toBeNull()
-    expect(renderSlot).toHaveBeenCalledWith('conversation.hero.headline', {}, expect.anything())
+    expect(renderSlot).toHaveBeenCalledWith('conversation.hero.headline', { chosen: false }, expect.anything())
   })
 })
 
@@ -739,10 +739,11 @@ describe('ConversationRoot resident composer', () => {
     // The agent-preset chip sits in the same row, for the same reason: both
     // choices are only open before the first message.
     expect(b.slotCalls).toContain('conversation.hero.agentPreset')
-    // The Hero footer follows the composer card, inside the same centered stack.
+    // The Hero footer reads before the composer card (the start page's content
+    // on top, the input at the bottom), inside the same stack.
     const footer = b.view.getByTestId('view-conversation.hero.footer')
-    expect(b.view.getByRole('textbox').compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(footer.parentElement?.contains(b.view.getByRole('textbox'))).toBe(true)
+    expect(b.view.getByRole('textbox').compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    expect(footer.parentElement?.parentElement?.contains(b.view.getByRole('textbox'))).toBe(true)
   })
 
   it('lets a product replace the Hero workspace chip icon, keeping the folder when the seat is empty', () => {

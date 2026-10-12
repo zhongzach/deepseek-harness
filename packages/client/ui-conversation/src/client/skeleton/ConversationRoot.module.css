@@ -526,11 +526,13 @@ button.crumb:hover {
    block for position:fixed descendants (pickers/modals), shrinking them. */
 .composerHero {
   align-self: center;
-  /* figma 75:8208 drew 12 between all three rows; the workspace row now sits
-     8 above the card (its margin-top restores 12 under the hero chrome). */
+  /* A start page, not a centered capsule: the stack fills the scroll body, the
+     headline and footer entries read from the top, and the workspace row plus
+     the input card rest at the bottom (the footer's auto margin pushes them
+     there). */
+  flex: 1 0 auto;
   gap: 8px;
-  /* Foot inside the centered box floats the stack a bit above true center. */
-  padding-bottom: 32px;
+  padding: 48px 0 12px;
   /* Card cap + both clearances: the hero input card lands at exactly the same
      width as the docked composer at every viewport. */
   width: min(calc(var(--dsh-composer-card-max-width) + 2 * var(--dsh-composer-side-clearance)), 100%);
@@ -553,8 +555,27 @@ button.crumb:hover {
    the tree seat matches active (sticky footer) without a Root remount. */
 .root[data-phase='hero'] .scrollBody,
 .embeddedBody[data-content-phase='hero'] .scrollBody {
-  justify-content: center;
+  justify-content: flex-start;
   overflow-y: auto;
+}
+
+.root[data-phase='hero'] .composerSeat,
+.embeddedBody[data-content-phase='hero'] .composerSeat {
+  flex: 1 0 auto;
+}
+
+/* Footer entries under the headline; whatever follows goes to the bottom. */
+.heroFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  margin-bottom: auto;
+  padding: 12px var(--dsh-composer-side-clearance) 24px;
+}
+
+.heroFooter:empty {
+  padding: 0;
 }
 
 /* Settling (session replaying, hero/docked unknown): keep the composer seat

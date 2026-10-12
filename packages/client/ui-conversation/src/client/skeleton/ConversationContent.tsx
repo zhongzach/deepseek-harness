@@ -165,11 +165,16 @@ export function ConversationContent(props: ConversationContentProps) {
 
   const composerBar = (
     <div className={clsx(css.composerStack, hero && css.composerHero)}>
-      {hero && <HeroShell t={t} renderSlot={renderSlot} />}
+      {hero && <HeroShell t={t} renderSlot={renderSlot} chosen={chipTitle !== undefined} />}
+      {/* The start page reads top-down: headline, then the footer entries;
+          the workspace row and the input card stay at the bottom, where the
+          docked composer sits once the Session starts. */}
+      {hero && sessionId !== undefined && (
+        <div className={css.heroFooter}>{renderSlot('conversation.hero.footer', {})}</div>
+      )}
       {hero && heroWorkspaceRow}
       {zone !== undefined && renderSlot('conversation.input.dock', zone)}
       {inputBar}
-      {hero && sessionId !== undefined && renderSlot('conversation.hero.footer', {})}
     </div>
   )
 

@@ -201,10 +201,13 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Brand mark shown before the blank-session headline. */
     'conversation.hero.brand.mark': { kind: 'single'; scope: 'root'; owner: HeroBrandMarkOwnerProps }
     /** Product-owned replacement for the complete blank-session headline. */
-    'conversation.hero.headline': { kind: 'single'; scope: 'root' }
+    'conversation.hero.headline': { kind: 'single'; scope: 'root'; owner: HeroWorkspaceIconOwnerProps }
     /** Agent-preset control staged for a New Session. */
     'conversation.hero.agentPreset': { kind: 'single'; scope: 'session-maybe'; owner: HeroAgentPresetOwnerProps }
-    /** Entries below the blank-session Hero composer card (starting suggestions); absent once the conversation starts. */
+    /**
+     * Entries between the blank-session Hero headline and its composer card
+     * (starting suggestions); absent once the conversation starts.
+     */
     'conversation.hero.footer': { kind: 'list'; scope: 'session' }
     /** Full-width entries above the composer card. */
     'conversation.input.dock': { kind: 'list'; scope: 'session'; owner: InputZone }

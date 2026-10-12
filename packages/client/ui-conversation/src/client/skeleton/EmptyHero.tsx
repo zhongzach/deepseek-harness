@@ -70,6 +70,8 @@ export interface HeroShellProps {
   t: HeroTranslate
   /** Authorized renderer for the hero brand-mark slot. */
   renderSlot: ConversationContentProps['renderSlot']
+  /** Whether the New Session already names a workspace; a product headline may differ before one is chosen. */
+  chosen: boolean
   /** Overlay content after the stack (modals). */
   children?: ReactNode
 }
@@ -132,13 +134,13 @@ function HeroFish({ hovering }: { hovering: boolean }) {
  * @param props - see {@link HeroShellProps}.
  * @returns the centered hero element tree.
  */
-export function HeroShell({ t, renderSlot, children }: HeroShellProps) {
+export function HeroShell({ t, renderSlot, chosen, children }: HeroShellProps) {
   const [hovering, setHovering] = useState(false)
   return (
     <div className={css.root}>
       <div className={css.stack}>
         <div className={css.headline}>
-          {renderSlot('conversation.hero.headline', {}, { fallback: <>
+          {renderSlot('conversation.hero.headline', { chosen }, { fallback: <>
             {/* figma 34:10412: fish 34×25 leading the headline, gap 10. */}
             <span
               className={css.fishHitbox}

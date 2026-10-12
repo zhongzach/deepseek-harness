@@ -4,11 +4,13 @@
 
 .root {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  height: 100%;
+  flex: none;
   min-width: 0;
-  padding: 0 24px;
+  /* The same side clearance as the input card, so a left-aligned product
+     headline starts on the card's edge. */
+  padding: 0 var(--dsh-composer-side-clearance, 16px);
 }
 
 /* Cap matches the InputBar card. Glow may paint past the sides. */
