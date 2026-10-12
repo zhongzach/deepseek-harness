@@ -38,6 +38,7 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
     <button
       aria-label="New session"
       class="newSession"
+      data-sidebar-new-session="rail"
       type="button"
     >
       <span
@@ -59,6 +60,14 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
         </span>
       </span>
     </button>
+    <div
+      class="headerActions"
+    >
+      <div
+        data-slot="sidebar.header.action"
+        style="display: contents;"
+      />
+    </div>
     <div
       class="regionArea"
     >
@@ -176,6 +185,7 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
     <button
       aria-label="New session"
       class="newSession"
+      data-sidebar-new-session="wide"
       type="button"
     >
       <span
@@ -202,6 +212,14 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
         </span>
       </span>
     </button>
+    <div
+      class="headerActions"
+    >
+      <div
+        data-slot="sidebar.header.action"
+        style="display: contents;"
+      />
+    </div>
     <div
       class="regionArea"
     >
@@ -290,6 +308,7 @@ exports[`sidebar shell snapshots > renders the collapsed rail after the crossfad
     <button
       aria-label="New session"
       class="newSession"
+      data-sidebar-new-session="rail"
       type="button"
     >
       <span
@@ -311,6 +330,14 @@ exports[`sidebar shell snapshots > renders the collapsed rail after the crossfad
         </span>
       </span>
     </button>
+    <div
+      class="headerActions"
+    >
+      <div
+        data-slot="sidebar.header.action"
+        style="display: contents;"
+      />
+    </div>
     <div
       class="regionArea"
     >
@@ -428,6 +455,7 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
     <button
       aria-label="New session"
       class="newSession"
+      data-sidebar-new-session="wide"
       type="button"
     >
       <span
@@ -454,6 +482,14 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
         </span>
       </span>
     </button>
+    <div
+      class="headerActions"
+    >
+      <div
+        data-slot="sidebar.header.action"
+        style="display: contents;"
+      />
+    </div>
     <div
       class="regionArea"
     >
@@ -571,6 +607,7 @@ exports[`sidebar shell snapshots > renders the expanded column in the default lo
     <button
       aria-label="新建会话"
       class="newSession"
+      data-sidebar-new-session="wide"
       type="button"
     >
       <span
@@ -597,6 +634,14 @@ exports[`sidebar shell snapshots > renders the expanded column in the default lo
         </span>
       </span>
     </button>
+    <div
+      class="headerActions"
+    >
+      <div
+        data-slot="sidebar.header.action"
+        style="display: contents;"
+      />
+    </div>
     <div
       class="regionArea"
     >

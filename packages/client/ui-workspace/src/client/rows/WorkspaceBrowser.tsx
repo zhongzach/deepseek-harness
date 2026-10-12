@@ -19,7 +19,7 @@ import clsx from 'clsx'
 import {
   Button, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineRegular, IconArchiveOutlineRegular,
   IconChevronsUpDownOutlineRegular, IconClockOutlineRegular, IconCloseFillRegular,
-  IconFlatListOutlineRegular, IconFolderCloseRegular, IconProjectAddOutlineRegular,
+  IconFlatListOutlineRegular, IconFolderCloseRegular, IconPlusOutlineMedium, IconProjectAddOutlineRegular,
   IconQueueOutlineRegular, IconSearchOutlineRegular, IconSlidersTwoOutlineRegular,
   IconWorkspaceTreeOutlineRegular, Menu, Modal, Toast, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -424,6 +424,12 @@ function SessionTree({
     const visible = collapsedSessionRows(group.sessions, sessionLimits[group.key])
     const sessionsExpanded = visible.hiddenCount === 0
     rowKeys.push(`workspace:${group.key}`)
+    // The group owning the session on screen reads as one card. It carries the
+    // New Session action as a full-width button under its own row; once the
+    // provisional blank row is on screen that row stands in the button's place.
+    const currentWorkspace = group.key === currentGroup && workspaceId !== undefined && group.expanded
+    const createButton = currentWorkspace && !visible.rows.some(node => node.blank)
+    if (createButton) rowKeys.push(`create:${group.key}`)
     const childRows = group.expanded ? children.map(child => renderGroup(child, depth + 1)) : []
     const sessions = visible.rows
     for (const node of sessions) rowKeys.push(`session:${node.id}`)
@@ -466,6 +472,7 @@ function SessionTree({
         style={{ '--dsh-workspace-indent': `${depth * 12}px` } as CSSProperties}
         className={clsx(
           css.groupSection,
+          currentWorkspace && css.currentGroup,
           workspaceMarker === 'before' && css.workspaceDropBefore,
           workspaceMarker === 'after' && css.workspaceDropAfter,
         )}
@@ -531,6 +538,18 @@ function SessionTree({
               },
             }}
         />
+        {createButton && (
+          <button
+            type="button"
+            className={css.newSessionButton}
+            data-row-key={`create:${group.key}`}
+            data-workspace-new-session
+            onClick={() => { startSession(workspaceId) }}
+          >
+            <IconPlusOutlineMedium size={14} />
+            <span>{t('session.create')}</span>
+          </button>
+        )}
         {childRows.length > 0 && (
           <div role="group">
             {childRows}

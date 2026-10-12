@@ -8,8 +8,12 @@
  * same top-down order) on one fade that ends with the slide. The bottom-pinned
  * settings control only fades. The workspace/session browsing region between
  * global panel rows and the foot is the `sidebar.workspaces` registrant's,
- * and the foot holds `sidebar.settings` plus `sidebar.footer.action`; the shell
- * hands them the wide flag (plus an expand request callback for the browser).
+ * and the foot holds `sidebar.settings` plus `sidebar.footer.action`; product
+ * destinations above the region ride `sidebar.header.action`. The shell hands
+ * them the wide flag (plus an expand request callback for the browser).
+ * The New Session control carries `data-sidebar-new-session` and its wide
+ * state, so a product whose browser owns session creation can retire the
+ * wide capsule and keep the rail icon.
  *
  * The column also owns whether the scroll regions nested in it draw a
  * scrollbar at all: the shell tracks the pointer and rebinds ui-theme's
@@ -260,6 +264,7 @@ export function SidebarRoot({
         <button
           type="button"
           className={css.newSession}
+          data-sidebar-new-session={wide ? 'wide' : 'rail'}
           aria-label={t('session.new.label')}
           aria-keyshortcuts={newShortcut?.aria}
           onClick={() => { startSession() }}
@@ -291,6 +296,10 @@ export function SidebarRoot({
           ))}
         </nav>
       )}
+
+      <div className={css.headerActions}>
+        {renderSlot('sidebar.header.action', { wide })}
+      </div>
 
       {/* The browsing region fills the column between the controls and the
           foot in both states; its rail icon column rides the same slot. */}

@@ -549,3 +549,48 @@ button.crumb:hover {
 .embeddedBody[data-content-phase='settling'] .composerSeat {
   visibility: hidden;
 }
+
+/* Hosted in a product title bar (ConversationHeader portals into the element
+   marked data-conversation-header-host): one row that fills the host, with no
+   rule or padding of its own. View tabs, when a Session has several, sit on
+   the same row after the title. Controls subtract themselves from the bar's
+   window-drag surface; the gaps between them keep dragging the window. */
+.header.headerHosted {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border-bottom: none;
+}
+
+.headerHosted .titleRow {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding-inline-start: 0;
+}
+
+.headerHosted .headerCorner {
+  margin-right: 0;
+}
+
+.headerHosted .tabs {
+  flex: none;
+  align-self: stretch;
+  align-items: flex-end;
+  gap: 20px;
+  margin: 0 0 0 20px;
+  padding-left: 0;
+}
+
+.headerHosted .headerLeading,
+.headerHosted .crumbs,
+.headerHosted .headerActions,
+.headerHosted .headerUtilities,
+.headerHosted .headerCorner,
+.headerHosted .tabs {
+  -webkit-app-region: no-drag;
+}

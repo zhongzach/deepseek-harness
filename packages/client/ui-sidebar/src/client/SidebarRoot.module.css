@@ -163,6 +163,10 @@
   animation: rail-fade-in 150ms var(--ds-ease-in-out) backwards;
 }
 
+.railIn .headerActions {
+  animation: rail-in 150ms var(--ds-ease-in-out) backwards;
+}
+
 @keyframes rail-in {
   from {
     opacity: 0;
@@ -589,6 +593,30 @@
   display: flex;
 }
 
+/* Header seats: product destinations stacked above the browsing region. Each
+   occupant owns its row or card; an empty list takes no room. */
+.headerActions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.headerActions:empty {
+  display: none;
+}
+
+.collapsed .headerActions {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+:global([data-windows-titlebar]) .collapsed .headerActions {
+  display: none;
+}
+
 .collapsed .footArea {
   align-items: center;
 }
@@ -606,6 +634,7 @@
   .railIn .iconButton,
   .railIn .newSession,
   .railIn .panelList,
+  .railIn .headerActions,
   .railIn .footArea,
   .railIn .regionArea {
     transition: none;

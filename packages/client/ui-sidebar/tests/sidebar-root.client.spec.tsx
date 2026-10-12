@@ -45,6 +45,7 @@ function mountShell({ collapsed = false, width = 300, shortcuts = [] }: {
   let regionOwner: SidebarSectionOwnerProps | undefined
   let settingsOwner: SidebarSettingsOwnerProps | undefined
   let footerActionOwner: SidebarFooterActionOwnerProps | undefined
+  let headerActionOwner: SidebarFooterActionOwnerProps | undefined
   const brandMark = <span data-testid="custom-brand-mark">M</span>
   const brandName = <span data-testid="custom-brand-name">Custom Brand</span>
   let current = { collapsed, width }
@@ -70,6 +71,10 @@ function mountShell({ collapsed = false, width = 300, shortcuts = [] }: {
           footerActionOwner = owner
           return <div data-testid="footer-action-seat" data-wide={owner.wide} />
         }
+        if (key === 'sidebar.header.action') {
+          headerActionOwner = owner
+          return <div data-testid="header-action-seat" data-wide={owner.wide} />
+        }
         regionOwner = owner as SidebarSectionOwnerProps
         return <div data-testid="region" data-wide={owner.wide} />
       }) as SidebarRootComponentProps['renderSlot']}
@@ -90,6 +95,10 @@ function mountShell({ collapsed = false, width = 300, shortcuts = [] }: {
     footerActionOwner: () => {
       if (footerActionOwner === undefined) throw new Error('footer action owner not rendered')
       return footerActionOwner
+    },
+    headerActionOwner: () => {
+      if (headerActionOwner === undefined) throw new Error('header action owner not rendered')
+      return headerActionOwner
     },
     rerender(next: Partial<typeof current>) {
       current = { ...current, ...next }
@@ -192,6 +201,9 @@ describe('SidebarRoot shell', () => {
     // The settings seat rides the same wide flag (ui-settings renders the row).
     expect(b.settingsOwner().wide).toBe(true)
     expect(b.footerActionOwner().wide).toBe(true)
+    expect(b.headerActionOwner().wide).toBe(true)
+    // The capsule says which form it is in, for products that retire the wide one.
+    expect(document.querySelector('[data-sidebar-new-session]')?.getAttribute('data-sidebar-new-session')).toBe('wide')
     // Expanded: the request is a no-op (no accidental collapse).
     b.regionOwner().expandSidebar()
     expect(b.toggleSidebar).not.toHaveBeenCalled()
@@ -207,6 +219,7 @@ describe('SidebarRoot shell', () => {
     b.rerender({})
     expect(b.regionOwner().wide).toBe(false)
     expect(b.footerActionOwner().wide).toBe(false)
+    expect(b.headerActionOwner().wide).toBe(false)
     expect(screen.getByTestId('region')).toBeTruthy()
     b.regionOwner().expandSidebar()
     expect(b.toggleSidebar).toHaveBeenCalledOnce()

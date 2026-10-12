@@ -437,6 +437,30 @@ describe('ConversationRoot resident composer', () => {
     expect(b.view.queryByTestId('view-conversation.session.header.corner')).toBeNull()
   })
 
+  it('renders the header into a marked title-bar host and back in place when the host leaves', () => {
+    const host = document.createElement('div')
+    host.setAttribute('data-conversation-header-host', '')
+    document.body.appendChild(host)
+    try {
+      const b = mount(sessionSnapshotOf(), [], undefined, { sessionId: undefined })
+      // The portal keeps the header in the React tree and moves only its DOM.
+      expect(b.view.container.querySelector('header')).toBeNull()
+      expect(host.querySelector('header')).not.toBeNull()
+      expect(b.view.getByTestId('view-conversation.header.leading')).toBeTruthy()
+      host.remove()
+      act(() => { window.dispatchEvent(new Event('dsh:conversation-header-host')) })
+      expect(b.view.container.querySelector('header')).not.toBeNull()
+      // A host that appears later announces itself the same way.
+      document.body.appendChild(host)
+      act(() => { window.dispatchEvent(new Event('dsh:conversation-header-host')) })
+      expect(host.querySelector('header')).not.toBeNull()
+      b.view.unmount()
+      expect(host.querySelector('header')).toBeNull()
+    } finally {
+      host.remove()
+    }
+  })
+
   it('does not redispatch composer child slots for an unrelated Session publication', () => {
     const b = mount(sessionSnapshotOf())
     const childKeys = new Set([

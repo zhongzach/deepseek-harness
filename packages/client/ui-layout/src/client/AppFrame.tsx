@@ -15,7 +15,7 @@
  * shares — zero cordis or framework imports, zero self-made hooks.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type {
   PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
@@ -273,7 +273,7 @@ export function AppFrame({
   const leadingMounted = darwin && sidebarCollapsed
 
   return (
-    <div className={css.shell}>
+    <div className={css.shell} style={{ '--dsh-frame-sidebar-width': `${cols.sidebar}px` } as CSSProperties}>
       <div className={css.titlebar}>{renderSlot('titlebar', {})}</div>
       <div
         ref={frameRef}

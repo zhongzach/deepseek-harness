@@ -5,7 +5,8 @@
  * everything between the workspace section header and the list bottom is the
  * `sidebar.workspaces` registrant's (ui-workspace), and the foot is the
  * `sidebar.settings` registrant's (ui-settings), followed by optional footer
- * actions in `sidebar.footer.action`.
+ * actions in `sidebar.footer.action`. Product destinations that belong above
+ * the browsing region register into `sidebar.header.action`.
  */
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
@@ -51,6 +52,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * package's 'sidebar' entry; each action receives only the column state.
      */
     'sidebar.footer.action': { kind: 'list'; scope: 'root'; owner: SidebarFooterActionOwnerProps }
+    /**
+     * Optional destinations above the browsing region (below the global panel
+     * rows). Declared by this package's 'sidebar' entry; each action receives
+     * only the column state and owns its own row or card.
+     */
+    'sidebar.header.action': { kind: 'list'; scope: 'root'; owner: SidebarFooterActionOwnerProps }
   }
 }
 
@@ -144,5 +151,6 @@ export type SidebarRootComponentProps =
     | 'sidebar.workspaces'
     | 'sidebar.settings'
     | 'sidebar.footer.action'
+    | 'sidebar.header.action'
   >
   & InjectFace<SidebarRootInjected> & PropsLocale<'sidebar'>

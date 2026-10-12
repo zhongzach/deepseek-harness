@@ -1290,6 +1290,25 @@ describe('WorkspaceBrowser', () => {
     expect(startSession).toHaveBeenCalledWith(wid('alpha'))
   })
 
+  it('offers New Session as a button in the current workspace until its blank row is on screen', () => {
+    const startSession = vi.fn()
+    const list = [summary('alpha-s', 2), summary('alpha-blank', 9, { blank: true })]
+    const b = mount({
+      useSessions: hook(sessionState(list, { main: sid('alpha-s') })),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s', 'alpha-blank']), workspace('beta', [])])),
+      startSession,
+    })
+    // Only the workspace owning the session on screen carries the button.
+    expect(screen.getAllByRole('button', { name: '新建会话' })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: '新建会话' }))
+    expect(startSession).toHaveBeenCalledWith(wid('alpha'))
+    // Once the provisional blank row is current it stands in the button's place.
+    rerender(b, { useSessions: hook(sessionState(list, { main: sid('alpha-blank') })) })
+    expect(screen.queryByRole('button', { name: '新建会话' })).toBeNull()
+    expect(screen.getByText('新会话').closest('[role="treeitem"]')?.hasAttribute('data-blank')).toBe(true)
+    expect(screen.getByText('alpha-s').closest('[role="treeitem"]')?.hasAttribute('data-blank')).toBe(false)
+  })
+
   it('auto-expands the Ungrouped bucket for a loose current session; its header has no menu and its ＋ is inert', () => {
     const startSession = vi.fn()
     mount({
