@@ -133,6 +133,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /** Directory-flow hole under the conversation empty-state picker (declared by the WorkspacePicker entry). */
     'conversation.hero.workspace.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
+    /** Optional replacement for the folder icon on each row of the Hero workspace menu; unoccupied keeps the folder. */
+    'conversation.hero.workspace.item.icon': { kind: 'single'; scope: 'root'; owner: WorkspaceMenuIconOwnerProps }
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /** Product metadata rename dialog; omission retains the native display-name dialog. */
@@ -223,6 +225,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'sidebar.workspaces.session.row.action': { kind: 'list'; scope: 'root'; owner: SessionRowOwnerProps }
 
   }
+}
+
+/** Owner share of a Hero workspace-menu row's icon seat. */
+export interface WorkspaceMenuIconOwnerProps {
+  /** Whether this row is the workspace the New Session currently belongs to. */
+  selected: boolean
 }
 
 /** The selected Workspace and dismissal callback owned by the sidebar browser. */
@@ -532,7 +540,7 @@ export type WorkspacePickerInjected = DirectoryPickingInjected & {
  */
 export type WorkspacePickerProps =
   PropsRuntime<'conversation.hero.workspace'>
-  & PropsRenderSlots<'conversation.hero.workspace.directoryFlow'>
+  & PropsRenderSlots<'conversation.hero.workspace.directoryFlow' | 'conversation.hero.workspace.item.icon'>
   & Omit<WorkspacePickerInjected, 'hooks'>
   & PropsHooks<WorkspacePickerInjected['hooks']>
   & PropsLocale<'workspace'>

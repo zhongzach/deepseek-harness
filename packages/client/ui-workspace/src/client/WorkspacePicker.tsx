@@ -51,6 +51,10 @@ export interface WorkspacePickFlowProps {
   side?: 'bottom' | 'top' | 'right'
   /** Currently active workspace (trailing check in the picker list). */
   selectedId?: WorkspaceId | undefined
+  /** Heading above the listed workspaces; omitted, the list has none. */
+  title?: string | undefined
+  /** Leading icon of a listed workspace (selected = the active one); omitted, a folder. */
+  renderRowIcon?: ((selected: boolean) => ReactNode) | undefined
 }
 
 /**
@@ -72,6 +76,8 @@ export function WorkspacePickFlow({
   onBusyChange,
   side = 'bottom',
   selectedId,
+  title,
+  renderRowIcon,
 }: WorkspacePickFlowProps) {
   const workspaceSnapshot = useWorkspaces(state => state)
   const workspaces = workspaceSnapshot.items
@@ -110,12 +116,15 @@ export function WorkspacePickFlow({
   // (divider + always visible); otherwise it IS the menu.
   const pinAdd = !addOnly && workspaces.length > 0
   const items: MenuEntry[] = pinAdd
-    ? workspaces.map(workspace => ({
-      id: workspace.workspaceId,
-      label: workspaceDisplayTitle(workspace.title, t('workspace.defaultName')),
-      icon: <IconFolderCloseRegular size={16} />,
-      disabled: flowBusy,
-    }))
+    ? [
+      ...(title === undefined ? [] : [{ type: 'label' as const, id: 'workspace-picker-title', text: title }]),
+      ...workspaces.map(workspace => ({
+        id: workspace.workspaceId,
+        label: workspaceDisplayTitle(workspace.title, t('workspace.defaultName')),
+        icon: renderRowIcon?.(workspace.workspaceId === selectedId) ?? <IconFolderCloseRegular size={16} />,
+        disabled: flowBusy,
+      })),
+    ]
     : addEntries
   // Nothing listed and nothing to add with (a composition that mounts this
   // package without any directory-picker): an empty popover would claim a
@@ -252,6 +261,13 @@ export function WorkspacePicker({
       selectedId={selectedId}
       onPick={onPick}
       onClose={onClose}
+      // The chip sits right above the composer card at the foot of the start
+      // page: the menu opens upward, over the page, never over the draft.
+      side="top"
+      title={t('picker.title')}
+      renderRowIcon={selected => renderSlot(
+        'conversation.hero.workspace.item.icon', { selected }, { fallback: <IconFolderCloseRegular size={16} /> },
+      )}
     />
   )
 }

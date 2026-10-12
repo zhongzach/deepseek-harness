@@ -178,7 +178,8 @@ root
 │     ├─ conversation.input.right
 │     ├─ conversation.hero.brand.mark
 │     ├─ conversation.hero.workspace
-│     │  └─ conversation.hero.workspace.directoryFlow
+│     │  ├─ conversation.hero.workspace.directoryFlow
+│     │  └─ conversation.hero.workspace.item.icon
 │     └─ conversation.hero.agentPreset
 ├─ rightbar
 │  └─ rightbar.session

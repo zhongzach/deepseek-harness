@@ -317,7 +317,10 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('conversation.hero.workspace', () => ctx.slots.register(
     {
       name: 'conversation.hero.workspace',
-      children: { 'conversation.hero.workspace.directoryFlow': { kind: 'single', scope: 'root' } },
+      children: {
+        'conversation.hero.workspace.directoryFlow': { kind: 'single', scope: 'root' },
+        'conversation.hero.workspace.item.icon': { kind: 'single', scope: 'root' },
+      },
       inject: pickerInjected,
       locale: NS,
     },

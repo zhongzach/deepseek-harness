@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { ReactNode } from 'react'
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -56,10 +57,16 @@ function anchor(): { current: HTMLElement } {
  * package would, and renders a marker element while the flow is open.
  */
 function flowProbe() {
-  const probe: { owner: DirectoryFlowOwnerProps | undefined } = { owner: undefined }
-  const renderSlot = ((_name: string, owner: DirectoryFlowOwnerProps) => {
-    probe.owner = owner
-    return owner.open ? <div data-testid="directory-flow" data-busy={owner.busy} /> : null
+  const probe: { owner: DirectoryFlowOwnerProps | undefined; icons: boolean[] } = { owner: undefined, icons: [] }
+  const renderSlot = ((name: string, owner: DirectoryFlowOwnerProps | { selected: boolean }, options?: { fallback?: ReactNode }) => {
+    // An unoccupied row-icon seat renders its fallback (the folder).
+    if (name === 'conversation.hero.workspace.item.icon') {
+      probe.icons.push((owner as { selected: boolean }).selected)
+      return options?.fallback ?? null
+    }
+    const flow = owner as DirectoryFlowOwnerProps
+    probe.owner = flow
+    return flow.open ? <div data-testid="directory-flow" data-busy={flow.busy} /> : null
   }) as never
   return { probe, renderSlot }
 }
@@ -130,6 +137,34 @@ describe('WorkspacePicker', () => {
     expect(entries).toHaveLength(2)
     fireEvent.click(entries[1]!)
     expect(b.onPick).toHaveBeenCalledWith(wid('beta'))
+  })
+
+  it('heads the list with its title and offers each row an icon seat that knows the active Workspace', () => {
+    const anchorRef = anchor()
+    const { probe, renderSlot } = flowProbe()
+    render(
+      <WorkspacePicker
+        open
+        anchorRef={anchorRef}
+        selectedId={wid('beta')}
+        useSessions={hook(sessions)}
+        useSessionStatus={hook(noPendingInteraction)}
+        useSessionRetainInfo={() => undefined}
+        usePanelInfo={usePanelInfo} useResource={useResource}
+        useWorkspaces={hook(workspaceState([workspace('alpha', 'Alpha'), workspace('beta', 'Beta')]))}
+        onPick={vi.fn()}
+        onClose={vi.fn()}
+        createWorkspace={vi.fn()}
+        useDirectoryFlow={occupancySource().useDirectoryFlow}
+        renderSlot={renderSlot}
+        t={t}
+      />,
+    )
+    // The heading is not a choice: two workspaces, two rows.
+    expect(screen.getByText('选择工作区')).toBeTruthy()
+    expect(screen.getAllByRole('menuitem').map(row => row.textContent)).toEqual(['Alpha', 'Beta', '添加工作区…'])
+    expect(probe.icons).toEqual([false, true])
+    expect(screen.getByRole('menuitem', { name: 'Alpha' }).querySelector('svg')).not.toBeNull()
   })
 
   it('opens the composed directory flow, adopts its picked path, and selects the returned Workspace', async () => {
