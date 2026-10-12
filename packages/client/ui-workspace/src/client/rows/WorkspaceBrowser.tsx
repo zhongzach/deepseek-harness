@@ -424,11 +424,13 @@ function SessionTree({
     const visible = collapsedSessionRows(group.sessions, sessionLimits[group.key])
     const sessionsExpanded = visible.hiddenCount === 0
     rowKeys.push(`workspace:${group.key}`)
-    // The group owning the session on screen reads as one card. It carries the
-    // New Session action as a full-width button under its own row; once the
-    // provisional blank row is on screen that row stands in the button's place.
+    // Every expanded workspace offers New Session as the first row under its
+    // own: the group owning the session on screen reads as one card and carries
+    // it as a full-width primary button, the others as a quiet row, so the
+    // action is in the same place whichever workspace the user looks at. Once
+    // the provisional blank row is on screen that row stands in its place.
     const currentWorkspace = group.key === currentGroup && workspaceId !== undefined && group.expanded
-    const createButton = currentWorkspace && !visible.rows.some(node => node.blank)
+    const createButton = workspaceId !== undefined && group.expanded && !visible.rows.some(node => node.blank)
     if (createButton) rowKeys.push(`create:${group.key}`)
     const childRows = group.expanded ? children.map(child => renderGroup(child, depth + 1)) : []
     const sessions = visible.rows
@@ -541,9 +543,9 @@ function SessionTree({
         {createButton && (
           <button
             type="button"
-            className={css.newSessionButton}
+            className={clsx(css.newSessionButton, !currentWorkspace && css.newSessionQuiet)}
             data-row-key={`create:${group.key}`}
-            data-workspace-new-session
+            data-workspace-new-session={currentWorkspace ? 'current' : 'other'}
             onClick={() => { startSession(workspaceId) }}
           >
             <IconPlusOutlineMedium size={14} />

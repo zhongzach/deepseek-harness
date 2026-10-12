@@ -496,6 +496,27 @@
   margin: 4px 0;
 }
 
+/* Outside the current card the same action is a quiet row in the sessions'
+   rhythm: the plus sits in the status slot, the label on the titles' edge. */
+.newSessionButton.newSessionQuiet {
+  justify-content: flex-start;
+  gap: 5px;
+  height: 32px;
+  padding: 0 8px 0 calc(9px + var(--dsh-workspace-indent, 0px));
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-weight: 400;
+}
+
+.newSessionButton.newSessionQuiet:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.groupSection > .newSessionQuiet {
+  margin: 2px 0 0;
+}
+
 /* The provisional blank row takes the button's place and size, outlined in
    the same ink: creating a session never moves the rows below it. */
 .currentGroup div[data-blank] {

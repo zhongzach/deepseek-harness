@@ -1290,21 +1290,29 @@ describe('WorkspaceBrowser', () => {
     expect(startSession).toHaveBeenCalledWith(wid('alpha'))
   })
 
-  it('offers New Session as a button in the current workspace until its blank row is on screen', () => {
+  it('offers New Session first in every expanded workspace, and as the current one\'s button until its blank row is on screen', () => {
     const startSession = vi.fn()
-    const list = [summary('alpha-s', 2), summary('alpha-blank', 9, { blank: true })]
+    const list = [summary('alpha-s', 2), summary('alpha-blank', 9, { blank: true }), summary('beta-s', 1)]
     const b = mount({
       useSessions: hook(sessionState(list, { main: sid('alpha-s') })),
-      useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s', 'alpha-blank']), workspace('beta', [])])),
+      useWorkspaces: hook(workspaceState([
+        workspace('alpha', ['alpha-s', 'alpha-blank']), workspace('beta', ['beta-s']), workspace('gamma', []),
+      ])),
       startSession,
     })
-    // Only the workspace owning the session on screen carries the button.
-    expect(screen.getAllByRole('button', { name: '新建会话' })).toHaveLength(1)
-    fireEvent.click(screen.getByRole('button', { name: '新建会话' }))
-    expect(startSession).toHaveBeenCalledWith(wid('alpha'))
+    // A collapsed workspace has no rows, so nothing to lead them.
+    const create = (): HTMLElement[] => screen.getAllByRole('button', { name: '新建会话' })
+    expect(create().map(button => button.getAttribute('data-workspace-new-session'))).toEqual(['current'])
+    fireEvent.click(create()[0]!)
+    expect(startSession).toHaveBeenLastCalledWith(wid('alpha'))
+    // Expanding another workspace gives it the same action in the same place, as a quiet row.
+    fireEvent.click(screen.getByText('beta'))
+    expect(create().map(button => button.getAttribute('data-workspace-new-session'))).toEqual(['current', 'other'])
+    fireEvent.click(create()[1]!)
+    expect(startSession).toHaveBeenLastCalledWith(wid('beta'))
     // Once the provisional blank row is current it stands in the button's place.
     rerender(b, { useSessions: hook(sessionState(list, { main: sid('alpha-blank') })) })
-    expect(screen.queryByRole('button', { name: '新建会话' })).toBeNull()
+    expect(create().map(button => button.getAttribute('data-workspace-new-session'))).toEqual(['other'])
     expect(screen.getByText('新会话').closest('[role="treeitem"]')?.hasAttribute('data-blank')).toBe(true)
     expect(screen.getByText('alpha-s').closest('[role="treeitem"]')?.hasAttribute('data-blank')).toBe(false)
   })
