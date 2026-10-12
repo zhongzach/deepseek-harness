@@ -167,30 +167,30 @@
   overflow: hidden;
 }
 
-.runningWhaleAnimated {
-  display: none;
-  position: absolute;
-  inset: 0;
+.runningDot {
+  width: 6px;
+  height: 6px;
+  margin: auto;
+  border-radius: 50%;
+  corner-shape: round;
+  background: currentColor;
 }
 
-.runningWhaleStill {
-  display: initial;
+@media (prefers-reduced-motion: no-preference) {
+  .runningDot {
+    animation: running-dot 1.2s ease-in-out infinite alternate;
+  }
 }
 
-@supports (mask-mode: alpha) and (mask-image: url('')) {
-  @media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
-    .runningWhaleAnimated {
-      display: block;
-      background: currentColor;
-      mask: url('./running-whale@2x.png') center / 100% 100% no-repeat;
-      mask-mode: alpha;
-      /* Keep animated-mask repaints on an icon-sized composited layer. */
-      will-change: transform;
-    }
+@keyframes running-dot {
+  from {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
 
-    .runningWhaleStill {
-      display: none;
-    }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

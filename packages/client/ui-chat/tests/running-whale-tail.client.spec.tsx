@@ -9,20 +9,16 @@ import { RunningWhaleTail } from '../src/client/chat/RunningWhaleTail.tsx'
 afterEach(cleanup)
 
 describe('RunningWhaleTail', () => {
-  it('renders a decorative mask seat and static SVG without inline styles', () => {
+  it('renders a decorative dot in a fixed seat, with no mascot artwork and no inline styles', () => {
     const view = render(<RunningWhaleTail />)
     const icon = view.container.firstElementChild!
     expect(icon.tagName).toBe('SPAN')
     expect(icon.getAttribute('aria-hidden')).toBe('true')
-    expect(icon.children).toHaveLength(2)
+    expect(icon.children).toHaveLength(1)
     expect(icon.firstElementChild?.tagName).toBe('SPAN')
     expect(icon.firstElementChild?.childElementCount).toBe(0)
-    const svg = icon.querySelector('svg')!
-    expect(icon.lastElementChild).toBe(svg)
-    expect(svg.getAttribute('viewBox')).toBe('0 0 16 16')
-    expect(svg.querySelectorAll('path')).toHaveLength(1)
-    expect(svg.querySelector('path')?.getAttribute('d')).toMatch(/^M/)
-    expect(svg.querySelector('path')?.getAttribute('stroke')).toBe('currentColor')
+    // The pulse is CSS on the dot: no SVG, no SMIL, nothing inline.
+    expect(view.container.querySelector('svg')).toBeNull()
     expect(view.container.querySelector('animate')).toBeNull()
     expect(view.container.querySelector('[style]')).toBeNull()
   })

@@ -4132,10 +4132,10 @@ describe('ChatView', () => {
     expect(column.lastElementChild).toBe(status)
     expect(within(status as HTMLElement).getByRole('status').textContent).toBe('正在深入思考')
     expect(status?.lastElementChild?.textContent).toBe('正在深入思考')
-    const icon = status?.querySelector('svg')?.parentElement
+    const icon = status?.querySelector('[aria-hidden="true"]:has(> span:only-child)')
     expect(icon?.getAttribute('aria-hidden')).toBe('true')
     expect(icon?.firstElementChild?.tagName).toBe('SPAN')
-    expect(icon?.querySelectorAll('path')).toHaveLength(1)
+    expect(icon?.querySelector('svg')).toBeNull()
     expect(icon?.getAttribute('style')).toBeNull()
     expect(status?.querySelector('animate')).toBeNull()
     act(() => { h.setSession({ running: false }) })
