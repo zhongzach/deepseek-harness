@@ -261,7 +261,7 @@ type SessionTreeProps = Pick<
   revealSessionId?: SessionId | undefined
   /** Acknowledge that the chosen Session row has been revealed. */
   onSessionRevealed: (sessionId: SessionId) => void
-  /** Trailing content after the last row, scrolling with the list (the footer seat). */
+  /** Content under the list (the footer seat): outside the scrolling region, so it stays in view. */
   footer?: ReactNode
 }
 
@@ -634,21 +634,23 @@ function SessionTree({
   const groupRows = rootGroups.map(group => renderGroup(group, 0))
   return (
     <div className={clsx(css.treeBody, css.wide)}>
-      {workspaceDropAtListStart && <span className={css.listTopDropIndicator} aria-hidden="true" />}
-      <AnimatedRows
-        className={clsx(css.list, workspaceDropAtListStart && css.listTopDropActive)}
-        label={t('section.sessions')}
-        rowKeys={rowKeys}
-        ready={list.phase === 'ready' && workspaceReady && !nativeDragActive}
-        resetKey={JSON.stringify([animationResetKey, sessionLimits])}
-      >
-        {groups.length === 0 && (
-          <EmptySessions rowState={rowState} onLeaveArchivedOnly={onLeaveArchivedOnly} t={t} />
-        )}
-        {groupRows}
-        {footer}
-      </AnimatedRows>
-      <span className={css.fade} />
+      <div className={css.listSeat} data-session-list-seat="">
+        {workspaceDropAtListStart && <span className={css.listTopDropIndicator} aria-hidden="true" />}
+        <AnimatedRows
+          className={clsx(css.list, workspaceDropAtListStart && css.listTopDropActive)}
+          label={t('section.sessions')}
+          rowKeys={rowKeys}
+          ready={list.phase === 'ready' && workspaceReady && !nativeDragActive}
+          resetKey={JSON.stringify([animationResetKey, sessionLimits])}
+        >
+          {groups.length === 0 && (
+            <EmptySessions rowState={rowState} onLeaveArchivedOnly={onLeaveArchivedOnly} t={t} />
+          )}
+          {groupRows}
+        </AnimatedRows>
+        <span className={css.fade} data-list-fade="" />
+      </div>
+      {footer}
     </div>
   )
 }
@@ -700,60 +702,62 @@ function FlatList({
   const now = Date.now()
   return (
     <div className={clsx(css.treeBody, css.wide)}>
-      <AnimatedRows
-        className={clsx(css.list, css.flatList)}
-        label={t('section.sessions')}
-        rowKeys={rows.length === 0 ? ['empty'] : rows.map(row => `session:${row.id}`)}
-        ready={list.phase === 'ready' && workspaceReady && drag === null}
-        resetKey={animationResetKey}
-      >
-        {rows.length === 0 && (
-          <EmptySessions rowState={rowState} onLeaveArchivedOnly={onLeaveArchivedOnly} t={t} />
-        )}
-        {rows.map((node) => {
-          const active = drag !== null && drag.pinned === node.pinned
-          const normalizeHalf = (half: 'before' | 'after'): 'before' | 'after' =>
-            node.blank ? 'after' : half
-          return (
-            <SessionNodeItem
-              key={node.id}
-              node={node}
-              currentId={currentId}
-              now={now}
-              onOpen={open}
-              onRenameRequest={onSessionRenameRequest}
-              renderSlot={renderSlot}
-              onReveal={node.id === revealSessionId
-                ? () => { onSessionRevealed(node.id) }
-                : undefined}
-              drag={{
-                start: () => {
-                  dropCommitted.current = false
-                  setDrag({ accountKey: FLAT_SESSION_ORDER_KEY, sessionId: node.id, pinned: node.pinned, over: null })
-                },
-                active,
-                marker: active && drag.over?.id === node.id ? drag.over.half : null,
-                hover: (half) => {
-                  setDrag(current => current === null ? current : {
-                    ...current, over: { id: node.id, half: normalizeHalf(half) },
-                  })
-                },
-                drop: (half) => {
-                  if (drag !== null) commitDrag(drag, { id: node.id, half: normalizeHalf(half) })
-                },
-                end: () => {
-                  if (drag?.over !== null && drag?.over !== undefined) commitDrag(drag, drag.over)
-                  else setDrag(null)
-                  dropCommitted.current = false
-                },
-              }}
-              t={t}
-            />
-          )
-        })}
-        {footer}
-      </AnimatedRows>
-      <span className={css.fade} />
+      <div className={css.listSeat} data-session-list-seat="">
+        <AnimatedRows
+          className={clsx(css.list, css.flatList)}
+          label={t('section.sessions')}
+          rowKeys={rows.length === 0 ? ['empty'] : rows.map(row => `session:${row.id}`)}
+          ready={list.phase === 'ready' && workspaceReady && drag === null}
+          resetKey={animationResetKey}
+        >
+          {rows.length === 0 && (
+            <EmptySessions rowState={rowState} onLeaveArchivedOnly={onLeaveArchivedOnly} t={t} />
+          )}
+          {rows.map((node) => {
+            const active = drag !== null && drag.pinned === node.pinned
+            const normalizeHalf = (half: 'before' | 'after'): 'before' | 'after' =>
+              node.blank ? 'after' : half
+            return (
+              <SessionNodeItem
+                key={node.id}
+                node={node}
+                currentId={currentId}
+                now={now}
+                onOpen={open}
+                onRenameRequest={onSessionRenameRequest}
+                renderSlot={renderSlot}
+                onReveal={node.id === revealSessionId
+                  ? () => { onSessionRevealed(node.id) }
+                  : undefined}
+                drag={{
+                  start: () => {
+                    dropCommitted.current = false
+                    setDrag({ accountKey: FLAT_SESSION_ORDER_KEY, sessionId: node.id, pinned: node.pinned, over: null })
+                  },
+                  active,
+                  marker: active && drag.over?.id === node.id ? drag.over.half : null,
+                  hover: (half) => {
+                    setDrag(current => current === null ? current : {
+                      ...current, over: { id: node.id, half: normalizeHalf(half) },
+                    })
+                  },
+                  drop: (half) => {
+                    if (drag !== null) commitDrag(drag, { id: node.id, half: normalizeHalf(half) })
+                  },
+                  end: () => {
+                    if (drag?.over !== null && drag?.over !== undefined) commitDrag(drag, drag.over)
+                    else setDrag(null)
+                    dropCommitted.current = false
+                  },
+                }}
+                t={t}
+              />
+            )
+          })}
+        </AnimatedRows>
+        <span className={css.fade} data-list-fade="" />
+      </div>
+      {footer}
     </div>
   )
 }
@@ -815,7 +819,7 @@ function SearchResults({
     : Object.values(list.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id
 
   return (
-    <div className={clsx(css.treeBody, css.wide)}>
+    <div className={clsx(css.treeBody, css.wide)} data-session-list-seat="">
       <div className={css.list}>
         <div className={css.searchTree} role="tree" aria-label={t('search.results.aria')}>
           {results.items.map(result => (
@@ -853,7 +857,7 @@ function SearchResults({
           </div>
         )}
       </div>
-      <span className={css.fade} />
+      <span className={css.fade} data-list-fade="" />
     </div>
   )
 }
@@ -921,7 +925,7 @@ export function WorkspaceBrowser({
   // Live occupancy of this surface's directory-flow hole (the same source the
   // flow reads): a composition without a picking affordance can add nothing.
   const directoryFlowAvailable = useDirectoryFlow(occupied => occupied)
-  // Entries after the last row scroll with the list; an empty seat leaves no box.
+  // Entries sit under the list, outside its scrolling region; an empty seat leaves no box.
   const listFooter = (
     <div className={css.listFooter}>
       {renderSlot('sidebar.workspaces.footer', { addWorkspace: directoryFlowAvailable ? requestAddWorkspace : undefined })}

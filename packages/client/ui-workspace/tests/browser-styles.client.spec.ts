@@ -52,6 +52,9 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(listArea?.get('padding-left')).toBe('4px')
     expect(listArea?.get('margin-right')).toBe('calc(-1 * var(--dsh-session-list-edge-inset))')
     expect(declarations('.fade')?.get('right')).toBe('var(--dsh-session-list-edge-inset)')
+    // The footer seat sits outside the list, so it takes the rows' trailing inset itself.
+    expect(declarations('.listFooter')?.get('margin-right')).toBe('var(--dsh-session-list-edge-inset)')
+    expect(declarations('.listSeat')?.get('position')).toBe('relative')
     expect(list?.get('margin-right')).toBe('var(--dsh-session-list-scrollbar-offset)')
     expect(list?.get('margin-left')).toBe('-4px')
     expect(list?.get('padding-left')).toBe('4px')

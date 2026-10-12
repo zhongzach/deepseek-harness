@@ -782,11 +782,18 @@ describe('WorkspaceBrowser', () => {
     })
     const entry = screen.getByRole('button', { name: 'Add novel' })
     expect(screen.getByText('alpha').compareDocumentPosition(entry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // The rows scroll inside the list seat; the footer sits under it, so a long list cannot push it out of view.
+    expect(screen.getByText('alpha').closest('[data-session-list-seat]')).not.toBeNull()
+    expect(entry.closest('[data-session-list-seat]')).toBeNull()
+    // A glass sidebar swaps the seat's opaque bottom fade for a mask by these two contracts.
+    expect(document.querySelectorAll('[data-session-list-seat] > [data-list-fade]')).toHaveLength(1)
     fireEvent.click(entry)
     expect(requestAddWorkspace).toHaveBeenCalledOnce()
     act(() => { b.store.actions.setGroupBy('flat') })
     expect(screen.getByText('alpha-s').compareDocumentPosition(screen.getByRole('button', { name: 'Add novel' }))
       & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('alpha-s').closest('[data-session-list-seat]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Add novel' }).closest('[data-session-list-seat]')).toBeNull()
     // Without a directory flow there is nothing to add, as the header button hides.
     rerender(b, { useDirectoryFlow: bindSnapshotSelector({ getSnapshot: () => false, subscribe: () => () => {} }) })
     expect(footerOwners.at(-1)?.addWorkspace).toBeUndefined()

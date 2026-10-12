@@ -315,17 +315,32 @@
   padding-left: 0;
 }
 
-/* Footer seat after the last row; collapses when no entry renders. */
+/* Footer seat under the list, outside the scrolling region: its entries stay
+   in view however long the list grows. Inset like the rows (the tree body
+   reaches the shell edge for the scrollbar gutter); collapses when no entry
+   renders. */
 .listFooter {
   flex: none;
+  margin-right: var(--dsh-session-list-edge-inset);
 }
 
 .listFooter:empty {
   display: none;
 }
 
-/* Relative for the bottom fade overlay. */
+/* The list seat, then the footer seat under it. */
 .treeBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Scroll seat: the list and its bottom fade (relative for the overlay). A
+   surface that paints the sidebar as glass addresses it and the fade by their
+   data attributes, since an opaque-fill gradient reads as a band there. */
+.listSeat {
   flex: 1;
   min-height: 0;
   display: flex;
