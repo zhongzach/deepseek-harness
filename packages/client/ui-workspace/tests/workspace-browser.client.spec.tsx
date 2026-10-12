@@ -1315,6 +1315,11 @@ describe('WorkspaceBrowser', () => {
     // Expanding another workspace gives it the same action in the same place, as a quiet row.
     fireEvent.click(screen.getByText('beta'))
     expect(create().map(button => button.getAttribute('data-workspace-new-session'))).toEqual(['current', 'other'])
+    // Only the current workspace's section is the card, and it says so for a surface that restyles cards (a glass sidebar).
+    const cards = [...document.querySelectorAll('[data-workspace-current-card]')]
+    expect(cards).toHaveLength(1)
+    expect(cards[0]!.contains(create()[0]!)).toBe(true)
+    expect(cards[0]!.contains(create()[1]!)).toBe(false)
     fireEvent.click(create()[1]!)
     expect(startSession).toHaveBeenLastCalledWith(wid('beta'))
     // Once the provisional blank row is current it stands in the button's place.

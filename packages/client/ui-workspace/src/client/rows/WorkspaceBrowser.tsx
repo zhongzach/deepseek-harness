@@ -472,6 +472,8 @@ function SessionTree({
       <div
         key={group.key}
         style={{ '--dsh-workspace-indent': `${depth * 12}px` } as CSSProperties}
+        // The current workspace's card: a surface that paints the sidebar as glass addresses it by this mark.
+        data-workspace-current-card={currentWorkspace ? '' : undefined}
         className={clsx(
           css.groupSection,
           currentWorkspace && css.currentGroup,
