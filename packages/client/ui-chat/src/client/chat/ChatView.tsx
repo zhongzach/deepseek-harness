@@ -8,7 +8,7 @@ import type {
 import type { InboxState } from '@deepseek-ai/dsh-agent/types'
 import type { PendingSubmission } from '@deepseek-ai/dsh-api-session-controller/client'
 import {
-  Button, IconChevronDownOutlineRegular, MarkdownDelegateProvider, Modal,
+  Button, IconChevronDownOutlineRegular, MarkdownDelegateProvider, Modal, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps, OpenFileOptions } from '../contract/slots.ts'
 import type { ChatSnapshot } from '../contract/snapshot.ts'
@@ -289,14 +289,16 @@ export function ChatView({
       </div>
       {!scroll.followingTail && (
         <div className={css.toBottomSlot}>
-          <button
-            type="button"
-            className={css.toBottom}
-            aria-label={t('chat.toBottom')}
-            onClick={scroll.returnToBottom}
-          >
-            <IconChevronDownOutlineRegular />
-          </button>
+          <Tooltip label={t('chat.toBottom')} side="top" delayMs={400} portal>
+            <button
+              type="button"
+              className={css.toBottom}
+              aria-label={t('chat.toBottom')}
+              onClick={scroll.returnToBottom}
+            >
+              <IconChevronDownOutlineRegular />
+            </button>
+          </Tooltip>
         </div>
       )}
       {fileOpenError !== null && (
