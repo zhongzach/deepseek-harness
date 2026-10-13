@@ -248,6 +248,7 @@ export function apply(ctx: Context): void {
     unarchiveSession: async (sessionId) => { await uiWorkspace.unarchiveSession(sessionId) },
     createWorkspace: input => workspaces.create(input),
     requestSearch: shortcutControls.search,
+    offeredViewOptions: () => ctx.bail(ctx, 'ui-workspace/view-options'),
     requestAddWorkspace: shortcutControls.add,
     closeAddWorkspace: shortcutControls.closeAdd,
     setDirectoryBusy: shortcutControls.directoryBusy,

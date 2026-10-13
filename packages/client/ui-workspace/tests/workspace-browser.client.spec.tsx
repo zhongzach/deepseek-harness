@@ -113,6 +113,8 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     useShortcuts: select => select([]),
     useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
     requestSearch: controls.search,
+    // Every view-options entry is offered unless a composition narrows the list.
+    offeredViewOptions: () => undefined,
     requestAddWorkspace: controls.add,
     closeAddWorkspace: controls.closeAdd,
     setDirectoryBusy: controls.directoryBusy,
@@ -285,10 +287,10 @@ describe('WorkspaceBrowser', () => {
     const input = screen.getByPlaceholderText('搜索会话名称')
     expect(document.activeElement).toBe(input)
     fireEvent.click(screen.getByRole('button', { name: '清除搜索' }))
-    const add = screen.getByRole('button', { name: '添加工作区' })
-    add.focus()
-    fireEvent.click(add)
-    expect(document.activeElement).toBe(add)
+    // fork (WriterX): the wide header has no add button — adding is the footer's row and the shortcut, which
+    // both send this request.
+    expect(screen.queryByRole('button', { name: '添加工作区' })).toBeNull()
+    act(() => { b.controls.add() })
     expect(screen.getByTestId('directory-flow')).toBeTruthy()
     expect(panelInfo.activePanelId).toBe('panel-a')
     expect(b.props.open).not.toHaveBeenCalled()
@@ -462,11 +464,15 @@ describe('WorkspaceBrowser', () => {
     // Sessions hidden while their group is folded.
     expect(screen.queryByText('alpha-s')).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
+    // fork (WriterX): the section title itself is the trigger — the header carries no icon buttons.
+    expect(screen.queryByRole('button', { name: '添加工作区' })).toBeNull()
+    const title = screen.getByRole('button', { name: '视图选项' })
+    expect(title.textContent).toBe('工作区')
+    fireEvent.click(title)
     expect(screen.getByText('分组方式')).toBeTruthy() // the menu heading label
-    expect(screen.getAllByRole('separator')).toHaveLength(2)
+    expect(screen.getAllByRole('separator')).toHaveLength(3)
     expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
-      '按工作区', '按工作区树', '单列表', '手动排序', '最近更新', '隐藏已归档', '全部对话（显示已归档）', '仅显示已归档',
+      '搜索会话', '按工作区', '按工作区树', '单列表', '手动排序', '最近更新', '隐藏已归档', '全部对话（显示已归档）', '仅显示已归档',
     ])
     expect(screen.getByRole('menuitem', { name: '按工作区' }).querySelector('svg')).toBeTruthy()
     expect(screen.getByRole('menuitem', { name: '手动排序' }).querySelector('svg')).toBeTruthy()
@@ -490,6 +496,64 @@ describe('WorkspaceBrowser', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
     expect(b.store.getSnapshot().groupBy).toBe('workspace')
+  })
+
+  it('offers only the entries a composition keeps, and drops a section left with a single entry', () => {
+    // fork (WriterX): a product whose users browse books has no use for the flat list or the directory tree.
+    const b = mount({
+      offeredViewOptions: () => ['search', 'workspace', 'manual', 'updated', 'hide-archived', 'show-archived'],
+      useSessions: hook(sessionState([summary('alpha-s', 1)])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s'])])),
+    })
+    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
+    // One grouping is no choice: its heading and its only entry are both gone.
+    expect(screen.queryByText('分组方式')).toBeNull()
+    expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
+      '搜索会话', '手动排序', '最近更新', '隐藏已归档', '全部对话（显示已归档）',
+    ])
+    expect(screen.getAllByRole('separator')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('menuitem', { name: '全部对话（显示已归档）' }))
+    expect(b.store.getSnapshot().archivedFilter).toBe('show')
+    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '手动排序' }))
+    expect(b.store.getSnapshot().orderBy).toBe('manual')
+  })
+
+  it('brings a stored choice that is no longer offered back to its default, and leaves offered ones alone', () => {
+    const b = mount({
+      offeredViewOptions: () => ['search', 'manual', 'updated', 'hide-archived', 'show-archived'],
+      useSessions: hook(sessionState([summary('alpha-s', 1)])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s'])])),
+    })
+    // Picked before the menu was narrowed: nothing on screen would let the user leave these.
+    act(() => { b.store.actions.setGroupBy('flat'); b.store.actions.setArchivedFilter('only'); b.store.actions.setOrderBy('manual', {}) })
+    expect(b.store.getSnapshot()).toMatchObject({ groupBy: 'workspace', archivedFilter: 'default', orderBy: 'manual' })
+    expect(screen.getByRole('button', { name: '视图选项' }).textContent).toBe('工作区')
+    act(() => { b.store.actions.setGroupBy('workspace-tree'); b.store.actions.setArchivedFilter('show') })
+    expect(b.store.getSnapshot()).toMatchObject({ groupBy: 'workspace', archivedFilter: 'show', orderBy: 'manual' })
+  })
+
+  it('keeps every stored choice when the composition narrows nothing', () => {
+    const b = mount({
+      useSessions: hook(sessionState([summary('alpha-s', 1)])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s'])])),
+    })
+    act(() => { b.store.actions.setGroupBy('flat'); b.store.actions.setArchivedFilter('only') })
+    expect(b.store.getSnapshot()).toMatchObject({ groupBy: 'flat', archivedFilter: 'only' })
+  })
+
+  it('falls back to recency when manual order is not offered', () => {
+    const b = mount({
+      offeredViewOptions: () => ['search'],
+      useSessions: hook(sessionState([summary('alpha-s', 1)])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s'])])),
+    })
+    act(() => { b.store.actions.setOrderBy('manual', {}) })
+    expect(b.store.getSnapshot().orderBy).toBe('updated')
+    // Only the search is left: the menu is that one entry, with no separators.
+    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
+    expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual(['搜索会话'])
+    expect(screen.queryAllByRole('separator')).toHaveLength(0)
   })
 
   it('picking 全部对话（显示已归档） keeps existing rows and reveals archived ones in place', () => {
@@ -2483,6 +2547,18 @@ describe('Workspace tree grouping', () => {
     createWorkspaceViewStore().create().actions.setGroupBy('workspace-tree')
   })
   const root = { ...workspace('root', ['root-session'], 'Projects'), path: '/projects' }
+  it('opens the inline search from the title’s menu, and keeps the add button only on the rail', () => {
+    const b = mount({ useWorkspaces: hook(workspaceState([workspace('alpha', [])])) })
+    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '搜索会话' }))
+    expect(document.activeElement).toBe(screen.getByPlaceholderText('搜索会话名称'))
+    expect(screen.queryByRole('menu')).toBeNull()
+    // The rail has no title and no footer row: its add button is the only way to add from there.
+    rerender(b, { wide: false })
+    expect(screen.queryByRole('button', { name: '视图选项' })).toBeNull()
+    expect(screen.getByRole('button', { name: '添加工作区' })).toBeTruthy()
+  })
+
   const team = workspace('team', ['team-session'], 'Team')
   const child = { ...workspace('child', ['child-session'], 'Child'), path: '/projects/team/child' }
   const section = (title: string) => screen.getByText(title).closest<HTMLElement>('[class*="groupSection"]')!
@@ -2494,7 +2570,7 @@ describe('Workspace tree grouping', () => {
       renderSlot: ((_name: string, owner: DirectoryFlowOwnerProps) => owner.open
         ? <button onClick={() => { owner.onPicked('/projects') }}>Pick directory</button> : null) as WorkspaceBrowserProps['renderSlot'],
     })
-    fireEvent.click(screen.getByRole('button', { name: '添加工作区' }))
+    act(() => { b.controls.add() })
     fireEvent.click(screen.getByRole('button', { name: 'Pick directory' }))
     await waitFor(() => { expect(b.props.startSession).toHaveBeenCalledWith(wid('root'), undefined) })
     expect(b.props.createWorkspace).toHaveBeenCalledWith({ path: '/projects' })

@@ -262,6 +262,31 @@ export type DirectoryPickingInjected = {
 export type DirectoryPickingHooks = PropsHooks<DirectoryPickingInjected['hooks']>
 
 /**
+ * One entry of the browser's view-options menu (the section title's menu): the
+ * search action, a grouping, an order, or an archived filter.
+ */
+export type ViewOptionId =
+  | 'search'
+  | 'workspace' | 'workspace-tree' | 'flat'
+  | 'manual' | 'updated'
+  | 'hide-archived' | 'show-archived' | 'only-archived'
+
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Ask the composition which view-options entries the workspace browser
+     * offers. A product whose users have no use for some of them (a flat
+     * session list, a directory tree) answers with the ids it keeps; a
+     * grouping, order or filter left with a single entry is no choice and its
+     * whole section is dropped. With no answer every entry is offered.
+     * @mode bail
+     * @returns the offered entry ids, in any order.
+     */
+    'ui-workspace/view-options'(): readonly ViewOptionId[] | undefined
+  }
+}
+
+/**
  * Browser-private injected share (arrives via the register inject factory).
  * Data reads use the global framework hooks; these are the Host actions the
  * browsing region drives.
@@ -280,6 +305,12 @@ export type WorkspaceBrowserInjected = {
   }
   /** Open the browser search and focus its input. */
   requestSearch: () => void
+  /**
+   * The view-options entries this composition offers; undefined offers them
+   * all. Read at render time, because the inject result is memoized and the
+   * plugin that narrows the list may load after the browser first rendered.
+   */
+  offeredViewOptions: () => readonly ViewOptionId[] | undefined
   /** Request the existing directory picker. */
   requestAddWorkspace: () => void
   /** Consume the directory-picker opening request. */

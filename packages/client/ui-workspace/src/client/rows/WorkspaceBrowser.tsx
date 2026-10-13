@@ -18,10 +18,10 @@ import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useStat
 import clsx from 'clsx'
 import {
   Button, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineRegular, IconArchiveOutlineRegular,
-  IconChevronsUpDownOutlineRegular, IconClockOutlineRegular, IconCloseFillRegular,
+  IconChevronDownOutlineRegular, IconChevronsUpDownOutlineRegular, IconClockOutlineRegular, IconCloseFillRegular,
   IconFlatListOutlineRegular, IconFolderCloseRegular, IconPlusOutlineMedium, IconProjectAddOutlineRegular,
-  IconQueueOutlineRegular, IconSearchOutlineRegular, IconSlidersTwoOutlineRegular,
-  IconWorkspaceTreeOutlineRegular, Menu, Modal, Toast, Tooltip,
+  IconQueueOutlineRegular, IconSearchOutlineRegular,
+  IconWorkspaceTreeOutlineRegular, Menu, Modal, Toast, Tooltip, type MenuEntry,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   SessionListState, SessionSearchResultItem,
@@ -30,7 +30,7 @@ import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-
 import { workspaceDisplayTitle } from '@deepseek-ai/dsh-api-workspace-controller/default-workspace'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
-import type { WorkspaceBrowserProps } from '../contract/slots.ts'
+import type { ViewOptionId, WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { ArchivedFilter, GroupNode, SessionNode, SessionOrderBy, SessionRowState } from '../tree.ts'
 import {
   deriveFlat, deriveGroups, deriveSearchResults, orderByRecency, owningGroupKey, owningParentFolder,
@@ -102,66 +102,93 @@ function useNativeDragAcceptance(active: boolean): void {
   }, [active])
 }
 
-/** Grouping, ordering, and archived-filter menu; own open state so it resets with the wide chrome. */
-function ViewOptionsMenu({ groupBy, orderBy, archivedFilter, onGroupPick, onOrderPick, onArchivedFilterPick, t }: {
+/**
+ * Grouping, ordering, and archived-filter menu; own open state so it resets with the wide chrome.
+ *
+ * fork (WriterX): the section title is the menu's trigger. The header carries
+ * no icon buttons — the shelf reads as a plain 「书架」 until the author points
+ * at it — yet search, ordering and the archived filter stay one click away.
+ */
+/** The archived filters by the menu entry that picks each. */
+const ARCHIVED_ENTRY = { default: 'hide-archived', show: 'show-archived', only: 'only-archived' } as const
+
+function ViewOptionsMenu({
+  label, hidden, offered, groupBy, orderBy, archivedFilter, onGroupPick, onOrderPick, onArchivedFilterPick, onSearch, t,
+}: {
+  /** The section title shown as the trigger. */
+  label: string
+  /** The entries this composition offers; undefined offers them all. */
+  offered: readonly ViewOptionId[] | undefined
+  /** The inline search has taken the header's room. */
+  hidden: boolean
   groupBy: SessionGroupBy
   orderBy: SessionOrderBy
   archivedFilter: ArchivedFilter
   onGroupPick: (mode: SessionGroupBy) => void
   onOrderPick: (mode: SessionOrderBy) => void
   onArchivedFilterPick: (filter: ArchivedFilter) => void
+  onSearch: () => void
   t: WorkspaceBrowserProps['t']
 }) {
   const [open, setOpen] = useState(false)
+  const offers = (entry: { id: ViewOptionId }): boolean => offered === undefined || offered.includes(entry.id)
+  // One entry is no choice: a grouping, order or filter needs two to show.
+  const choice = (id: string, heading: string, entries: { id: ViewOptionId; label: string; icon: ReactNode }[]): MenuEntry[] => {
+    const kept = entries.filter(offers)
+    return kept.length < 2 ? [] : [{ type: 'label', id, text: heading }, ...kept]
+  }
+  const sections: MenuEntry[][] = [
+    [{ id: 'search' as const, label: t('search.sessions.aria'), icon: <IconSearchOutlineRegular /> }].filter(offers),
+    choice('group-by', t('groupBy.label'), [
+      { id: 'workspace', label: t('groupBy.workspace'), icon: <IconFolderCloseRegular /> },
+      { id: 'workspace-tree', label: t('groupBy.workspaceTree'), icon: <IconWorkspaceTreeOutlineRegular /> },
+      { id: 'flat', label: t('groupBy.flat'), icon: <IconFlatListOutlineRegular /> },
+    ]),
+    choice('order-by', t('orderBy.label'), [
+      { id: 'manual', label: t('orderBy.manual'), icon: <IconChevronsUpDownOutlineRegular /> },
+      { id: 'updated', label: t('orderBy.updated'), icon: <IconClockOutlineRegular /> },
+    ]),
+    choice('filter-by', t('filterBy.label'), [
+      { id: 'hide-archived', label: t('viewOptions.hideArchived'), icon: <IconArchiveOffOutlineRegular /> },
+      { id: 'show-archived', label: t('viewOptions.showArchived'), icon: <IconQueueOutlineRegular /> },
+      { id: 'only-archived', label: t('viewOptions.onlyArchived'), icon: <IconArchiveCheckOutlineRegular /> },
+    ]),
+  ].filter(section => section.length > 0)
   return (
     <Menu
       open={open}
       onClose={() => { setOpen(false) }}
-      items={[
-        { type: 'label' as const, id: 'group-by', text: t('groupBy.label') },
-        { id: 'workspace', label: t('groupBy.workspace'), icon: <IconFolderCloseRegular /> },
-        { id: 'workspace-tree', label: t('groupBy.workspaceTree'), icon: <IconWorkspaceTreeOutlineRegular /> },
-        { id: 'flat', label: t('groupBy.flat'), icon: <IconFlatListOutlineRegular /> },
-        { type: 'separator' as const, id: 'order-by-separator' },
-        { type: 'label' as const, id: 'order-by', text: t('orderBy.label') },
-        { id: 'manual', label: t('orderBy.manual'), icon: <IconChevronsUpDownOutlineRegular /> },
-        { id: 'updated', label: t('orderBy.updated'), icon: <IconClockOutlineRegular /> },
-        { type: 'separator' as const, id: 'archived-filter-separator' },
-        { type: 'label' as const, id: 'filter-by', text: t('filterBy.label') },
-        { id: 'hide-archived', label: t('viewOptions.hideArchived'), icon: <IconArchiveOffOutlineRegular /> },
-        { id: 'show-archived', label: t('viewOptions.showArchived'), icon: <IconQueueOutlineRegular /> },
-        { id: 'only-archived', label: t('viewOptions.onlyArchived'), icon: <IconArchiveCheckOutlineRegular /> },
-      ]}
-      selectedIds={[
-        groupBy,
-        orderBy,
-        { default: 'hide-archived', show: 'show-archived', only: 'only-archived' }[archivedFilter],
-      ]}
+      className={clsx(css.sectionLabel, css.wide, hidden && css.sectionLabelHidden)}
+      items={sections.flatMap((section, index): MenuEntry[] => index === 0 ? section : [{ type: 'separator', id: `section-${String(index)}` }, ...section])}
+      selectedIds={[groupBy, orderBy, ARCHIVED_ENTRY[archivedFilter]]}
       onSelect={(id) => {
-        if (id === 'workspace' || id === 'workspace-tree' || id === 'flat') onGroupPick(id)
+        if (id === 'search') onSearch()
+        else if (id === 'workspace' || id === 'workspace-tree' || id === 'flat') onGroupPick(id)
         else if (id === 'manual' || id === 'updated') onOrderPick(id)
         else if (id === 'hide-archived') onArchivedFilterPick('default')
         else if (id === 'show-archived') onArchivedFilterPick('show')
         else if (id === 'only-archived') onArchivedFilterPick('only')
         setOpen(false)
       }}
-      align="end"
+      align="start"
       dense
       listClassName={css.viewOptionsMenu}
       // Portal: the section header clips overflow, so an in-place list would
       // be cut off at the header's bounds.
       portal
       anchor={(
-        <Tooltip label={t('viewOptions.label')} side="bottom" delayMs={500}>
-          <button
-            type="button"
-            className={clsx(css.iconButton, css.wide)}
-            aria-label={t('viewOptions.label')}
-            onClick={() => { setOpen(v => !v) }}
-          >
-            <IconSlidersTwoOutlineRegular />
-          </button>
-        </Tooltip>
+        <button
+          type="button"
+          className={css.sectionLabelButton}
+          aria-label={t('viewOptions.label')}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          title={t('viewOptions.label')}
+          onClick={() => { setOpen(v => !v) }}
+        >
+          <span>{label}</span>
+          <IconChevronDownOutlineRegular className={css.sectionLabelChevron} size={12} />
+        </button>
       )}
     />
   )
@@ -894,6 +921,7 @@ export function WorkspaceBrowser({
   useShortcuts,
   useWorkspaceShortcuts,
   requestSearch,
+  offeredViewOptions,
   requestAddWorkspace,
   closeAddWorkspace,
   setDirectoryBusy,
@@ -1005,6 +1033,20 @@ export function WorkspaceBrowser({
     [UNGROUPED_KEY, orderedUngroupedSessionIds] as const,
     [FLAT_SESSION_ORDER_KEY, orderedFlatSessionIds] as const,
   ]), [orderedFlatSessionIds, orderedUngroupedSessionIds, orderedWorkspaces])
+  // A stored choice the composition no longer offers (picked before the menu
+  // was narrowed, or by another build) cannot be left by its user: it falls
+  // back to that choice's default.
+  const offeredViewOptionIds = offeredViewOptions()
+  const offeredKey = offeredViewOptionIds?.join(' ')
+  const latestSessionOrders = useRef(activeSessionOrders)
+  latestSessionOrders.current = activeSessionOrders
+  useEffect(() => {
+    if (offeredKey === undefined) return
+    const offered = offeredKey.split(' ')
+    if (groupBy !== 'workspace' && !offered.includes(groupBy)) actions.setGroupBy('workspace')
+    if (orderBy !== 'updated' && !offered.includes(orderBy)) actions.setOrderBy('updated', latestSessionOrders.current)
+    if (archivedFilter !== 'default' && !offered.includes(ARCHIVED_ENTRY[archivedFilter])) actions.setArchivedFilter('default')
+  }, [actions, archivedFilter, groupBy, offeredKey, orderBy])
   useEffect(() => {
     if (workspacePhase !== 'ready') return
     actions.retainAccountKeys([
@@ -1251,9 +1293,19 @@ export function WorkspaceBrowser({
     <div className={clsx(css.root, !wide && css.rail)}>
       <div className={css.sectionHeader}>
         {wide && (
-          <span className={clsx(css.sectionLabel, css.wide, searchExpanded && css.sectionLabelHidden)}>
-            {groupBy === 'flat' ? t('section.sessions') : t('section.workspaces')}
-          </span>
+          <ViewOptionsMenu
+            label={groupBy === 'flat' ? t('section.sessions') : t('section.workspaces')}
+            hidden={searchExpanded}
+            offered={offeredViewOptionIds}
+            groupBy={groupBy}
+            orderBy={orderBy}
+            archivedFilter={archivedFilter}
+            onGroupPick={actions.setGroupBy}
+            onOrderPick={(mode) => { actions.setOrderBy(mode, activeSessionOrders) }}
+            onArchivedFilterPick={actions.setArchivedFilter}
+            onSearch={requestSearch}
+            t={t}
+          />
         )}
         {wide && (
           <div className={clsx(css.searchSlot, searchExpanded && css.searchSlotExpanded)}>
@@ -1312,22 +1364,13 @@ export function WorkspaceBrowser({
             </div>
           </div>
         )}
-        <div className={clsx(css.headerActions, wide && searchExpanded && css.headerActionsHidden)}>
-          {wide && (
-            <ViewOptionsMenu
-              groupBy={groupBy}
-              orderBy={orderBy}
-              archivedFilter={archivedFilter}
-              onGroupPick={actions.setGroupBy}
-              onOrderPick={(mode) => { actions.setOrderBy(mode, activeSessionOrders) }}
-              onArchivedFilterPick={actions.setArchivedFilter}
-              t={t}
-            />
-          )}
-          {/* Adding is the button's one action, so a composition with no
-              picking affordance has nothing to offer here: the region hides the
-              button rather than leaving a dead one in the header. */}
-          {directoryFlowAvailable && (
+        {/* fork (WriterX): the header keeps no icon buttons. Search and the view
+            options moved into the title's menu; adding a book is the footer's
+            full-width row (and the shortcut). The rail, which has no title and
+            no footer row, keeps the add button — it is the only way to add
+            from there. */}
+        {!wide && directoryFlowAvailable && (
+          <div className={css.headerActions}>
             <Tooltip label={t('workspace.add')} shortcutKeys={addShortcut?.keys} side="bottom" delayMs={500}>
               <button
                 ref={wsPlusRef}
@@ -1339,11 +1382,11 @@ export function WorkspaceBrowser({
                   requestAddWorkspace()
                 }}
               >
-                <IconProjectAddOutlineRegular size={wide ? 16 : 18} />
+                <IconProjectAddOutlineRegular size={18} />
               </button>
             </Tooltip>
-          )}
-        </div>
+          </div>
+        )}
         {/* Add flow + its error dialog (same package — direct composition). */}
         <WorkspacePickFlow
           t={t}

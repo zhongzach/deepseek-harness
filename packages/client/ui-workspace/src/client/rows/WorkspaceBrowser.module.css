@@ -96,6 +96,57 @@
   transition-delay: 0s, 0s, 0s, 0s, 180ms;
 }
 
+/* fork (WriterX): the section title is the header's only control. It reads as a
+   plain label; the chevron — and with it the hint that search, ordering and the
+   archived filter live here — shows when the author points at the title or tabs
+   onto it. The label sits flush left, so the header starts on the list's edge. */
+/* The title is the header's only control: it lines up with the row icons below. */
+.sectionHeader:has(.sectionLabelButton) {
+  justify-content: flex-start;
+  padding-left: 8px;
+}
+
+.sectionHeader > .sectionLabel { max-width: none; }
+
+.sectionLabelButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  margin-left: -6px;
+  padding: 0 4px 0 6px;
+  border: 0;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.sectionLabelButton:hover,
+.sectionLabelButton[aria-expanded='true'] {
+  background: var(--dsw-specific-sidebar-nav-item-hover, var(--dsw-alias-interactive-bg-hover));
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* Always there, quietly: without it nothing says the title opens a menu. */
+.sectionLabelChevron {
+  flex: none;
+  opacity: 0.55;
+  transition: opacity 120ms var(--ds-ease-in-out);
+}
+
+.sectionLabelButton:hover .sectionLabelChevron,
+.sectionLabelButton:focus-visible .sectionLabelChevron,
+.sectionLabelButton[aria-expanded='true'] .sectionLabelChevron {
+  opacity: 1;
+}
+
+/* The inline search has no resting button any more: it takes the header only
+   while it is open (the title's menu or the shortcut opens it). */
+.searchSlot:not(.searchSlotExpanded) { display: none; }
+
 .searchSlot {
   flex: 1;
   max-width: 28px;
