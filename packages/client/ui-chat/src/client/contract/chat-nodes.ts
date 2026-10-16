@@ -3,6 +3,7 @@ import type {
   ConversationLocation, ConversationViewNode, ModelRetryNode, RunningToolCall,
   ToolCallBlock,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { TurnProcessActivity } from './turn-process.ts'
 
 /** Final Chat render unit produced by a Chat business Definition. */
 export interface ChatConversationViewNode extends ConversationViewNode {
@@ -96,7 +97,7 @@ export interface TurnTailChatData {
 }
 
 /** Turn-level process disclosure projected before the finalized answer. */
-export interface TurnProcessChatData {
+export interface TurnProcessChatData extends TurnProcessActivity {
   readonly turn: number
   readonly controlAnchorSeq: number
   readonly processStartSeq: number

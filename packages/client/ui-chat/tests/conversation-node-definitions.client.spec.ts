@@ -16,6 +16,7 @@ import { AssistantStreamAccumulator } from '@deepseek-ai/dsh-llm/assistant-strea
 import { LlmAttemptId } from '@deepseek-ai/dsh-llm/brand'
 import type { StreamChunk } from '@deepseek-ai/dsh-llm'
 import { hasAssistantReplyContent } from '../src/client/contract/assistant-content.ts'
+import { sameTurnProcessActivity, type TurnProcessActivity } from '../src/client/contract/turn-process.ts'
 import { assistantDefinition } from '../src/client/conversation-nodes/assistant.ts'
 import { chatViewDefinition } from '../src/client/conversation-nodes/chat-snapshot-builder.ts'
 import { commandDefinition } from '../src/client/conversation-nodes/command.ts'
@@ -564,6 +565,38 @@ describe('built-in conversation node Definitions', () => {
       toolCallCount: 1,
       subagentCount: 1,
     })
+  })
+
+  it('records the skills, categories, and files a Turn worked through', () => {
+    const value = assembler([
+      at(1, 'turn/start', { turn: 1 }),
+      at(2, 'step/start', { turn: 1, step: 1 }),
+      at(3, 'tool/call', { turn: 1, step: 1, callId: 's1', name: 'skill', arguments: '{"name":"wx-short-write"}' }),
+      at(4, 'tool/call', { turn: 1, step: 1, callId: 's2', name: 'skill', arguments: '{"name":"wx-short-write"}' }),
+      at(5, 'tool/call', { turn: 1, step: 1, callId: 'r1', name: 'read', arguments: '{"file_path":"正文/全文.md"}' }),
+      at(6, 'tool/call', { turn: 1, step: 1, callId: 'r2', name: 'read', arguments: '{"path":"大纲/节奏蓝图.md"}' }),
+      at(7, 'tool/call', { turn: 1, step: 1, callId: 'r3', name: 'read', arguments: '{"file_path":"正文/全文.md"}' }),
+      at(8, 'tool/call', { turn: 1, step: 1, callId: 'r4', name: 'read', arguments: '{"file_path' }),
+      at(9, 'tool/call', { turn: 1, step: 1, callId: 'q1', name: 'ask_user_question', arguments: '{"questions":[]}' }),
+      at(10, 'tool/call', { turn: 1, step: 1, callId: 'e1', name: 'edit', arguments: '{"file_path":"正文/全文.md"}' }),
+    ])
+    const process = snapshot(value).timeline.turns.get(1)?.data.get('turn-process')
+    expect(process?.skills).toEqual(['wx-short-write'])
+    expect(process?.readPaths).toEqual(['正文/全文.md', '大纲/节奏蓝图.md'])
+    expect(process?.activity).toEqual([
+      { kind: 'read', count: 4 }, { kind: 'skills', count: 2 }, { kind: 'edit', count: 1 },
+    ])
+  })
+
+  it('treats a Turn\'s work as unchanged only while its skills, categories, and files read all match', () => {
+    const base: TurnProcessActivity = {
+      skills: ['wx-short-write'], activity: [{ kind: 'read', count: 2 }], readPaths: ['正文/全文.md', '设定/人物库.md'],
+    }
+    expect(sameTurnProcessActivity(base, { ...base, readPaths: [...base.readPaths] })).toBe(true)
+    expect(sameTurnProcessActivity(base, { ...base, readPaths: ['正文/全文.md', '大纲/大纲.md'] })).toBe(false)
+    expect(sameTurnProcessActivity(base, { ...base, readPaths: ['正文/全文.md'] })).toBe(false)
+    expect(sameTurnProcessActivity(base, { ...base, skills: ['wx-short-plan'] })).toBe(false)
+    expect(sameTurnProcessActivity(base, { ...base, activity: [{ kind: 'read', count: 3 }] })).toBe(false)
   })
 
   it('orders the opening User before its process control and later steering', () => {

@@ -93,7 +93,7 @@ describe('Definition-owned Chat process groups', () => {
     h.commit()
     expect(source.getSnapshot()?.data).toEqual({
       turn: 1, closed: true,
-      summary: { counts: [{ kind: 'write', count: 1 }], running: undefined, runningDetail: '' },
+      summary: { counts: [{ kind: 'write', count: 1 }], readPaths: [], running: undefined, runningDetail: '' },
     })
   })
 
@@ -112,11 +112,11 @@ describe('Definition-owned Chat process groups', () => {
     if (group.kind !== 'group') throw new Error('expected group')
     const source = h.store.groupSource(group.key)
     expect(source.getSnapshot()?.data.summary).toEqual({
-      counts: [{ kind, count: 1 }], running: kind, preparing: true, runningDetail: kind === 'tools' ? name : '',
+      counts: [{ kind, count: 1 }], readPaths: [], running: kind, preparing: true, runningDetail: kind === 'tools' ? name : '',
     })
     h.builder.apply({ upserts: [started], timeline })
     h.commit()
-    expect(source.getSnapshot()?.data.summary).toEqual({ counts: [{ kind, count: 1 }], running: kind, runningDetail: 'pwd' })
+    expect(source.getSnapshot()?.data.summary).toEqual({ counts: [{ kind, count: 1 }], readPaths: [], running: kind, runningDetail: 'pwd' })
     const settled: ChatNode<'tool-call'> = {
       ...started,
       data: { root: {
@@ -126,7 +126,7 @@ describe('Definition-owned Chat process groups', () => {
     }
     h.builder.apply({ upserts: [settled], timeline })
     h.commit()
-    expect(source.getSnapshot()?.data.summary).toEqual({ counts: [{ kind, count: 1 }], running: undefined, runningDetail: '' })
+    expect(source.getSnapshot()?.data.summary).toEqual({ counts: [{ kind, count: 1 }], readPaths: [], running: undefined, runningDetail: '' })
   })
 
   it.each(['a-trigger', 'z-trigger'])('renders one question reply without splitting its group for duplicate %s', (key) => {

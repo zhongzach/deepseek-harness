@@ -1,0 +1,83 @@
+/* The reply's card family: the code-block surface with a hairline. */
+.card {
+  padding: 2px 14px 4px;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: var(--dsw-radius-xl);
+  background: var(--dsw-alias-markdown-code-block);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: calc(32px + var(--dsh-content-font-delta, 0px));
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}
+
+.action {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.action:hover {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.rows {
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.row + .row {
+  border-top: 0.5px dashed var(--dsw-alias-border-l2);
+}
+
+.question {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: calc(22px + var(--dsh-content-font-delta, 0px));
+}
+
+.answers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0;
+}
+
+/* The reader's own answer, in the color of the reader's message bubble. */
+.answer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: calc(26px + var(--dsh-content-font-delta, 0px));
+  padding: 0 11px;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-specific-bubble);
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}
+
+.skipped {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}

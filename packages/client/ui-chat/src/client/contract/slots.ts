@@ -57,6 +57,19 @@ export interface AssistantActionOwnerProps {
   messageId: MessageId
 }
 
+/** Owner currency of the assistant identity at the head of one Turn's reply. */
+export interface TurnIdentityOwnerProps {
+  turn: number
+  /** Whether the Turn is still running. */
+  running: boolean
+}
+
+/** Owner currency of one skill chip at the head of a Turn's reply. */
+export interface TurnSkillOwnerProps {
+  /** Skill name as the Turn's `skill` call loaded it. */
+  name: string
+}
+
 /** Stable quota failure codes retained in the Session log; both raise the frame-wide notice. */
 export type QuotaNoticeCode = 'QUOTA' | 'ACCOUNT_QUOTA'
 
@@ -118,10 +131,22 @@ export interface ChatFileMentions {
   forClosing(owner: TurnTailOwnerProps, sessionId: SessionId): MarkdownFileMentions | undefined
 }
 
+/** Optional display names for workspace files the Chat names in process summaries and Tool rows. */
+export interface ChatFileLabels {
+  /**
+   * Name one workspace file for display; its path stays the address it opens.
+   * @param relative - path relative to the Session workspace, with `/` separators.
+   * @returns the display name, or undefined to show the path.
+   */
+  label(relative: string): string | undefined
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /** Optional prose file-mention provider. */
     chatFileMentions: ChatFileMentions
+    /** Optional display names for workspace files. */
+    chatFileLabels: ChatFileLabels
   }
 }
 
@@ -262,6 +287,12 @@ export interface ChatViewInjected {
   }
   forkAt: (seq: number) => void
   fileMentions: (owner: TurnTailOwnerProps) => MarkdownFileMentions | undefined
+  /**
+   * Display name of one workspace file, when a `chatFileLabels` provider names it.
+   * @param relative - path relative to the Session workspace, with `/` separators.
+   * @returns the name, or undefined to show the path.
+   */
+  fileLabel: (relative: string) => string | undefined
 }
 
 /** Full Chat view props. */
@@ -335,6 +366,14 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * adds an entry; entries without content return null.
      */
     'conversation.chat.turnTail': { kind: 'list'; scope: 'session'; owner: TurnTailOwnerProps }
+    /**
+     * Assistant identity at the head of each Turn's reply, before the chips of
+     * the skills the Turn loaded. Without an occupant the header shows only
+     * those chips and the Turn's time.
+     */
+    'conversation.chat.turn.identity': { kind: 'single'; scope: 'session'; owner: TurnIdentityOwnerProps }
+    /** Text of one skill chip at the head of a Turn's reply. Without an occupant the chip shows the skill name. */
+    'conversation.chat.turn.skill': { kind: 'single'; scope: 'session'; owner: TurnSkillOwnerProps }
     /**
      * Ordered actions for one finalized assistant message. Each entry receives
      * the durable message id; a fresh `id` adds an action and reusing one replaces

@@ -32,14 +32,15 @@ export type { TranscriptViewRowInjected, TranscriptViewRowProps } from './settin
 export type { TranscriptViewMode } from '../chat-settings.ts'
 export type { ChatPresentationPolicy } from './presentation-policy.ts'
 export type {
-  AssistantActionOwnerProps, ChatFileMentions, ChatNodeHookContext, ChatNodeInjected, ChatNodeOwnerProps,
+  AssistantActionOwnerProps, ChatFileLabels, ChatFileMentions, ChatNodeHookContext, ChatNodeInjected, ChatNodeOwnerProps,
   ChatNodeViewProps, ChatScrollPosition, ChatStore, ChatViewInjected, ChatViewSlotProps,
   CommandRowOwnerProps, CommandRowProps, ContextPresentationOwnerProps, MessageImagesProps, OpenFileOptions, PresentationInjected,
   QuotaNoticeCode, QuotaNoticeHostProps, QuotaNoticeInjected, QuotaNoticeOwnerProps, QuotaNoticeState,
-  TurnProcessOwnerProps, TurnTailOwnerProps, UseChat, UseChatNodeTurnData, UseDisclosure, UsePresentation,
+  TurnIdentityOwnerProps, TurnProcessOwnerProps, TurnSkillOwnerProps, TurnTailOwnerProps,
+  UseChat, UseChatNodeTurnData, UseDisclosure, UsePresentation,
 } from './contract/slots.ts'
 export type {
-  TurnProcessSpec,
+  TurnProcessActivity, TurnProcessSpec,
 } from './contract/turn-process.ts'
 export type { ChatKey } from './locale.ts'
 export type { ConversationContext, ConversationContextOriginKind } from './model/conversation-context.ts'
@@ -61,4 +62,4 @@ type PublicChatNodeDataMap = ChatNodeDataMap
 declare module './contract/chat-nodes.ts' {
   interface ChatNodeDataMap extends PublicChatNodeDataMap {}
 }
-export type { ProcessActivity, ProcessActivitySummary, ProcessGroupData } from './contract/process-groups.ts'
+export type { ProcessActivity, ProcessActivityCount, ProcessActivitySummary, ProcessGroupData } from './contract/process-groups.ts'

@@ -265,7 +265,7 @@ body {
   --dsw-alias-turn-trigger-bg: var(--dsw-alias-markdown-code-block);
   --dsw-alias-turn-trigger-bg-hover: var(--dsw-alias-interactive-bg-hover);
   --dsw-specific-bubble-highlight: var(--dsw-static-neutral-bluish-200);
-  --dsw-specific-bubble: var(--dsw-static-neutral-bluish-75);
+  --dsw-specific-bubble: var(--dsw-static-deepseek-50);
   --dsw-specific-input-major: var(--dsw-static-neutral-bluish-00);
   --dsw-specific-login-input: var(--dsw-static-neutral-bluish-50);
   --dsw-menu-surface-fill: rgba(255, 255, 255, 0.98);
@@ -383,7 +383,7 @@ body[data-ds-dark-theme] {
   --dsw-alias-tooltip-bg: var(--dsw-static-neutral-bluish-750);
   --dsw-alias-tooltip-key-bg: color-mix(in srgb, var(--dsw-alias-tooltip-bg), white 18%);
   --dsw-specific-bubble-highlight: var(--dsw-static-neutral-bluish-750);
-  --dsw-specific-bubble: var(--dsw-static-neutral-bluish-850);
+  --dsw-specific-bubble: var(--dsw-static-deepseek-900);
   --dsw-specific-input-major: var(--dsw-static-neutral-bluish-850);
   --dsw-specific-login-input: var(--dsw-static-neutral-bluish-875);
   --dsw-menu-surface-fill: rgba(39, 39, 43, 0.98);

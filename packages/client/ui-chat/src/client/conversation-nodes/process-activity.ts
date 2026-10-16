@@ -1,10 +1,16 @@
 /** Tool-category and live-detail interpretation owned by Chat grouping. */
-import type { ProcessActivity, ProcessActivitySummary } from '../contract/process-groups.ts'
+import type { ProcessActivity, ProcessActivityCount, ProcessActivitySummary } from '../contract/process-groups.ts'
 import type { ChatNode } from '../contract/chat-nodes.ts'
 import { isRunningTool } from '../contract/chat-nodes.ts'
+import { QUESTION_TOOL_NAMES } from '../contract/turn-process.ts'
 import type { ToolCallBlock } from '../contract/snapshot.ts'
 
-function activity(name: string): ProcessActivity {
+/**
+ * Classify one Tool call by its durable name.
+ * @param name - Tool-call name.
+ * @returns the process category the call counts toward.
+ */
+export function processActivityKind(name: string): ProcessActivity {
   if (name === 'read') return 'read'
   if (name === 'read_image') return 'readImage'
   if (name === 'grep' || name === 'glob' || name.endsWith('_inspect')) return 'search'
@@ -16,7 +22,8 @@ function activity(name: string): ProcessActivity {
   if (name === 'web_fetch') return 'webFetch'
   if (name === 'subagent' || name.startsWith('subagent_')) return 'subagents'
   if (['todo_write', 'create_goal', 'update_goal', 'get_goal'].includes(name)) return 'plan'
-  if (name === 'ask_user_question' || name === 'request_user_input') return 'questions'
+  if (QUESTION_TOOL_NAMES.has(name)) return 'questions'
+  if (name === 'skill') return 'skills'
   return 'tools'
 }
 
@@ -67,6 +74,45 @@ function liveReasoningDetail(nodes: readonly ChatNode[]): string {
   return ''
 }
 
+/**
+ * Read the file a `read` call names.
+ * @param argsRaw - Tool-call argument JSON, possibly partial.
+ * @returns the trimmed `file_path` or `path` argument, or undefined when absent or unparsable.
+ */
+export function readCallPath(argsRaw: string): string | undefined {
+  let args: unknown
+  try {
+    args = JSON.parse(argsRaw)
+  } catch (_error: unknown) {
+    // Partial arguments do not name a file yet.
+    return undefined
+  }
+  if (args === null || typeof args !== 'object') return undefined
+  for (const key of ['file_path', 'path']) {
+    const value: unknown = Reflect.get(args, key)
+    if (typeof value === 'string' && value.trim() !== '') return value.trim()
+  }
+  return undefined
+}
+
+/**
+ * Read the skill a `skill` call loads.
+ * @param argsRaw - Tool-call argument JSON, possibly partial.
+ * @returns the trimmed `name` argument, or undefined when absent or unparsable.
+ */
+export function skillCallName(argsRaw: string): string | undefined {
+  let args: unknown
+  try {
+    args = JSON.parse(argsRaw)
+  } catch (_error: unknown) {
+    // Partial arguments do not name a skill yet.
+    return undefined
+  }
+  if (args === null || typeof args !== 'object') return undefined
+  const name: unknown = Reflect.get(args, 'name')
+  return typeof name === 'string' && name.trim() !== '' ? name.trim() : undefined
+}
+
 function liveToolDetail(name: string, argsRaw: string): string {
   let args: unknown
   try {
@@ -88,11 +134,21 @@ function liveToolDetail(name: string, argsRaw: string): string {
 
 /**
  * Rank categories by distinct call count, breaking ties by first appearance.
+ * @param counts - distinct-call counts in first-appearance order.
+ * @returns the categories ordered for titles and summaries.
+ */
+export function rankProcessActivity(counts: ReadonlyMap<ProcessActivity, number>): ProcessActivityCount[] {
+  return [...counts].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count)
+}
+
+/**
+ * Rank categories by distinct call count, breaking ties by first appearance.
  * @param nodes - process members, including recursive tools.
- * @returns all ranked categories and the latest running tool category and bounded task detail.
+ * @returns all ranked categories, the files read, and the latest running tool category and bounded task detail.
  */
 export function processActivity(nodes: readonly ChatNode[]): ProcessActivitySummary {
   const counts = new Map<ProcessActivity, number>()
+  const readPaths: string[] = []
   const seen = new Set<string>()
   let running: ProcessActivity | undefined
   let runningDetail = ''
@@ -103,7 +159,10 @@ export function processActivity(nodes: readonly ChatNode[]): ProcessActivitySumm
     seen.add(tool.callId)
     const call = isRunningTool(tool) ? tool : tool.call
     if (call !== null) {
-      const kind = activity(call.name)
+      const kind = processActivityKind(call.name)
+      const argsRaw = 'argsRaw' in call ? call.argsRaw : undefined
+      const path = kind === 'read' && argsRaw !== undefined ? readCallPath(argsRaw) : undefined
+      if (path !== undefined && !readPaths.includes(path)) readPaths.push(path)
       if (isRunningTool(tool) && tool.time >= runningTime) {
         running = kind
         preparing = tool.phase === 'preparing'
@@ -121,7 +180,8 @@ export function processActivity(nodes: readonly ChatNode[]): ProcessActivitySumm
   }
   if (running === undefined) runningDetail = liveReasoningDetail(nodes)
   return {
-    counts: [...counts].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count),
+    counts: rankProcessActivity(counts),
+    readPaths,
     running,
     runningDetail,
     ...preparing ? { preparing: true } : {},

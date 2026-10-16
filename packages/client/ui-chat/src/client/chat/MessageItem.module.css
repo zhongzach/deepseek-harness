@@ -2,9 +2,16 @@
 
 .userRow {
   display: flex;
-  flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+/* The author's time and copy sit beside the bubble's foot, where hover reveals
+   them, so they add no height between a message and the reply below it. */
+.actions {
+  flex: none;
+  order: -1;
 }
 
 .userStack {

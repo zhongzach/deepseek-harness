@@ -13,9 +13,13 @@ export interface ChatPresentationPolicy {
   readonly mode: TranscriptViewMode
   /** Whether a normally completed Turn folds its process rows behind the whole-Turn control. */
   readonly foldCompletedTurns: boolean
-  /** Collapsible group headers for all Turns, historical Turns only, or no Turns. */
-  readonly stepGrouping: 'collapsed' | 'history' | 'none'
-  /** Show the running command, path, query, or reasoning detail in group titles. */
+  /**
+   * Collapsible group headers only in Turns whose process the whole-Turn
+   * control cannot fold (live, stopped, failed, interleaved input, or without
+   * a loaded end), or in no Turns. A foldable Turn opens straight to its rows.
+   */
+  readonly stepGrouping: 'unfoldable' | 'none'
+  /** Show the running command, path, query, or reasoning detail in the running status. */
   readonly liveProcessDetail: boolean
   /** Whether a settled reasoning row previews its first line beside the Think title. */
   readonly settledReasoningPreview: boolean
@@ -25,21 +29,21 @@ const POLICIES: Readonly<Record<TranscriptViewMode, ChatPresentationPolicy>> = {
   compact: {
     mode: 'compact',
     foldCompletedTurns: true,
-    stepGrouping: 'collapsed',
+    stepGrouping: 'unfoldable',
     liveProcessDetail: false,
     settledReasoningPreview: false,
   },
   standard: {
     mode: 'standard',
     foldCompletedTurns: true,
-    stepGrouping: 'collapsed',
+    stepGrouping: 'unfoldable',
     liveProcessDetail: true,
     settledReasoningPreview: true,
   },
   detailed: {
     mode: 'detailed',
     foldCompletedTurns: true,
-    stepGrouping: 'history',
+    stepGrouping: 'none',
     liveProcessDetail: true,
     settledReasoningPreview: true,
   },

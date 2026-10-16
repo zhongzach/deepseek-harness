@@ -11,6 +11,7 @@ import { IconBrowseOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '../../contract/slots.ts'
 import { toolRowModel } from '../models/tool-call-model.ts'
+import { fileRowSummary } from '../models/file-label.ts'
 import { ToolRow, type ToolRowProps } from '../components/ToolRow.tsx'
 
 /** Full row props of a read-family toolview: the runtime share plus its locale seat. */
@@ -35,7 +36,7 @@ export type ReadFamilyCard = Pick<ToolRowProps, 'read' | 'image' | 'renderSlot' 
  * @returns the assembled ToolRow.
  */
 export function readFamilyRow(
-  { toolName, block, cwd, home, openFile, inspect, useDisclosure, t }: ReadFamilyRowProps,
+  { toolName, block, cwd, home, openFile, fileLabel, inspect, useDisclosure, t }: ReadFamilyRowProps,
   card: ReadFamilyCard,
 ): ReactNode {
   const model = toolRowModel(toolName, block, cwd, home)
@@ -47,7 +48,7 @@ export function readFamilyRow(
       toolName={toolName}
       icon={<IconBrowseOutlineRegular size={14} />}
       title={t(model.titleKey)}
-      summary={model.summary}
+      summary={fileRowSummary(model.summary, model.filePath, cwd, fileLabel)}
       bodyRaw={null}
       output={model.output}
       errorSummary={model.errorSummary}

@@ -89,6 +89,20 @@
   contain-intrinsic-size: auto 80px;
 }
 
+/* Cards in the flow (a question set the reader answered) stand 12px clear of
+   their neighbours, like a reply. */
+.flowItem:has([data-question-record]),
+.column > .flowItem:has([data-question-record]):not([hidden]) + :not([hidden]):not(.running) {
+  --dsh-chat-flow-gap: 12px;
+}
+
+/* The rule above replaces the browser's own one for `hidden="until-found"`:
+   a folded row must still skip its contents and keep no height. */
+.flowItem[hidden] {
+  content-visibility: hidden;
+  contain-intrinsic-size: none;
+}
+
 /* The Turn header has 16px clearance from its input and following content. */
 .flowItem[data-chat-flow-kind="turn-process"],
 .flowItem[data-turn-process-answer],
@@ -118,79 +132,86 @@
 .running {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   --dsh-chat-flow-gap: 12px;
   --dsw-alias-label-shimmer: var(--dsw-alias-label-deep-diving-shimmer);
   color: var(--dsw-alias-label-deep-diving);
-  font-size: calc(var(--dsh-content-font-size, 14px) - 2px);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
   line-height: calc(22px + var(--dsh-content-font-delta, 0px));
 }
 
-/* The last visible row before the status must contain output, not an input.
-   Hidden and empty seats do not separate a user message from the status. */
-.column > :nth-last-child(2 of :not([hidden]):not(.flowItem:is(:empty, :has(> [data-slot="conversation.chat.node"]:empty)))):is(
-  .flowItem:not([data-chat-flow-kind="user"]):not([data-chat-flow-kind="steering"]):not([data-chat-flow-kind="turn-trigger"]),
-  [data-chat-group-key]
-) ~ .running > .runningDivider {
-  display: block;
-}
-
-.runningDivider {
-  display: none;
-  width: 100%;
-  height: 0.5px;
-  margin: 8px 0 10px;
-  background: color-mix(in srgb, var(--dsw-alias-border-l1) 75%, var(--dsw-alias-border-l2));
-  pointer-events: none;
-}
-
 .runningContent {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   min-width: 0;
-  gap: 6px;
+  gap: 8px;
 }
 
 .runningText {
+  flex: none;
   min-width: 0;
+}
+
+.runningDetail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runningClock {
+  flex: none;
+  margin-left: auto;
+  color: var(--dsw-alias-label-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
 .runningIcon {
-  position: relative;
   display: inline-flex;
   flex: none;
-  width: calc(14px + var(--dsh-content-font-delta, 0px));
+  align-items: center;
+  gap: 3px;
   height: calc(14px + var(--dsh-content-font-delta, 0px));
   /* The fixed footprint contains the animation's layout and paint. */
-  contain: strict;
-  overflow: hidden;
+  contain: layout paint;
 }
 
 .runningDot {
-  width: 6px;
-  height: 6px;
-  margin: auto;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   corner-shape: round;
   background: currentColor;
+  opacity: 0.35;
+}
+
+.runningDot:first-child {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .runningDot {
-    animation: running-dot 1.2s ease-in-out infinite alternate;
+    animation: running-dot 1.2s ease-in-out infinite;
+  }
+
+  .runningDot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .runningDot:nth-child(3) {
+    animation-delay: 0.4s;
   }
 }
 
 @keyframes running-dot {
-  from {
-    opacity: 0.35;
-    transform: scale(0.8);
+  0%,
+  100% {
+    opacity: 0.3;
   }
 
-  to {
+  40% {
     opacity: 1;
-    transform: scale(1);
   }
 }
 

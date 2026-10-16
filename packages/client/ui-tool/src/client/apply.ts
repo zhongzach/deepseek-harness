@@ -31,7 +31,10 @@ export function apply(ctx: ClientContext): void {
     getSnapshot: () => ctx.remote.$host,
     subscribe: listener => ctx.on('connection/reset', listener),
   }
-  const toolInject = () => ({ hooks: { hostInfo } })
+  const toolInject = () => ({
+    hooks: { hostInfo },
+    fileLabel: (relative: string) => ctx.get('chatFileLabels')?.label(relative),
+  })
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'tool-call',

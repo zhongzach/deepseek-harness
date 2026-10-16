@@ -12,7 +12,7 @@ Desktop product events use the optional [product analytics service](../product-a
 
 Use this package to render a browser chat from recorded Session conversations, including historical images, localized actions, and restored scroll position. Work-details modes control reasoning previews and process visibility without hiding final answers; Verbose keeps completed-turn process rows visible. Local transcript and steering submissions appear immediately, remain in their original surface, and disappear atomically when authoritative Session records arrive, while queued submissions stay outside Chat. The package does not assemble or modify model requests.
 
-File-mention providers receive the viewed Session ID with the closing-turn owner, so links into inherited history can address the fork itself.
+File-mention providers receive the viewed Session ID with the closing-turn owner, so links into inherited history can address the fork itself. An optional `chatFileLabels` provider names workspace files in process summaries and Tool rows; a file it does not name keeps its default label.
 
 ## Table of Contents
 
@@ -34,7 +34,7 @@ File-mention providers receive the viewed Session ID with the closing-turn owner
 <a id="user-references"></a>
 ## User references
 
-Products can render user text through `conversation.message.user-text`, a Chat-owned chain shared by durable user/steering messages and immediate submission echoes. It receives the original text, associated session labels, loaded skill names and the file-opening callback. Declining it keeps the standard text projection. Attachment cards, original-text copy actions and timestamps remain owned by Chat; the bubble exposes `data-user-message-bubble` for scoped product styling. No presentation metadata is added to the Session log.
+Products can render user text through `conversation.message.user-text`, a Chat-owned chain shared by durable user/steering messages and immediate submission echoes. It receives the original text, associated session labels, loaded skill names and the file-opening callback. Declining it keeps the standard text projection. Attachment cards, original-text copy actions and timestamps remain owned by Chat; the bubble exposes `data-user-message-bubble` for scoped product styling. The timestamp and copy action sit beside the foot of the bubble; on devices with hover they appear on hover or keyboard focus. No presentation metadata is added to the Session log.
 
 <a id="reference-previews"></a>
 ## Reference previews
@@ -88,7 +88,9 @@ During uninterrupted following, local transcript and steering echoes remain moun
 
 When Chat ends with an open Turn control and that Turn has no visible input, the first local transcript echo precedes the control. Other echoes remain at the flow tail. The control and echoes share one keyed list, so arrival of the control preserves the echo's mounted identity. Durable inputs replace their matching echoes in the same render.
 
-Work-details modes control process-group display and reasoning previews. Compact, Standard, and Detailed fold eligible completed Turns without hiding the final answer; Verbose retains the duration/status header without a collapse action and shows historical process rows directly. The [business-rule reference](src/client/conversation-nodes/README.md#display-modes) contains the mode table, title behavior, whole-Turn eligibility, clocks, and disclosure resets.
+Work-details modes control process-group display and reasoning previews. Compact, Standard, and Detailed fold eligible completed Turns without hiding the final answer; Verbose keeps the reply header without a collapse action and shows historical process rows directly. The [business-rule reference](src/client/conversation-nodes/README.md#display-modes) contains the mode table, summary behavior, whole-Turn eligibility, clocks, and disclosure resets.
+
+Each reply opens with a header: an identity that products supply through `conversation.chat.turn.identity` (`TurnIdentityOwnerProps`: the Turn number and whether it is running), chips for the skills the Turn loaded, and its time. A chip opens its skill the way a confirmed skill reference does; its text comes from `conversation.chat.turn.skill` (`TurnSkillOwnerProps`: the skill name, shown as is when nothing fills the slot). Without an identity registration the header starts with the chips. Answered question sets stay visible as cards outside the process fold.
 
 Bare `<thinking>` or `<think>` wrappers at the start of an Assistant text block use the same reasoning disclosure as structured reasoning. Live display withholds incomplete delimiters, and text after the closing wrapper remains the reply. Fenced or inline code, quotations, embedded prose tags, user messages, and tool data remain literal. This is a display projection; provider streams and historical Session records remain unchanged, including on cold replay.
 
@@ -97,7 +99,7 @@ Bare `<thinking>` or `<think>` wrappers at the start of an Assistant text block 
 <a id="grouped-rendering"></a>
 ## Grouped rendering
 
-Chat registers its process Group Definition through `uiConversation.groups`. React renders the mixed `node`/`group` root sequence through stable Group and Node seats; group headers subscribe to data separately from member arrays. Settled group titles remain independent of the live-detail preference; only running titles update when that preference changes. [Process-group business rules](src/client/conversation-nodes/README.md#process-grouping) define segmentation and activity summaries.
+Chat registers its process Group Definition through `uiConversation.groups`. React renders the mixed `node`/`group` root sequence through stable Group and Node seats; group headers subscribe to data separately from member arrays. Group summaries are independent of the live-detail preference, which changes only the running status. [Process-group business rules](src/client/conversation-nodes/README.md#process-grouping) define segmentation and activity summaries.
 
 `groupPart` selects reasoning or response in the Assistant renderer without copying Node payloads. A Tool node owns its preparing, dispatched, and result stages under one callId. Each part has a distinct DOM anchor for reading-position restoration; Turn navigation addresses the original Node key and lands on its first visible part. Group sources, member parents, and keys survive display-mode changes and newly loaded prefixes that extend an intact group. The source Node Store remains the only Node-data owner, and a replaced Builder rebinds keyed subscriptions without remounting seats. Mode changes retain size observers and reuse the Turn-state selector.
 
@@ -105,9 +107,9 @@ Live tool deltas share reasoning's frame-batched publication; durable calls and 
 
 The process group uses a stable `div` layout box, a scroll body, and an uncapped content box that reports growth inside the body. Business styles must adapt spacing within and across groups, including hidden or empty members and the answer-spacing exception. CSS variables do not belong in the Group Definition.
 
-Running group titles, reasoning previews, tool and command rows, the active retry line, and the bottom running status use the shared [TextShimmer](../ui-primitives/README.md#component-catalog). Each row’s text shares one left-to-right highlight, including collapsed group titles; icons and hover chevrons retain their base appearance. Tool and process rows sit 6px apart. An expanded group title has 8px before its content, Assistant responses have 12px from adjacent process rows, and completed-Turn duration/status controls have 16px around them. Hidden and empty rows, including retained empty slot anchors, add no gap. The running “Deep diving” text retains its blue base while its theme-specific highlight sweeps across it.
+Reasoning previews, tool and command rows, the active retry line, and the running status label use the shared [TextShimmer](../ui-primitives/README.md#component-catalog). Each row’s text shares one left-to-right highlight; icons and hover chevrons retain their base appearance. A running group summary shows a spinner instead. Tool and process rows sit 6px apart. A group with a summary line is a card whose rows hang from a hairline, 10px below the content before it; Assistant responses and question cards have 12px from adjacent rows, and Turn headers have 16px around them. Hidden and empty rows, including retained empty slot anchors, add no gap. The running label retains its blue base while its theme-specific highlight sweeps across it; its live detail and clock use the tertiary label color.
 
-The running status shows a whale whose APNG mask inherits the text color. CSS selects the static SVG when reduced motion or forced colors are active, or alpha masks are unsupported. The build embeds the image in the plugin stylesheet; React does not pass image data through DOM styles.
+The running status leads with three dots in the text color that pulse in turn. They stay still under reduced motion and are hidden from assistive technology; the status announces that the Turn is working, not each activity.
 
 Scroll-edge fades initialize when `ResizeObserver` reports the open group's layout; opening the group performs no immediate scroll-dimension read in a layout effect.
 
@@ -170,8 +172,6 @@ None; Chat presentation does not assemble or mutate provider requests.
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
-
-- **Running-icon resolution** — the animated whale uses a 28×28 image at a default 14×14 CSS size. Larger content fonts or device pixel ratios above 2 can soften the raster stroke; the static fallback remains vector-based. Browser image caching owns the animation clock, so remounting does not guarantee playback restarts at the first frame.
 
 - **Tool-change presentation** — The `developer-message` Definition shares context presentation with `input-message`. Tool-only developer messages name a single added or removed tool inline without expansion. Multiple changes show added/removed counts and expand to comma-separated tool lists, one line per change kind. Mixed content uses the generic context presentation.
 

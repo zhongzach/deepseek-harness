@@ -13,6 +13,7 @@ import { singleResultText } from '../models/raw-tool-call.ts'
 import { toolRowModel } from '../models/tool-call-model.ts'
 import { ToolRow } from '../components/ToolRow.tsx'
 import { QuestionToolRow } from '../components/QuestionToolRow.tsx'
+import { QuestionRecord } from '../components/QuestionRecord.tsx'
 import { CONVERSATION_NS as NS } from '../../locale.ts'
 
 /** One paired question and its visible answer lines. */
@@ -255,6 +256,8 @@ export function AskQuestionRow({
   // read-only transcript, and a settled call opens a read-only panel.
   let rowAction: (() => boolean) | undefined
   let rowActionLabel = t('ask.reopen')
+  // Set when the action only reveals this row's own transcript.
+  let reviewsInRow = false
   if (code === 'ASK_CANCELLED') {
     summary = t('ask.cancelled')
     state = 'ok'
@@ -341,8 +344,18 @@ export function AskQuestionRow({
       // The queued reply is reviewed in this row while its editable card is absent.
       rowAction = () => false
       rowActionLabel = t('ask.review')
+      reviewsInRow = true
     }
   }
+  // An answered set reads as part of the conversation: the questions and the
+  // reader's answers stay in view as a card instead of a disclosure row.
+  if (transcript?.kind === 'answered') return (
+    <QuestionRecord
+      card={transcript}
+      title={t(`ask.record.${transcript.questions.length === 1 ? 'one' : 'other'}`, { count: transcript.questions.length })}
+      {...rowAction === undefined || reviewsInRow ? {} : { action: rowAction, actionLabel: rowActionLabel }}
+    />
+  )
   if (rowAction !== undefined) return (
     <QuestionToolRow useDisclosure={useDisclosure} t={t} summary={summary}
       bodyRaw={transcript === null ? model.bodyRaw : null} output={transcript === null ? model.output : null}

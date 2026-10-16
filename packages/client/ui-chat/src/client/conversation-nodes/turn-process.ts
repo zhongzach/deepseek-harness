@@ -10,8 +10,10 @@ import type { AssistantChatData, ChatNode, FinalAssistantChatData } from '../con
 import {
   isSubagentDelegationTool, sameTurnProcessSpec, type TurnProcessSpec,
 } from '../contract/turn-process.ts'
+import type { ProcessActivity } from '../contract/process-groups.ts'
 import { CHAT_SYNTHETIC_SEQ_OFFSETS, chatNode } from './common.ts'
 import { toAssistantBlocks } from './event-projection.ts'
+import { processActivityKind, rankProcessActivity, readCallPath, skillCallName } from './process-activity.ts'
 
 declare module '../contract/chat-nodes.ts' {
   interface ChatNodeDataMap {
@@ -36,9 +38,31 @@ interface TurnProcessState {
   readonly messageCount: number
   readonly toolCallCount: number
   readonly subagentCount: number
+  readonly skills: readonly string[]
+  /** Distinct-call counts in first-call order. */
+  readonly activity: ReadonlyMap<ProcessActivity, number>
+  readonly readPaths: readonly string[]
 }
 
 type ConversationEvent = Parameters<ConversationNodeDefinition['match']>[0]
+
+function initialState(turn: number): TurnProcessState {
+  return {
+    turn,
+    assistantStartByStep: new Map(),
+    messageCountByStep: new Map(),
+    messageCount: 0,
+    toolCallCount: 0,
+    subagentCount: 0,
+    skills: [],
+    activity: new Map(),
+    readPaths: [],
+  }
+}
+
+function appended(values: readonly string[], value: string | undefined): readonly string[] {
+  return value === undefined || values.includes(value) ? values : [...values, value]
+}
 
 function eventTurn(event: ConversationEvent): number | undefined {
   const data = event.data as unknown as { turn?: unknown }
@@ -96,14 +120,7 @@ function turnLocation(context: ConversationNodeContext<TurnProcessState>): TurnL
 function fallbackState(context: ConversationNodeContext<TurnProcessState>): TurnProcessState | undefined {
   const turn = context.matches.map(match => eventTurn(match.event)).find(candidate => candidate !== undefined)
   if (turn === undefined) return undefined
-  let state: TurnProcessState = {
-    turn,
-    assistantStartByStep: new Map(),
-    messageCountByStep: new Map(),
-    messageCount: 0,
-    toolCallCount: 0,
-    subagentCount: 0,
-  }
+  let state = initialState(turn)
   for (const match of context.matches) state = updateProcessState(state, match.event)
   return state
 }
@@ -133,6 +150,9 @@ function processSpec(state: TurnProcessState, turn: TurnLocation): TurnProcessSp
         .reduce((total, [, count]) => total + count, 0),
     toolCallCount: state.toolCallCount,
     subagentCount: state.subagentCount,
+    skills: state.skills,
+    activity: rankProcessActivity(state.activity),
+    readPaths: state.readPaths,
   }
   if (answer === null) {
     return {
@@ -177,11 +197,18 @@ function updateProcessState(state: TurnProcessState, event: ConversationEvent): 
     current = { ...current, messageCountByStep, messageCount: current.messageCount + 1 }
   }
   if (event.type === 'tool/call') {
-    const subagent = isSubagentDelegationTool(event.data.name)
+    const { name, arguments: argsRaw } = event.data
+    const subagent = isSubagentDelegationTool(name)
+    const kind = processActivityKind(name)
+    const activity = new Map(current.activity)
+    if (kind !== 'questions') activity.set(kind, (activity.get(kind) ?? 0) + 1)
     current = {
       ...current,
       toolCallCount: current.toolCallCount + (subagent ? 0 : 1),
       subagentCount: current.subagentCount + (subagent ? 1 : 0),
+      skills: appended(current.skills, name === 'skill' ? skillCallName(argsRaw) : undefined),
+      activity,
+      readPaths: appended(current.readPaths, kind === 'read' ? readCallPath(argsRaw) : undefined),
     }
   }
   const evidence = processEvidence(event)
@@ -227,14 +254,7 @@ export const turnProcessDefinition: ConversationNodeDefinition<TurnProcessState>
   },
   start: (_context, match) => {
     if (match.event.type !== 'turn/start') throw new Error('turn-process start requires turn/start')
-    return {
-      turn: match.event.data.turn,
-      assistantStartByStep: new Map(),
-      messageCountByStep: new Map(),
-      messageCount: 0,
-      toolCallCount: 0,
-      subagentCount: 0,
-    }
+    return initialState(match.event.data.turn)
   },
   update: (context, match) => updateProcessState(context.state, match.event),
   publication: (match) => {

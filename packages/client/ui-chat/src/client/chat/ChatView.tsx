@@ -11,6 +11,7 @@ import {
   Button, IconChevronDownOutlineRegular, MarkdownDelegateProvider, Modal, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps, OpenFileOptions } from '../contract/slots.ts'
+import type { ChatNode } from '../contract/chat-nodes.ts'
 import type { ChatSnapshot } from '../contract/snapshot.ts'
 import { PendingSteeringBubble, PendingSubmissionBubble } from './MessageItem.tsx'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
@@ -18,7 +19,7 @@ import { ChatGroupSeat } from './ChatGroupSeat.tsx'
 import { chatRenderKey } from './render-entry.ts'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { TurnNavigator } from './TurnNavigator.tsx'
-import { RunningStatus } from './RunningStatus.tsx'
+import { RunningStatus, type RunningActivity } from './RunningStatus.tsx'
 import { mergeTurnRailItems } from './turn-rail-items.ts'
 import { useChatScroll } from './use-chat-scroll.ts'
 import { fileMediaUrl, resolveWorkspacePath } from '@deepseek-ai/dsh-util-workspace-path'
@@ -103,7 +104,7 @@ const ChatNodeList = memo(function ChatNodeList({ entries, useChatGroup, pending
 export function ChatView({
   useSession, useChat, useChatNode, useChatNodeProcess, useChatGroup, useConversation, useSessions, useStore, actions,
   renderSlot, renderSlotChain, sessionId, openFile, openSkill, openExternalLink, loadOlder, loadThrough, loadImage,
-  inspectCall, chatScroll, forkAt, fileMentions, usePresentation, useProjection, t,
+  inspectCall, chatScroll, forkAt, fileMentions, fileLabel, usePresentation, useProjection, t,
 }: ChatViewSlotProps) {
   const order = useChat(s => s.order)
   const groupedEntries = useConversation(snapshot => snapshot.views.grouped('chat')?.entries)
@@ -121,6 +122,26 @@ export function ChatView({
       ? location.turn.status === 'open' ? location.turn.start?.time : undefined
       : undefined
   })
+  // The running status names the latest open group's activity, or the reply
+  // being written when the transcript ends in a streaming response.
+  const lastGroupKey = useMemo(() => entries.findLast(entry => entry.kind === 'group')?.key, [entries])
+  const liveSummary = useChatGroup(lastGroupKey ?? '', group => group?.data.closed === false ? group.data.summary : undefined)
+  const tail = entries.at(-1)
+  const replying = useChatNode(tail?.kind === 'node' && tail.groupPart === 'response' ? tail.key : '',
+    (node) => {
+      const chatNode = node as ChatNode | undefined
+      return chatNode?.kind === 'assistant-step' && chatNode.data.status === 'running'
+    })
+  const liveDetail = usePresentation(policy => policy.liveProcessDetail)
+  const runningActivity = useMemo<RunningActivity>(() => {
+    if (replying) return { label: t('chat.running.replying'), detail: '' }
+    if (liveSummary === undefined) return { label: t('message.stepProcess.thinking'), detail: '' }
+    const kind = liveSummary.running ?? 'thinking'
+    const label = liveSummary.preparing === true
+      ? t(`message.stepProcess.prepare.${kind === 'thinking' ? 'tools' : kind}`)
+      : t(`message.stepProcess.${kind}`)
+    return { label, detail: liveDetail ? liveSummary.runningDetail : '' }
+  }, [liveDetail, liveSummary, replying, t])
   // Host-computed whole-log outline; the merge is view-layer only (the
   // conversation snapshot never carries projection values).
   const turnOutline = useProjection('turnOutline')
@@ -276,11 +297,12 @@ export function ChatView({
                 renderMessageImages={renderMessageImages}
                 renderUserText={renderSlotChain}
                 fileMentions={fileMentions}
+                fileLabel={fileLabel}
                 renderSlot={renderSlot}
                 t={t}
               />
             </MarkdownDelegateProvider>
-            {running && <RunningStatus startTime={runningStartTime} t={t} />}
+            {running && <RunningStatus startTime={runningStartTime} activity={runningActivity} t={t} />}
             {/* No pending placeholders: questions (ui-user-questions) and approvals
                 (ApprovalPanel) both take over the composer, so a flow card would
                 double-render the same wait. */}

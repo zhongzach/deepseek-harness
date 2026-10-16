@@ -206,6 +206,10 @@ const toolResult = (seq: number, callId: string, name = 'bash'): ToolResultNode 
   callTime: seq * 1_000 - 500,
   content: [], isError: false, subCalls: [],
 })
+/** A settled call of Turn 1 with its own argument JSON. */
+const call = (seq: number, callId: string, name: string, args: Record<string, unknown>): ToolResultNode => ({
+  ...toolResult(seq, callId, name), call: { name, argsRaw: JSON.stringify(args) }, turn: 1,
+} as ToolResultNode)
 const runningCall = (callId: string, name = 'bash'): StartedToolCall => ({
   phase: 'start' as const, callId, name, argsRaw: `{"command":"cmd-${callId}"}`, turn: 2, step: 1, time: 1_000, subCalls: [],
 })
@@ -456,6 +460,8 @@ function makeHarness(
     forkAt,
     // Absent-service default; mention tests override with a real resolver.
     fileMentions: () => undefined,
+    // Absent-provider default; file-name tests override it.
+    fileLabel: () => undefined,
     t,
   }
   const set = (next: HarnessUpdate): void => {
@@ -503,7 +509,12 @@ function readerScroll(element: HTMLElement, top: number): void {
 }
 
 function turnProcessControl(container: HTMLElement): HTMLButtonElement | null {
-  return container.querySelector<HTMLButtonElement>('[data-turn-process]')
+  return container.querySelector<HTMLButtonElement>('[data-turn-process-toggle]')
+}
+
+function turnHeaderMeta(container: HTMLElement, turn?: number): string | null | undefined {
+  const scope = turn === undefined ? '[data-turn-process]' : `[data-turn-process="${turn}"]`
+  return container.querySelector(`${scope} [data-turn-meta]`)?.textContent
 }
 
 function runningContent(container: HTMLElement): HTMLElement | null {
@@ -748,29 +759,28 @@ describe('ChatView', () => {
 
     for (const mode of ['standard', 'detailed', 'compact', 'detailed'] as const) {
       act(() => { h.setTranscriptView(mode) })
-      expect(bodies.map(body => body.hasAttribute('hidden'))).toEqual([false, true, mode !== 'detailed'])
-      expect(headers.map(header => header.closest('[hidden]') !== null)).toEqual([false, false, mode === 'detailed'])
+      const detailed = mode === 'detailed'
+      expect(bodies.map(body => body.hasAttribute('hidden'))).toEqual(detailed ? [false, false, false] : [false, true, true])
+      expect(headers.map(header => header.closest('[hidden]') !== null)).toEqual([detailed, detailed, detailed])
       expect([...view.container.querySelectorAll('[data-chat-group-key]')]).toEqual(roots)
     }
 
     act(() => { h.set({ chat: project(true), running: false }) })
-    const control = view.container.querySelector<HTMLButtonElement>('[data-turn-process="2"]')!
+    const control = view.container.querySelector<HTMLButtonElement>('[data-turn-process="2"] [data-turn-process-toggle]')!
     expect(control.getAttribute('aria-expanded')).toBe('false')
+    expect(roots[2]!.closest('[hidden]')).not.toBeNull()
     fireEvent.click(control)
     expect(roots[2]!.closest('[hidden]')).toBeNull()
-    expect(headers[2]!.closest('[hidden]')).toBeNull()
-    expect(bodies[2]!.hasAttribute('hidden')).toBe(true)
-    expect(bodies[0]!.hasAttribute('hidden')).toBe(false)
-    expect(bodies[1]!.hasAttribute('hidden')).toBe(true)
+    // The completed Turn opens straight to its rows; no second disclosure.
+    expect(headers[2]!.closest('[hidden]')).not.toBeNull()
+    expect(bodies.map(body => body.hasAttribute('hidden'))).toEqual([false, false, false])
 
     act(() => { h.setTranscriptView('verbose') })
     expect(roots.every(root => root.closest('[hidden]') === null)).toBe(true)
     expect(headers.every(header => header.closest('[hidden]') !== null)).toBe(true)
     expect(bodies.every(body => !body.hasAttribute('hidden'))).toBe(true)
-    expect(control.disabled).toBe(true)
-    expect(control.textContent).toContain(h.props.t('message.turnProcess.took') + formatRunDuration(3_000, h.props.t))
-    fireEvent.click(control)
-    expect(bodies.every(body => !body.hasAttribute('hidden'))).toBe(true)
+    expect(control.isConnected).toBe(false)
+    expect(turnHeaderMeta(view.container, 2)).toContain(h.props.t('message.turnHeader.took') + formatRunDuration(3_000, h.props.t))
     expect([...view.container.querySelectorAll<HTMLElement>('[data-chat-group-key]')]).toEqual(roots)
   })
 
@@ -913,7 +923,7 @@ describe('ChatView', () => {
     expect(top).toBe(300)
   })
 
-  it('does not recalculate settled group titles when work-details mode changes', () => {
+  it('keeps group summary lines independent of the work-details mode', () => {
     const snapshot = chatSnapshotFixture({ nodes: Array.from({ length: 41 }, (_, index) => user(index + 1, `member ${index}`)) })
     const h = makeHarness({}, {}, snapshot)
     const groupStore = new ConversationGroupStore<ProcessGroupData>()
@@ -921,7 +931,10 @@ describe('ChatView', () => {
       key: `settled-${index}` as GroupKey,
       data: {
         turn: 1, closed: index < 40,
-        summary: { counts: [], running: index < 40 ? undefined : 'commands', runningDetail: index < 40 ? '' : 'pwd' },
+        summary: {
+          counts: index < 40 ? [{ kind: 'edit', count: 2 }] : [], readPaths: [],
+          running: index < 40 ? undefined : 'commands', runningDetail: index < 40 ? '' : 'pwd',
+        },
       },
       members: [{ kind: 'node', key: nodeKey as NodeKey }],
     }))
@@ -930,33 +943,23 @@ describe('ChatView', () => {
       groups: { kind: 'replace', snapshots: groups },
     }, key => snapshot.nodes.get(key))
     h.setGrouped(groupStore)
-    const translate = vi.fn(h.props.t)
-    const view = render(<h.ChatView {...h.props} t={translate} />)
-    const allHeaders = [...view.container.querySelectorAll('[data-process-activity]')]
-    const headers = allHeaders.slice(0, 40)
-    expect(headers).toHaveLength(40)
-    const titles = headers.map(header => header.textContent)
+    const view = render(<h.ChatView {...h.props} />)
+    const allHeaders = [...view.container.querySelectorAll('[data-process-state]')]
+    expect(allHeaders).toHaveLength(41)
+    const titles = allHeaders.map(header => header.textContent)
+    expect(titles[0]).toBe(h.props.t('message.processNotes.edit.other', { count: 2 }) + h.props.t('message.processNotes.show'))
+    expect(titles[40]).toBe(h.props.t('message.stepProcess.thinking') + h.props.t('message.processNotes.show'))
+    expect(allHeaders[40]?.getAttribute('data-process-state')).toBe('live')
+    // The line's own toggle carries the summary as its description.
+    const toggle = allHeaders[0]!.querySelector('[data-process-activity]')!
+    expect(document.getElementById(toggle.getAttribute('aria-describedby')!)?.textContent)
+      .toBe(h.props.t('message.processNotes.edit.other', { count: 2 }))
 
     for (const mode of ['standard', 'detailed', 'compact'] as const) {
-      translate.mockClear()
       act(() => { h.setTranscriptView(mode) })
-      expect(translate.mock.calls.filter(([key]) => key === 'message.stepProcess.thinking')).toHaveLength(0)
-      expect([...view.container.querySelectorAll('[data-process-activity]')]).toEqual(allHeaders)
-      expect(headers.map(header => header.textContent)).toEqual(titles)
-      const liveLabel = h.props.t('message.stepProcess.commands')
-      expect(allHeaders[40]?.textContent).toBe(mode === 'compact' ? liveLabel
-        : `${liveLabel}${h.props.t('message.turnProcess.separator')}pwd`)
+      expect([...view.container.querySelectorAll('[data-process-state]')]).toEqual(allHeaders)
+      expect(allHeaders.map(header => header.textContent)).toEqual(titles)
     }
-    const running = groups[40]!
-    act(() => {
-      groupStore.prepareAndInstall({ groups: { kind: 'apply', removes: [], upserts: [{
-        ...running, data: { ...running.data, closed: true },
-      }] } }, key => snapshot.nodes.get(key))
-      groupStore.publish()
-    })
-    translate.mockClear()
-    act(() => { h.setTranscriptView('standard') })
-    expect(translate.mock.calls.filter(([key]) => key.startsWith('message.stepProcess.'))).toHaveLength(0)
   })
 
   it('passes independently keyed group parts to business Node renderers', () => {
@@ -1337,12 +1340,8 @@ describe('ChatView', () => {
     expect(scroller.scrollTop).toBe(590) // latest 90 + the anchored row's 500px prepend shift
   })
 
-  it.each([
-    { mode: 'compact', anchor: 'group' }, { mode: 'standard', anchor: 'group' },
-    { mode: 'detailed', anchor: 'group' },
-    { mode: 'compact', anchor: 'node' }, { mode: 'standard', anchor: 'node' }, { mode: 'detailed', anchor: 'node' },
-  ] as const)(
-    'keeps the first visible item in place when paging inserts a steering boundary ($mode, $anchor)', ({ mode, anchor }) => {
+  it.each(['compact', 'standard', 'detailed'] as const)(
+    'keeps the first visible row in place when paging inserts a steering boundary (%s)', (mode) => {
       const tool = (seq: number, id: string) => ({ ...toolResult(seq, id), turn: 1 })
       const initial = { nodes: [tool(4, 'retained'), assistant(6, 'answer', 1, 2)], turnEnds: new Map([[1, 7]]) }
       let source = chatSnapshotFixture(initial)
@@ -1358,12 +1357,11 @@ describe('ChatView', () => {
       fireEvent.click(control)
       const group = view.container.querySelector<HTMLElement>('[data-chat-group-key]')!
       const header = group.querySelector<HTMLButtonElement>('[data-process-activity]')!
-      if (anchor === 'node') fireEvent.click(header)
       const body = group.querySelector<HTMLElement>('[data-step-process-body]')!
       const old = view.container.querySelector<HTMLElement>('[data-chat-node-key="fixture:tool:retained"]')!
-      const pinned = anchor === 'group' ? group : old
-      const expectedTop = anchor === 'group' ? 30 : 60
-      const expectedScroll = anchor === 'group' ? 200 : 300
+      // A completed Turn opens straight to its rows, so a row, not the group, anchors paging.
+      expect(header.closest('[hidden]')).not.toBeNull()
+      expect(body.hasAttribute('hidden')).toBe(false)
       const scroller = view.container.querySelector('[data-chat-flow]')!.parentElement!
       installScrollMetrics(scroller, 1500, 400)
       let paged = false
@@ -1379,10 +1377,10 @@ describe('ChatView', () => {
         scrollHeight: { get: () => paged ? 200 : 100 },
       })
       fireEvent.click(view.getByText('加载更早'))
-      expect(pinned.closest('[hidden]')).toBeNull()
-      expect(pinned.hasAttribute('data-chat-paging-anchor')).toBe(true)
+      expect(old.closest('[hidden]')).toBeNull()
+      expect(old.hasAttribute('data-chat-paging-anchor')).toBe(true)
       expect(controlSeat.hasAttribute('data-chat-paging-anchor')).toBe(false)
-      expect(group.hasAttribute('data-chat-paging-anchor')).toBe(anchor !== 'node')
+      expect(group.hasAttribute('data-chat-paging-anchor')).toBe(false)
       act(() => {
         paged = true
         source = chatSnapshotFixture({ ...initial, nodes: [
@@ -1392,15 +1390,19 @@ describe('ChatView', () => {
         h.setGrouped(groups)
       })
 
-      expect(pinned.getBoundingClientRect().top).toBe(expectedTop)
-      expect(scroller.scrollTop).toBe(expectedScroll)
+      expect(old.getBoundingClientRect().top).toBe(60)
+      expect(scroller.scrollTop).toBe(300)
       expect(view.container.querySelector('[data-chat-node-key="fixture:tool:retained"]')).toBe(old)
       expect(old.closest('[data-chat-group-key]')).toBe(group)
-      expect(control.disabled).toBe(true)
+      // Steering stops the whole Turn from folding: its toggle goes, and the
+      // rows the reader opened stay open under the group's own header.
+      expect(control.isConnected).toBe(false)
       expect(group.hasAttribute('hidden')).toBe(false)
-      expect(header.getAttribute('aria-expanded')).toBe(String(anchor === 'node'))
+      expect(header.closest('[hidden]') === null).toBe(mode !== 'detailed')
+      expect(header.getAttribute('aria-expanded')).toBe('true')
+      expect(body.hasAttribute('hidden')).toBe(false)
       expect(view.container.querySelector('[data-chat-flow-kind="steering"]')?.closest('[data-chat-group-key]')).toBeNull()
-      expect(h.chatScroll.read()?.anchorKey).toBe(pinned.dataset.chatAnchorKey)
+      expect(h.chatScroll.read()?.anchorKey).toBe(old.dataset.chatAnchorKey)
     },
   )
 
@@ -1629,7 +1631,7 @@ describe('ChatView', () => {
     expect(writeText).toHaveBeenCalledWith('interrupt now')
     expect(within(pendingBubble as HTMLElement).queryByRole('button', { name: '在新对话中分支' })).toBeNull()
     expect(turnProcessControl(view.container)).toBeNull()
-    expect(runningContent(view.container)?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(runningContent(view.container)?.textContent).toMatch(/^正在分析请求\d+秒$/)
     expect(view.getByRole('status').compareDocumentPosition(view.getByText('interrupt now'))
       & Node.DOCUMENT_POSITION_PRECEDING).not.toBe(0)
 
@@ -2209,11 +2211,14 @@ describe('ChatView', () => {
       turnEnds: new Map([[1, 6]]),
     })
     const view = render(<h.ChatView {...h.props} />)
-    const toggle = view.getByRole('button', { name: '已完成，用时 4秒' })
+    const toggle = turnProcessControl(view.container)!
+    const header = view.container.querySelector<HTMLElement>('[data-turn-process]')!
+    expect(turnHeaderMeta(view.container)).toContain('用时 4秒')
+    expect(toggle.textContent).toBe('派出了 1 个协作助手 · 运行了 1 条命令过程')
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
-    expect(toggle.getAttribute('data-turn-process-tool-calls')).toBe('1')
-    expect(toggle.getAttribute('data-turn-process-messages')).toBe('1')
-    expect(toggle.getAttribute('data-turn-process-subagents')).toBe('1')
+    expect(header.getAttribute('data-turn-process-tool-calls')).toBe('1')
+    expect(header.getAttribute('data-turn-process-messages')).toBe('1')
+    expect(header.getAttribute('data-turn-process-subagents')).toBe('1')
     const members = [...view.container.querySelectorAll<HTMLElement>('[data-turn-process-member]')]
     expect(members).toHaveLength(3)
     expect(members.map(member => member.getAttribute('hidden')))
@@ -2235,12 +2240,12 @@ describe('ChatView', () => {
     expect(members.map(member => member.getAttribute('hidden'))).toEqual([null, null, null])
 
     act(() => { h.set({ nodes: [user(1, 'question'), first] }) })
-    expect(view.getByRole('button', { name: '已完成，用时 4秒' }).getAttribute('aria-expanded')).toBe('false')
+    expect(turnProcessControl(view.container)?.getAttribute('aria-expanded')).toBe('false')
     expect(members[0]?.getAttribute('hidden')).toBeNull()
     act(() => { h.set({
       nodes: [user(1, 'question'), first, toolResult(3, 'a'), toolResult(4, 'b', 'subagent'), second],
     }) })
-    const renewedToggle = view.getByRole('button', { name: '已完成，用时 4秒' })
+    const renewedToggle = turnProcessControl(view.container)!
     expect(renewedToggle.getAttribute('aria-expanded')).toBe('true')
     expect(members[0]?.getAttribute('hidden')).toBeNull()
   })
@@ -2282,7 +2287,7 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     expect(renderedFlowKinds(view.container)).toEqual(['user', 'turn-process'])
     expect(turnProcessControl(view.container)).toBeNull()
-    expect(runningContent(view.container)?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(runningContent(view.container)?.textContent).toMatch(/^正在分析请求\d+秒$/)
     expect(view.container.querySelector('[data-chat-flow-kind="system-prompt"]')).toBeNull()
 
     act(() => {
@@ -2342,19 +2347,17 @@ describe('ChatView', () => {
       turnEnds: new Map([[1, 4]]),
     })
     const view = render(<h.ChatView {...h.props} />)
-    const toggle = view.getByRole('button', { name: '已完成' }) as HTMLButtonElement
+    const header = view.container.querySelector<HTMLElement>('[data-turn-process]')!
     const contextRow = view.container.querySelector<HTMLElement>('[data-chat-flow-kind="context"]')
 
-    expect(toggle.disabled).toBe(true)
-    expect(toggle.getAttribute('aria-expanded')).toBeNull()
-    expect(toggle.getAttribute('data-turn-process-tool-calls')).toBe('0')
-    expect(toggle.getAttribute('data-turn-process-messages')).toBe('0')
-    expect(toggle.getAttribute('data-turn-process-subagents')).toBe('0')
+    expect(turnProcessControl(view.container)).toBeNull()
+    expect(turnHeaderMeta(view.container)).toBe('已完成')
+    expect(header.getAttribute('data-turn-process-tool-calls')).toBe('0')
+    expect(header.getAttribute('data-turn-process-messages')).toBe('0')
+    expect(header.getAttribute('data-turn-process-subagents')).toBe('0')
     expect(contextRow).toBeNull()
     expect(view.container.querySelector('[data-turn-process-member]')).toBeNull()
     expect(view.queryByText('runtime policy')).toBeNull()
-    fireEvent.click(toggle)
-    expect(view.container.querySelector('[data-chat-flow-kind="context"]')).toBeNull()
     expect(view.getByText('final answer').closest('[hidden]')).toBeNull()
   })
 
@@ -2407,7 +2410,7 @@ describe('ChatView', () => {
       act(() => { h.set({ chat: project(true), running: false }) })
 
       expect(roots.map(root => root.closest('[hidden]'))).toEqual([null, null, null])
-      expect(turnProcessControl(view.container)?.disabled).toBe(true)
+      expect(turnProcessControl(view.container)).toBeNull()
       const visibleOrder = (): HTMLElement[] => [...view.container.querySelectorAll<HTMLElement>(
         '[data-chat-group-key], [data-chat-flow-kind="steering"], [data-chat-group-part="response"]',
       )].filter(row => row.closest('[hidden]') === null)
@@ -2465,7 +2468,7 @@ describe('ChatView', () => {
     })
     const view = render(<h.ChatView {...h.props} />)
     expect(turnProcessControl(view.container)).toBeNull()
-    expect(runningContent(view.container)?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(runningContent(view.container)?.textContent).toMatch(/^正在分析请求\d+秒$/)
     const processRow = view.getByText('inspect').closest('[data-chat-flow-kind="assistant-step"]') as HTMLElement
     expect(processRow.getAttribute('hidden')).toBeNull()
 
@@ -2479,14 +2482,15 @@ describe('ChatView', () => {
     })
     const toggle = turnProcessControl(view.container)!
     expect(runningContent(view.container)).toBeNull()
-    expect(toggle.textContent).toBe('已完成，用时 5秒')
-    expect(toggle.disabled).toBe(false)
+    expect(turnHeaderMeta(view.container)).toContain('用时 5秒')
+    expect(toggle.textContent).toBe('已完成分析过程')
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(processRow.getAttribute('hidden')).toBe('until-found')
     fireEvent.click(toggle)
     act(() => { vi.advanceTimersByTime(1_000) })
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    expect(toggle.textContent).toBe('已完成，用时 5秒')
+    expect(toggle.textContent).toBe('已完成分析收起')
+    expect(turnHeaderMeta(view.container)).toContain('用时 5秒')
     expect(processRow.getAttribute('hidden')).toBeNull()
   }))
 
@@ -2553,7 +2557,8 @@ describe('ChatView', () => {
       turnEnds: new Map([[1, 4]]),
     })
     const view = render(<h.ChatView {...h.props} />)
-    const toggle = view.getByRole('button', { name: '已完成' })
+    const toggle = turnProcessControl(view.container)!
+    expect(toggle.textContent).toBe('已完成分析过程')
     const reasoning = view.container.querySelector<HTMLElement>('[data-turn-process-inline]')
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(reasoning?.getAttribute('hidden')).toBe('until-found')
@@ -2617,7 +2622,8 @@ describe('ChatView', () => {
     }) })
     const toggle = turnProcessControl(view.container)!
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
-    expect(toggle.textContent).toBe('已完成')
+    expect(toggle.textContent).toBe('已完成分析过程')
+    expect(turnHeaderMeta(view.container)).toBe('已完成')
     expect(view.container.querySelector('[data-chat-node-key="fixture:assistant:2"]')).toBe(processRow)
     expect(processRow.getAttribute('hidden')).toBe('until-found')
     expect(view.getByLabelText('回到底部')).toBeTruthy()
@@ -2670,7 +2676,7 @@ describe('ChatView', () => {
     const row = view.container.querySelector<HTMLElement>('[data-chat-node-key="fixture:assistant:3"]')!
     const toggle = turnProcessControl(view.container)!
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
-    expect(toggle.textContent).toBe(h.props.t('message.turnProcess.worked'))
+    expect(turnHeaderMeta(view.container)).toBe(h.props.t('message.turnProcess.worked'))
     expect(row.getAttribute('hidden')).toBe('until-found')
     expect(view.getByText('final answer')).toBeTruthy()
 
@@ -2685,7 +2691,7 @@ describe('ChatView', () => {
     }) })
     expect(turnProcessControl(view.container)).toBe(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
-    expect(toggle.textContent).toBe(h.props.t('message.turnProcess.took') + formatRunDuration(5_000, h.props.t))
+    expect(turnHeaderMeta(view.container)).toContain(h.props.t('message.turnHeader.took') + formatRunDuration(5_000, h.props.t))
     expect(row.getAttribute('hidden')).toBe('until-found')
   })
 
@@ -2720,7 +2726,8 @@ describe('ChatView', () => {
     const h = makeHarness({ chat: snapshot, hasMore: true })
     if (grouped) h.setGrouped(groups)
     const view = render(<h.ChatView {...h.props} />)
-    const toggle = view.getByRole('button', { name: h.props.t('message.turnProcess.worked') })
+    const toggle = turnProcessControl(view.container)!
+    expect(turnHeaderMeta(view.container)).toBe(h.props.t('message.turnProcess.worked'))
     let row = view.container.querySelector<HTMLElement>('[data-chat-node-key="fixture:tool:partial"]')!
     let group = view.container.querySelector<HTMLElement>('[data-chat-group-key]')
     for (const mode of ['compact', 'standard', 'detailed'] as const) {
@@ -2739,7 +2746,7 @@ describe('ChatView', () => {
     const groupToggle = group?.querySelector<HTMLButtonElement>('[data-process-activity]')
     if (grouped && manualOpen) {
       act(() => { h.setTranscriptView('standard') })
-      fireEvent.click(groupToggle!)
+      expect(groupToggle?.closest('[hidden]')).not.toBeNull()
       expect(groupToggle?.getAttribute('aria-expanded')).toBe('true')
     }
 
@@ -2796,7 +2803,7 @@ describe('ChatView', () => {
       expect(view.container.querySelector('[data-chat-group-key]')).toBe(group)
       expect(group?.hasAttribute('hidden')).toBe(!manualOpen)
     }
-    expect(toggle.textContent).toBe(h.props.t('message.turnProcess.took') + formatRunDuration(4_000, h.props.t))
+    expect(turnHeaderMeta(view.container)).toContain(h.props.t('message.turnHeader.took') + formatRunDuration(4_000, h.props.t))
     act(() => { h.set({ hasMore: false }) })
     expect(toggle.getAttribute('aria-expanded')).toBe(String(manualOpen))
   })
@@ -2864,11 +2871,9 @@ describe('ChatView', () => {
     })
     const h = makeHarness({ chat: partial, hasMore: true })
     const view = render(<h.ChatView {...h.props} />)
-    const toggle = turnProcessControl(view.container)!
     const processRow = view.getByText('working').closest('[data-chat-flow-kind="assistant-step"]')!
-    expect(toggle.textContent).toBe('已完成，用时 5秒')
-    expect(toggle.disabled).toBe(true)
-    expect(toggle.getAttribute('aria-expanded')).toBeNull()
+    expect(turnProcessControl(view.container)).toBeNull()
+    expect(turnHeaderMeta(view.container)).toContain('用时 5秒')
     expect(processRow.hasAttribute('hidden')).toBe(false)
 
     const beforeKeys = partial.locations.getTurn(1)
@@ -2890,8 +2895,7 @@ describe('ChatView', () => {
       builder.publish()
       h.set({ chat: complete, hasMore: false })
     })
-    expect(turnProcessControl(view.container)).toBe(toggle)
-    expect(toggle.disabled).toBe(false)
+    const toggle = turnProcessControl(view.container)!
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(processRow.getAttribute('hidden')).toBe('until-found')
     expect(view.getByText('final answer').closest('[hidden]')).toBeNull()
@@ -3018,7 +3022,7 @@ describe('ChatView', () => {
     expect(view.queryByRole('dialog')).toBeNull()
     const footer = view.container.querySelector<HTMLElement>('[data-turn-tail="1"]')!
     expect(within(footer).queryByRole('button', { name: /用时/ })).toBeNull()
-    expect(turnProcessControl(view.container)?.textContent).toBe('已完成，用时 19秒')
+    expect(turnHeaderMeta(view.container)).toContain('用时 19秒')
     act(() => { h.setPerformanceUsage('compact') })
     expect(view.queryByRole('button', { name: /用量/ })).toBeNull()
     act(() => { h.setPerformanceUsage('detailed') })
@@ -3039,7 +3043,7 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     const footer = view.container.querySelector<HTMLElement>('[data-turn-tail="1"]')!
     expect(within(footer).queryByRole('button', { name: /用时/ })).toBeNull()
-    expect(turnProcessControl(view.container)?.textContent).toBe('已完成，用时 19秒')
+    expect(turnHeaderMeta(view.container)).toContain('用时 19秒')
     expect(view.queryByRole('button', { name: /用量/ })).toBeNull()
   })
 
@@ -3235,7 +3239,7 @@ describe('ChatView', () => {
     expect(h.toolOwners[0]?.block).toMatchObject({ callId: 'r1', argsRaw: '{"command":"cmd-r1"}' })
     expect(view.getByRole('status').textContent).toBe('正在深入思考')
     expect(turnProcessControl(view.container)).toBeNull()
-    expect(runningContent(view.container)?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(runningContent(view.container)?.textContent).toMatch(/^正在分析请求\d+秒$/)
   }))
 
   it('keeps the Tool renderer mounted when a running call settles into log order', () => {
@@ -3295,7 +3299,7 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     const status = view.getByRole('status')
     const content = runningContent(view.container)!
-    expect(content.textContent).toMatch(/^正在深入思考，用时 \d+分\d+秒 ···$/)
+    expect(content.textContent).toMatch(/^正在分析请求\d+分\d+秒$/)
     expect(turnProcessControl(view.container)).toBeNull()
     expect(status.textContent).toBe('正在深入思考')
     expect(status.getAttribute('aria-live')).toBe('polite')
@@ -3310,10 +3314,10 @@ describe('ChatView', () => {
         role: 'user', source: { kind: 'user' },
       }] } })
     })
-    expect(content.textContent).toMatch(/^正在深入思考，用时 \d+分\d+秒 ···$/)
+    expect(content.textContent).toMatch(/^正在分析请求\d+分\d+秒$/)
     const beforeTick = content.textContent
     act(() => { vi.advanceTimersByTime(2_000) })
-    expect(content.textContent).toMatch(/^正在深入思考，用时 \d+分\d+秒 ···$/)
+    expect(content.textContent).toMatch(/^正在分析请求\d+分\d+秒$/)
     expect(content.textContent).not.toBe(beforeTick)
     expect(view.getByRole('status')).toBe(status)
     expect(status.textContent).toBe('正在深入思考')
@@ -3322,10 +3326,10 @@ describe('ChatView', () => {
       h.setChat({ nodes: [trigger, { ...steering(2, 'also', 1), time: 128_000 }] })
     })
     expect(runningContent(view.container)).toBe(content)
-    expect(content.textContent).toMatch(/^正在深入思考，用时 \d+分\d+秒 ···$/)
+    expect(content.textContent).toMatch(/^正在分析请求\d+分\d+秒$/)
     expect(view.getByText('also').closest('[data-pending-steering]')).toBeNull()
     act(() => { vi.advanceTimersByTime(1_000) })
-    expect(content.textContent).toMatch(/^正在深入思考，用时 \d+分\d+秒 ···$/)
+    expect(content.textContent).toMatch(/^正在分析请求\d+分\d+秒$/)
     expect(status.textContent).toBe('正在深入思考')
     view.unmount()
     expect(vi.getTimerCount()).toBe(0)
@@ -3340,12 +3344,12 @@ describe('ChatView', () => {
     )
     const view = render(<h.ChatView {...h.props} />)
     const content = runningContent(view.container)!
-    expect(content.textContent).toMatch(/^正在深入思考，用时 \d+分\d+秒 ···$/)
+    expect(content.textContent).toMatch(/^正在分析请求\d+分\d+秒$/)
     act(() => { vi.advanceTimersByTime(1_000) })
-    expect(content.textContent).toMatch(/^正在深入思考，用时 \d+小时\d+分\d+秒 ···$/)
+    expect(content.textContent).toMatch(/^正在分析请求\d+小时\d+分\d+秒$/)
     const hourlyText = content.textContent
     act(() => { vi.advanceTimersByTime(303_000) })
-    expect(content.textContent).toMatch(/^正在深入思考，用时 \d+小时\d+分\d+秒 ···$/)
+    expect(content.textContent).toMatch(/^正在分析请求\d+小时\d+分\d+秒$/)
     expect(content.textContent).not.toBe(hourlyText)
     expect(view.getByRole('status').textContent).toBe('正在深入思考')
     view.unmount()
@@ -4131,7 +4135,7 @@ describe('ChatView', () => {
     const status = column.querySelector('[data-chat-running]')
     expect(column.lastElementChild).toBe(status)
     expect(within(status as HTMLElement).getByRole('status').textContent).toBe('正在深入思考')
-    expect(status?.lastElementChild?.textContent).toBe('正在深入思考')
+    expect(status?.lastElementChild?.textContent).toBe('正在分析请求')
     const icon = status?.querySelector('[aria-hidden="true"]:has(> span:only-child)')
     expect(icon?.getAttribute('aria-hidden')).toBe('true')
     expect(icon?.firstElementChild?.tagName).toBe('SPAN')
@@ -4141,4 +4145,126 @@ describe('ChatView', () => {
     act(() => { h.setSession({ running: false }) })
     expect(column.querySelector('[data-chat-running]')).toBeNull()
   })
+})
+
+describe('Reply header, process summaries and questions', () => {
+  afterEach(cleanup)
+
+  it('heads a running reply with its start time only, and offers no fold until it completes', withClock(3_000, () => {
+    const h = makeHarness({
+      nodes: [user(1, 'question'), reasoningAssistant(2, 'inspect', 1, 1)],
+      turnTimings: new Map([[1, { startTime: 0 }]]),
+    }, { running: true })
+    const view = render(<h.ChatView {...h.props} />)
+    const meta = turnHeaderMeta(view.container)
+    expect(meta).toBeTruthy()
+    expect(meta).not.toContain(h.props.t('message.turnProcess.worked'))
+    expect(meta).not.toContain(h.props.t('message.turnHeader.took'))
+    expect(turnProcessControl(view.container)).toBeNull()
+  }))
+
+  it('names the skills a Turn loaded as chips that open each skill', () => {
+    const h = makeHarness({
+      nodes: [
+        user(1, 'question'),
+        call(2, 's1', 'skill', { name: 'wx-short-write' }),
+        call(3, 's2', 'skill', { name: 'wx-short-write' }),
+        call(4, 's3', 'skill', { name: 'wx-deslop' }),
+        assistant(5, 'final answer', 1, 2),
+      ],
+      turnEnds: new Map([[1, 6]]),
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    const chips = [...view.container.querySelectorAll<HTMLButtonElement>('[data-turn-skill]')]
+    expect(chips.map(chip => chip.textContent)).toEqual(['wx-short-write', 'wx-deslop'])
+    fireEvent.click(chips[1]!)
+    expect(h.props.openSkill).toHaveBeenCalledWith('wx-deslop')
+  })
+
+  it('summarizes a completed Turn with file changes first and the files read counted', () => {
+    const h = makeHarness({
+      nodes: [
+        user(1, 'question'),
+        call(2, 'r1', 'read', { file_path: 'a.md' }),
+        call(3, 'r2', 'read', { file_path: 'b.md' }),
+        call(4, 'r3', 'read', { file_path: 'a.md' }),
+        call(5, 'g1', 'glob', { pattern: '**/*.md' }),
+        call(6, 'e1', 'edit', { file_path: 'a.md' }),
+        call(7, 'w1', 'write', { file_path: 'c.md' }),
+        assistant(8, 'final answer', 1, 2),
+      ],
+      turnEnds: new Map([[1, 9]]),
+    })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(turnProcessControl(view.container)?.textContent)
+      .toBe('写入了 1 个文件 · 修改了 1 处 · 读取了 2 个文件 · 搜索了 1 次过程')
+  })
+
+  it('keeps an answered question set in view, outside its groups, when the Turn folds', () => {
+    const nodes = [
+      user(1, 'question'),
+      reasoningAssistant(2, 'inspect', 1, 1),
+      call(3, 'q1', 'ask_user_question', { questions: [{ id: 'a', question: 'Which way?' }] }),
+      call(4, 'r1', 'read', { file_path: 'a.md' }),
+      assistant(5, 'final answer', 1, 2),
+    ]
+    const builder = new ChatSnapshotBuilder()
+    const groups = new ConversationGroupStore<ProcessGroupData>()
+    const state = new ProcessState()
+    const h = makeHarness({
+      chat: installGroupedSnapshot(builder, state, groups, chatSnapshotFixture({ nodes, turnEnds: new Map([[1, 6]]) })),
+    })
+    h.setGrouped(groups)
+    const view = render(<h.ChatView {...h.props} />)
+    const question = view.getByTestId('tool-seat-q1').closest<HTMLElement>('[data-chat-flow-key]')!
+    expect(question.closest('[data-chat-group-key]')).toBeNull()
+    expect(question.hasAttribute('data-turn-process-member')).toBe(false)
+    expect(question.closest('[hidden]')).toBeNull()
+    expect(view.getByTestId('tool-seat-r1').closest('[hidden]')).not.toBeNull()
+    expect(view.container.querySelectorAll('[data-chat-group-key]')).toHaveLength(2)
+    // The summary line counts process work; the question set reads as its own card.
+    expect(turnProcessControl(view.container)?.textContent).toBe('读取了 1 个文件过程')
+  })
+
+  it('names the files a live group read and opens them from their chips', () => {
+    const nodes = [user(1, 'question'), call(2, 'r1', 'read', { file_path: '设定/人物库.md' })]
+    const builder = new ChatSnapshotBuilder()
+    const groups = new ConversationGroupStore<ProcessGroupData>()
+    const state = new ProcessState()
+    const h = makeHarness({
+      chat: installGroupedSnapshot(builder, state, groups, chatSnapshotFixture({
+        nodes, turnTimings: new Map([[1, { startTime: 0 }]]),
+      })),
+    }, { running: true })
+    h.setGrouped(groups)
+    const fileLabel = vi.fn((relative: string) => relative === '设定/人物库.md' ? '设定 · 人物库' : undefined)
+    const view = render(<h.ChatView {...h.props} fileLabel={fileLabel} />)
+    const chip = view.getByRole('button', { name: '打开 设定 · 人物库' })
+    expect(chip.textContent).toBe('设定 · 人物库')
+    const toggle = view.container.querySelector<HTMLButtonElement>('[data-process-activity]')!
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(chip)
+    expect(h.props.openFile).toHaveBeenCalledWith('设定/人物库.md')
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('names the live group activity and its detail in the running status', withClock(2_000, () => {
+    const nodes = [user(1, 'question'), reasoningAssistant(2, 'inspect', 1, 1)]
+    const builder = new ChatSnapshotBuilder()
+    const groups = new ConversationGroupStore<ProcessGroupData>()
+    const state = new ProcessState()
+    const project = (running: boolean) => installGroupedSnapshot(builder, state, groups, chatSnapshotFixture({
+      nodes, ...running ? { runningCalls: [{ ...runningCall('r1', 'read'), turn: 1, argsRaw: '{"file_path":"a.md"}' }] } : {},
+      turnTimings: new Map([[1, { startTime: 0 }]]),
+    }))
+    const h = makeHarness({ chat: project(true) }, { running: true })
+    h.setGrouped(groups)
+    h.setTranscriptView('standard')
+    const view = render(<h.ChatView {...h.props} />)
+    act(() => { vi.advanceTimersByTime(1_000) })
+    expect(runningContent(view.container)?.textContent).toMatch(/^正在读取文件a\.md\d+秒$/)
+    act(() => { h.setTranscriptView('compact') })
+    act(() => { vi.advanceTimersByTime(1_000) })
+    expect(runningContent(view.container)?.textContent).toMatch(/^正在读取文件\d+秒$/)
+  }))
 })

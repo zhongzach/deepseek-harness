@@ -88,6 +88,8 @@ export interface ToolCallCommonProps {
   home?: string | undefined
   /** Open an argument path at its optional requested line. */
   openFile: (path: string, options?: OpenFileOptions) => void
+  /** Name a workspace-relative file for display, when a `chatFileLabels` provider does; the path stays its address. */
+  fileLabel?: ((relative: string) => string | undefined) | undefined
   /** Chat-supplied, session-authorized loader for durable images; Tool views do not manage attachment URLs. */
   loadImage: MessageImageLoader
   /** Inspect this call in the trajectory view when available. */
@@ -167,6 +169,12 @@ export type ToolHostInfoInjected = {
      */
     hostInfo: HostObservable<RemoteHostFacts>
   }
+  /**
+   * Display name of one workspace file, read from the optional `chatFileLabels` provider at call time.
+   * @param relative - path relative to the Session workspace, with `/` separators.
+   * @returns the name, or undefined to show the path.
+   */
+  fileLabel: (relative: string) => string | undefined
 }
 
 /** Full props of the Tool call-tree renderer registered as a tool-call Chat Node. */

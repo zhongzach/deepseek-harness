@@ -1,0 +1,42 @@
+.segment {
+  white-space: nowrap;
+}
+
+.separator {
+  color: var(--dsw-alias-label-caption);
+}
+
+.files {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.file {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  display: inline-block;
+  max-width: 16em;
+  height: calc(22px + var(--dsh-content-font-delta, 0px));
+  padding: 0 7px;
+  overflow: hidden;
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: calc(var(--dsh-content-font-size-secondary, 13px) - 0.5px);
+  line-height: calc(20px + var(--dsh-content-font-delta, 0px));
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+button.file {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.file:hover {
+  border-color: var(--dsw-alias-border-l3);
+}

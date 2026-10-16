@@ -5,7 +5,7 @@ import type { ConversationLocationDataStore, ConversationTurnDataMap } from '@de
 import type { ChatNodeHookContext, ChatNodeOwnerProps, ChatViewSlotProps, UsePresentation } from '../contract/slots.ts'
 import type { ChatNode } from '../contract/chat-nodes.ts'
 import type { ChatNodeStore } from '../contract/snapshot.ts'
-import { TURN_PROCESS_INDEPENDENT_KINDS, turnProcessAlwaysOpen } from '../contract/turn-process.ts'
+import { turnProcessAlwaysOpen, turnProcessIndependent } from '../contract/turn-process.ts'
 import { storedTurnProcessEntry } from '../stores.ts'
 import { useSearchableHidden } from './searchable-hidden.ts'
 import css from './ChatView.module.css'
@@ -20,6 +20,8 @@ interface ChatNodeSeatProps extends ChatNodeOwnerProps {
   readonly useStore: ChatViewSlotProps['useStore']
   readonly actions: ChatViewSlotProps['actions']
   readonly renderSlot: ChatViewSlotProps['renderSlot']
+  /** Workspace file names for the process groups beside this seat. */
+  readonly fileLabel: ChatViewSlotProps['fileLabel']
   readonly t: ChatViewSlotProps['t']
 }
 
@@ -77,7 +79,7 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
     && (processPresentation.turnStarted || processPresentation.turnClosed)
   const processMember = routedNode !== undefined
     && processWindowReady
-    && !TURN_PROCESS_INDEPENDENT_KINDS.has(routedNode.kind)
+    && !turnProcessIndependent(routedNode)
     && routedNode.anchorSeq >= processSpec.processStartSeq
     && (liveProcess || processSpec.answerAnchorSeq === null || routedNode.anchorSeq < processSpec.answerAnchorSeq
       || (groupPart === 'reasoning' && routedNode.kind === 'assistant-step' && routedNode.data.step === processSpec.answerStep))

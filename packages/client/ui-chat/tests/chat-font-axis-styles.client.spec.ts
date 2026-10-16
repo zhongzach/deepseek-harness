@@ -143,16 +143,16 @@ describe('chat flow font-size axis', () => {
     expect(css).toMatch(/\) \.actions \{\s*opacity: 0/)
     expect(css).toContain("[data-actions-reveal='hover']:hover .actions,")
     expect(css).toContain("[data-actions-reveal='hover']:focus-within .actions,")
-    expect(css).toMatch(/\):focus-within \.actions \{\s*opacity: 1/)
+    expect(css).toMatch(/:is\(:hover, :focus-within\) \.actions \{\s*opacity: 1/)
     expect(css).not.toContain("[data-actions-reveal='always']")
   })
 
-  it('uses flow sibling selectors to reveal only the latest user-authored row', () => {
+  it('reveals every user-authored row on hover or focus', () => {
     const css = read('MessageIconActions.module.css')
     const userKinds = ":is([data-chat-flow-kind='user'], [data-chat-flow-kind='steering'])"
-    expect(css).toContain(`${userKinds}:has(\n    ~ ${userKinds}\n  ) .actions`)
-    expect(css).toContain('):hover .actions')
-    expect(css).toContain('):focus-within .actions')
+    expect(css).toContain(`${userKinds} .actions {`)
+    expect(css).toContain(`${userKinds}:is(:hover, :focus-within) .actions {`)
+    expect(css).not.toContain(':has(')
   })
 
   it('keeps empty outer Seats in flow without adding height or sibling gaps', () => {

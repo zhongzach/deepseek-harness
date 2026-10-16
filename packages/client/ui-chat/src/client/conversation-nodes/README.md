@@ -43,8 +43,8 @@ Every reply separates secondary groups; only the final answer is protected from 
 |---|---|---|
 | Which rows belong together? | Group boundaries | The reply separates G1 and G2; changing from `read` to `bash` does not. |
 | What did a group do? | Category counts | G1 has `read=1, commands=1`; G2 has `code=1`. Reasoning adds no tool count. |
-| What does its title say? | Group state and summary | Running groups use their latest running activity; closed groups use their highest-count categories. Counts never decide folding. |
-| How much detail is visible? | Display mode and manual group opening | Compact, Standard, and Detailed retain historical group headers; Detailed shows running bodies directly, while Verbose shows both running and historical bodies directly. |
+| What does its title say? | Group state and summary | A group header is one summary line: each category with its count, file changes and questions first, with the files read named one by one; a running group shows a spinner. Counts never decide folding. |
+| How much detail is visible? | Display mode and manual group opening | Only Turns that cannot fold as a whole have group headers; opening a foldable Turn shows its process rows directly. Detailed and Verbose show group bodies directly. |
 | Is the process visible at all? | Whole-Turn opening | Closing the Turn hides G1, the intermediate reply, and G2 together. |
 
 ### What the reader sees
@@ -54,13 +54,12 @@ Assume the Turn above completed normally, with no inner disclosure manually open
 | Viewing state | Visible content |
 |---|---|
 | Whole Turn collapsed, Compact/Standard/Detailed | Input, whole-Turn control, final response, and footer. No process headers, bodies, or intermediate reply. |
-| Whole Turn open, Compact/Standard/Detailed | G1/G2 headers, the intermediate reply, and final response. Group bodies start collapsed. |
-| Whole Turn and G1 open, Standard or Detailed | G1's reasoning and tool rows with the settled reasoning preview; G2 remains a header. Full reasoning/tool bodies are still manual. |
+| Whole Turn open, Compact/Standard/Detailed | G1 and G2 process rows, the intermediate reply, and final response; no group headers. Full reasoning/tool bodies are still manual. |
 | Verbose | Whole-Turn duration/status header without a collapse action, all process rows, intermediate reply, and final response. No group headers; individual tool/reasoning bodies remain manual. |
 
 Visibility applies from outside inward: whole Turn → secondary group → individual reasoning/tool disclosure. Opening an inner layer cannot bypass a closed outer layer. Category changes never open or close a layer. Mode changes preserve membership and manual opening choices.
 
-If steering, a User message, or a trigger notice follows process output, the Turn offers only individual group disclosures, not whole-Turn collapse. In Compact/Standard, `G1 → steering 1 → G2 → steering 2 → G3` retains all three headers and both inputs in that order, with intermediate replies visible; opening one group reveals only its body. Detailed directly shows group bodies only while the Turn runs; completed Turns retain headers and manual disclosure. Verbose shows group bodies directly in both cases. The Turn control still shows duration or status, without a collapse action.
+If steering, a User message, or a trigger notice follows process output, the Turn offers only individual group disclosures, not whole-Turn collapse. In Compact/Standard, `G1 → steering 1 → G2 → steering 2 → G3` retains all three headers and both inputs in that order, with intermediate replies visible; opening one group reveals only its body. Detailed and Verbose show group bodies directly. The Turn control still shows duration or status, without a collapse action.
 
 -----
 
@@ -91,7 +90,7 @@ Trigger titles and icons use the recorded `source.kind`: `schedule`, `tool-jobs`
 | Neither start nor end is loaded | Keep process rows visible and withhold the whole-Turn control. |
 | A Turn control exists, but there is no process content | Retain its title, without a collapse action. |
 
-The final answer is the latest Step's settled Assistant reply, provided it has visible reply content and no tool-call block. Its response remains outside whole-Turn folding; its reasoning remains process content. User and steering inputs, trigger notices, terminal errors, max-token notices, and the completed-turn footer remain independent. Secondary grouping treats model retries as separators, but whole-Turn folding still includes retry rows.
+The final answer is the latest Step's settled Assistant reply, provided it has visible reply content and no tool-call block. Its response remains outside whole-Turn folding; its reasoning remains process content. User and steering inputs, trigger notices, terminal errors, max-token notices, and the completed-turn footer remain independent. Secondary grouping treats model retries as separators, but whole-Turn folding still includes retry rows. Question calls (`ask_user_question`, `request_user_input`) stay visible like replies: they end their group and take no part in whole-Turn folding, and an answered question set shows as a question card.
 
 Loading an older page preserves the reader's group-opening choices. Newly loaded process content follows the same Turn state while the final answer is unchanged and whole-Turn folding remains eligible. If the page reveals an intervening input, individual group disclosures replace whole-Turn hiding. When the real start arrives, the duration becomes available; loading all history is not an additional folding condition. When new content only extends an existing group at its beginning, that group and its old message rows retain their identities and opening choices. Replies, steering, and other real boundaries in the new page still separate groups; not every new row joins the old group.
 
@@ -99,9 +98,9 @@ Clicking Load older anchors the first visible content item below that button in 
 
 Paging adds older content above the retained anchor without jumping to the new top. A capped group absorbs the displacement within its scroll range; the outer transcript absorbs the remainder, including when the group first reaches its cap. If the available scroll range is insufficient, compensation stops at the actual limit without adding bottom space. Later content growth keeps the same anchor until a reading gesture or explicit navigation releases it. Typing or clicking within the composer and non-scrolling transcript keys retain the anchor. If the reader scrolls while a page is loading, scrolling takes priority and its settled reading position becomes the new paging anchor.
 
-While the Session runs, Chat appends a Session-level indicator at the bottom of the current transcript, after pending submission or steering rows: a whale tail beside shimmering elapsed time. Before the current Turn start time arrives, the indicator shows status text without a duration. The clock updates in whole seconds, starts at one second, and uses hours from 60 minutes. When the Session stops running, the indicator disappears; the closed Turn process control shows the fixed duration, cancellation, or failure status. Lifecycle changes have a polite announcement; clock ticks do not. The whale is hidden from assistive technology and remains static under reduced motion.
+While the Session runs, Chat appends a Session-level running status at the bottom of the current transcript, after pending submission or steering rows: three pulsing dots, what the Turn is doing now, and the elapsed time at the end of the line. The activity is the running tool category of the latest unclosed group, using its preparation label while the call is still preparing; without a running tool it is the thinking label, and while the transcript ends in a streaming reply it is the replying label. Standard and Detailed append that group's live detail. Each shown activity stays at least 600ms, retaining only the newest pending activity. Before the current Turn start time arrives, no duration is shown. The clock updates in whole seconds, starts at one second, and uses hours from 60 minutes. When the Session stops running, the status disappears; the Turn header shows the fixed duration, cancellation, or failure status. Lifecycle changes have a polite announcement; activity changes and clock ticks do not. The dots are hidden from assistive technology and remain static under reduced motion.
 
-The top duration/status control and trigger title use the group-title font size and follow the font-size setting. Completed duration digits use the code font with tabular numerals; running and completed minutes and seconds have no leading zero. The timed running label ends with a space and “···”; completion shows “Completed in”.
+Each reply starts with a header line: the `conversation.chat.turn.identity` seat, chips for the skills the Turn loaded through `skill` calls, and the Turn's start time. Each chip opens its skill; its text comes from the `conversation.chat.turn.skill` seat, or the skill name when nothing fills that seat. Once the Turn ends, the duration follows the time, or the cancellation or failure status replaces it. When the whole-Turn control can fold the process, a one-line process summary below the header opens and closes the whole process, and its trailing text switches between “Steps” and “Hide”. It lists the Turn's categories with counts in the same order as group summaries, counting distinct files for reads and leaving out questions, which show as their own cards. A running Turn has no such line. The header uses the secondary font size and follows the font-size setting; duration digits use tabular numerals without leading zeros. Trigger titles use the body font size.
 
 Automatic collapse keeps the process open if hiding it would hide keyboard focus. Manual closing focuses the process control before hiding its members. Closing a whole Turn resets its groups and inner reasoning/tool disclosures; it does not reset unrelated renderer state. Browser find can reveal searchable hidden content.
 
@@ -114,11 +113,12 @@ Settings → General → Work details offers four modes for choosing how much to
 
 | Behavior | Compact | Standard | Detailed | Verbose |
 |---|---|---|---|---|
-| Process-group header | Category summary | Summary and live task detail | Hidden in running Turns; retained in historical Turns | Hidden |
-| Process-group body | Initially collapsed | Initially collapsed | Directly visible without a group-level height cap in running Turns; manual disclosure in historical Turns | Directly visible without a group-level height cap in running and historical Turns |
+| Process-group header | One summary line, only in Turns that cannot fold as a whole | Same as Compact | Hidden | Hidden |
+| Process-group body | Initially collapsed; directly visible once its Turn is opened as a whole | Same as Compact | Directly visible without a group-level height cap | Directly visible without a group-level height cap |
 | Settled reasoning preview | Hidden | First line | First line | First line |
+| Live detail in the running status | Hidden | Shown | Shown | Hidden |
 | Individual reasoning and tool bodies | Manual expansion | Manual expansion | Manual expansion | Manual expansion |
-| Eligible completed Turn | Initially collapsed | Initially collapsed | Initially collapsed | Always open; duration/status header cannot collapse it |
+| Eligible completed Turn | Initially collapsed | Initially collapsed | Initially collapsed | Always open; the header cannot collapse it |
 
 ### Defaults and saving preferences
 
@@ -130,50 +130,39 @@ Work details uses the Host setting `ui-chat.transcriptView`. The client reads it
 
 Reading a default does not automatically save configuration. When the user changes modes, the selected value is saved through Host settings; memory mode does not write to disk. Desktop onboarding writes preferences according to its rules when completed or skipped.
 
-### Group-title rules
+### Group-summary rules
 
-A closed group's header names the first three categories from its ranked summary, without displaying counts. A group without categories uses the thinking label. A running header names its live tool category, otherwise thinking; Standard appends live detail. Live titles remain visible for at least 150ms, retaining only the newest pending title.
+A group header is one summary line. It names the first five nonzero categories with their counts, in this order: write, edit, questions, read, read images, search, web search, web fetch, subagents, commands, code, plan, skills, tools. The `read` entry names the first three distinct files the group read, using the optional `chatFileLabels` provider or else the workspace-relative path without its extension; each chip opens its file, and the rest are counted as “+N more”. Without categories, a running group shows the thinking label and a closed one shows “Analysis completed”. A running group shows a spinner in place of the summary icon. Live detail stays out of the header; the running status shows it.
 
-All three stages share the tool-name classification below. A preparing Tool node uses its category's preparation label: read files for `read`, read images for `read_image`, write files for `write`, edit files for `edit` and `apply_patch`, and update the plan for `todo_write` and goal tools. Only the generic “Preparing tool calls” category appends the wire tool name in Standard mode; other categories omit it. It contributes one call without parsing arguments and renders one non-expandable row. A named live delta can create this node; historical calls start directly from tool/call without replaying preparation.
+All three stages share the tool-name classification below. A preparing Tool node gives the running status its category's preparation label: read files for `read`, read images for `read_image`, write files for `write`, edit files for `edit` and `apply_patch`, and update the plan for `todo_write` and goal tools. It contributes one call without parsing arguments and renders one non-expandable row. A named live delta can create this node; historical calls start directly from tool/call without replaying preparation.
 
-The labels below describe recorded activity, not successful outcomes. For example, a failed read still participates in the “Read files” category.
+The labels below describe recorded activity, not successful outcomes. For example, a failed read still counts toward “Read N files”. English uses the singular form for a count of one.
 
-| Category | Running label | Closed label |
+| Category | Running-status label | Summary count label |
 |---|---|---|
 | No live category / no counted categories | Analyzing the request | Analysis completed |
-| `read` | Reading files | Read files |
-| `readImage` | Reading images | Read images |
-| `search` | Searching code | Searched code |
-| `write` | Writing files | Wrote files |
-| `edit` | Editing files | Edited files |
-| `commands` | Running commands | Ran commands |
-| `code` | Running code | Ran code |
-| `webSearch` | Searching the web | Searched the web |
-| `webFetch` | Visiting web pages | Visited web pages |
-| `subagents` | Coordinating subagents | Coordinated subagents |
+| `read` | Reading files | Read N files |
+| `readImage` | Reading images | Viewed N images |
+| `search` | Searching code | Ran N searches |
+| `write` | Writing files | Wrote N files |
+| `edit` | Editing files | Made N edits |
+| `commands` | Running commands | Ran N commands |
+| `code` | Running code | Ran N scripts |
+| `webSearch` | Searching the web | Searched the web N times |
+| `webFetch` | Visiting web pages | Opened N pages |
+| `subagents` | Coordinating subagents | Delegated to N subagents |
 | `plan` | Updating the plan | Updated the plan |
-| `questions` | Waiting for your action | Asked questions |
-| `tools` | Calling tools | Called tools |
+| `questions` | Waiting for your action | Asked you N rounds of questions |
+| `skills` | Loading skills | Loaded N skills |
+| `tools` | Calling tools | Called N tools |
 
-| Group state | Title composition |
-|---|---|
-| Not closed, with a running tool | Use the live category, not the highest-count category. Standard appends nonempty detail with ` · `; Compact omits detail. |
-| Not closed, without a running tool | Use the analysis label even when completed-tool counts are nonzero. Standard may append running reasoning detail. |
-| Closed, zero categories | Use the completed-analysis label. |
-| Closed, one category | Use its closed label without a count. |
-| Closed, two categories | Join ranked labels with “and”. Chinese removes the second leading `已` only when both labels start with it. |
-| Closed, three categories | Join all three ranked labels with commas. |
-| Closed, more than three categories | Show the first three labels followed by “etc.” (`等` in Chinese). |
-
-English lowercases the initial letter of joined labels after the first. Closing a group immediately selects the completed summary; the 150ms minimum applies to running-title changes, not to delaying completion. Detailed hides group headers in running Turns, including groups ended by a reply or steering before their Turn ends. Verbose also hides historical group headers.
-
-Group headers show a category icon, replace it with a down arrow on hover or keyboard focus, and show an up arrow while open. Manually expanded group bodies use 6px row spacing, a `min(400px, 50vh)` height cap, and 24px directional fades. Wheel scrolling can continue into the outer transcript at an edge. Detailed removes the group-level cap in running Turns; Verbose applies this layout to historical Turns as well. Process rows retain 6px spacing in both modes; Assistant responses have 12px clearance. Expanded group titles sit 8px above their content; Turn process controls retain 16px clearance.
+A group header is a single line that truncates at its end when narrow. Clicking anywhere on it opens or closes the group, and its trailing text switches between “Steps” and “Hide”; the file chips open their files instead. A hairline down the left of the group body links its rows. Manually expanded bodies use 6px row spacing, a `min(400px, 50vh)` height cap, and 24px directional fades; wheel scrolling can continue into the outer transcript at an edge. Groups in a Turn opened as a whole, and group bodies in Detailed and Verbose, have no group-level cap. Process rows retain 6px spacing; Assistant responses and question cards have 12px clearance, and a group with a header sits 10px below the content above it; Turn headers retain 16px clearance.
 
 An open capped group follows content growth only while its own scroll position is at the bottom. Scrolling away pauses that group's following; returning to the bottom resumes it, independently of outer transcript following. Manually opening an unclosed group starts at the bottom and follows growth; manually opening a closed group starts at the top with following disabled, even when its initial content fits without scrolling. Closing the group in the data or restoring its height cap through a mode change does not reset an already-open reader's position. Browser find retains its own reveal position.
 
 Individual reasoning starts collapsed, including while streaming. All modes preview the latest paragraph whose first line ends with a newline; an unfinished single line has no preview. Later text in that paragraph does not change the preview. After settlement, the mode table applies. Expanded reasoning uses compact Markdown typography.
 
-Switching modes retains manually opened groups and inner disclosures. It changes visibility and sizing without recreating the message rows. Detailed and Verbose do not open every individual disclosure. Only Verbose keeps the whole Turn open.
+Switching modes retains manually opened groups and inner disclosures. It changes visibility and sizing without recreating the message rows. Opening a Turn as a whole opens its groups as well; if paging later reveals an intervening input and the Turn switches to group headers, those groups stay open. Detailed and Verbose do not open every individual disclosure. Only Verbose keeps the whole Turn open.
 
 -----
 
@@ -192,7 +181,8 @@ When `question-reply` and `turn-trigger` project the same message id, grouping r
 | Assistant reply | End the preceding group and emit an independent `response` reference. If the same Node has reasoning, append that reasoning before ending the group. |
 | `user`, `steering`, `turn-trigger`, `model-retry`, `turn-error`, `turn-max-tokens`, `turn-tail` | End the preceding group and retain the Node as an independent root. |
 | `turn-process` | Retain the control as an independent root without ending the current group. |
-| Other visible Nodes owned by a Turn, including tools | Append the whole Node to the current group, creating a group if necessary. |
+| Question tool calls (`ask_user_question`, `request_user_input`) | End the preceding group, like a reply, and retain the Node as an independent root. |
+| Other visible Nodes owned by a Turn, including other tools | Append the whole Node to the current group, creating a group if necessary. |
 | Node from another Turn or without a Turn | Break the same-Turn sequence. A Node without a Turn remains independent, including an unsplit Assistant. |
 | Hidden Nodes, system prompts, ordinary Context injection, and `permission` commands | Excluded from the grouping input; they neither join nor split a group. |
 
@@ -235,7 +225,7 @@ Counts describe calls in this group, not successful operations, files changed, c
 | Settled root result whose original call is missing | Do not infer its category from result text or metadata. Count no root call; its recorded subcalls still participate. |
 | Assistant reasoning, Assistant tool-call protocol blocks, or another Node kind | Add no tool count. The separately projected tool Node owns that call's count. |
 
-Deduplication is group-local. Counts sort descending; ties retain the category's first occurrence in member order and parent-before-child traversal. For `read → bash → read`, the ranking is `read=2, commands=1`; for `bash → read`, it is `commands=1, read=1`. No category has a fixed priority when counts tie.
+The summary also records, in first-read order, the distinct files that the group's `read` calls named (`file_path`, else `path`); a call with incomplete arguments records none. Deduplication is group-local. Counts sort descending; ties retain the category's first occurrence in member order and parent-before-child traversal. For `read → bash → read`, the ranking is `read=2, commands=1`; for `bash → read`, it is `commands=1, read=1`. No category has a fixed priority when counts tie.
 
 ### Tool-name classification
 
@@ -255,6 +245,7 @@ Classification uses the recorded tool name exactly: no case folding, namespace s
 | `subagents` | `subagent` or prefix `subagent_` |
 | `plan` | `todo_write`, `create_goal`, `update_goal`, `get_goal` |
 | `questions` | `ask_user_question`, `request_user_input` |
+| `skills` | `skill` |
 | `tools` | Every other name, including `list_mcp_resources`, `list_mcp_resource_templates`, and `read_mcp_resource` |
 
 ### Subagents, background jobs, and nested calls
@@ -275,6 +266,8 @@ A `run_code` root counts once as `code`; its recorded PTC subcalls each count in
 Exact-name rules also mean that a recorded name such as `functions.read`, `mcp.read`, or `Read` falls into `tools`, while `browser_inspect` falls into `search`. A `terminal_*` name follows the command rule even when its operation only inspects or closes a terminal, unless the earlier `_inspect` rule matches.
 
 ### Live activity and detail
+
+The running status shows the category and detail selected here.
 
 Preparing calls use their first named delta time; only the generic tool category provides the tool name as detail. Dispatched calls use their tool/call time and complete arguments.
 

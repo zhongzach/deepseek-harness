@@ -12,7 +12,7 @@ kind: "package-reference"
 
 使用本包可在浏览器中渲染已记录的 Session 对话，包括历史图片、本地化操作和滚动位置恢复。工作步骤展示模式控制思考预览与过程显隐，不隐藏最终答案；完全展开模式保持已完成轮次的过程行可见。本地 transcript（文本记录）与 steering（中途引导）提交会立即显示并保留在原区域，在权威会话记录到达时原子地消失，而排队中的提交始终不进入 Chat。本包不组装或修改模型请求。
 
-文件提及提供方同时接收当前查看的会话 ID 与收尾轮次的属主信息，因此继承历史中的链接可以指向 fork 自身。
+文件提及提供方同时接收当前查看的会话 ID 与收尾轮次的属主信息，因此继承历史中的链接可以指向 fork 自身。可选的 `chatFileLabels` 提供方为过程摘要和工具行中的工作区文件命名；它不命名的文件保留默认名称。
 
 ## 目录
 
@@ -34,7 +34,7 @@ kind: "package-reference"
 <a id="user-references"></a>
 ## 用户引用
 
-产品可通过 `conversation.message.user-text` 渲染用户文字。此链由 Chat 管理，供持久化的用户/steering 消息与即时提交回显共用，接收原始文字、关联会话标签、已加载 skill 名称和文件打开回调。不接管时保留标准文本投影。附件卡片、复制原文操作及时间戳仍由 Chat 管理；气泡提供 `data-user-message-bubble`，供产品限定样式作用范围。Session 日志不新增展示元数据。
+产品可通过 `conversation.message.user-text` 渲染用户文字。此链由 Chat 管理，供持久化的用户/steering 消息与即时提交回显共用，接收原始文字、关联会话标签、已加载 skill 名称和文件打开回调。不接管时保留标准文本投影。附件卡片、复制原文操作及时间戳仍由 Chat 管理；气泡提供 `data-user-message-bubble`，供产品限定样式作用范围。时间戳与复制操作位于气泡底部一侧；支持悬停的设备上，悬停或键盘聚焦时才显示。Session 日志不新增展示元数据。
 
 <a id="reference-previews"></a>
 ## 引用预览
@@ -88,7 +88,9 @@ Assistant 尝试结束且没有可见消息时，Chat 隐藏已发布的 Node，
 
 Chat 末尾为进行中的 Turn 控制行，且该轮尚无可见输入时，第一条本地 transcript 回显显示在控制行前。其他回显保留在正文末尾。控制行与回显共用一个 keyed 列表，因此控制行到达时不会重新挂载回显。持久输入在同一次渲染中替换匹配的回显。
 
-工作步骤展示模式控制过程组显示与推理预览。简洁、标准、详细模式收起符合条件的已完成轮次，不隐藏最终答案；完全展开模式保留时长或状态抬头，但不支持收起，历史过程行直接显示。[业务规则明细](src/client/conversation-nodes/README.zh.md#display-modes) 统一说明模式表、组头行为、整轮折叠资格、时钟与开合重置。
+工作步骤展示模式控制过程组显示与推理预览。简洁、标准、详细模式收起符合条件的已完成轮次，不隐藏最终答案；完全展开模式保留回复抬头，但不支持收起，历史过程行直接显示。[业务规则明细](src/client/conversation-nodes/README.zh.md#display-modes) 统一说明模式表、摘要行为、整轮折叠资格、时钟与开合重置。
+
+每轮回复以一行抬头开始：产品通过 `conversation.chat.turn.identity` 提供的身份（`TurnIdentityOwnerProps`：轮次编号及是否运行中）、本轮载入的技能胶囊，以及时间。胶囊像已确认的技能引用一样打开该技能；文字取自 `conversation.chat.turn.skill`（`TurnSkillOwnerProps`：技能名，没有占用时直接显示）。没有注册身份时，抬头从技能胶囊开始。已回答的一组问题以卡片保持可见，不参与过程折叠。
 
 Assistant 文本块开头的裸 `<thinking>` 或 `<think>` 包装使用与结构化推理相同的折叠展示。流式展示暂不显示尚未完整的分隔标签，结束标签之后的文本仍作为回复。代码块、行内代码、引用、正文中嵌入的标签、用户消息和工具数据保持字面含义。这只是展示投影；供应方流与历史 Session 记录保持不变，冷重放同样如此。
 
@@ -97,7 +99,7 @@ Assistant 文本块开头的裸 `<thinking>` 或 `<think>` 包装使用与结构
 <a id="grouped-rendering"></a>
 ## 分组渲染
 
-Chat 通过 `uiConversation.groups` 注册过程 Group Definition。React 通过稳定的 Group 与 Node 容器渲染混合 `node`/`group` 根序列，组头数据与成员数组分别订阅。已结束组的标题独立于实时详情偏好，只有运行中的标题在该偏好变化时更新。[过程分组业务规则](src/client/conversation-nodes/README.zh.md#process-grouping) 定义切分方式与活动摘要。
+Chat 通过 `uiConversation.groups` 注册过程 Group Definition。React 通过稳定的 Group 与 Node 容器渲染混合 `node`/`group` 根序列，组头数据与成员数组分别订阅。组摘要独立于实时详情偏好，该偏好只影响运行状态。[过程分组业务规则](src/client/conversation-nodes/README.zh.md#process-grouping) 定义切分方式与活动摘要。
 
 `groupPart` 在 Assistant 渲染器中选择推理或回复，不复制 Node 载荷。同一个 callId 的准备、派发与结果阶段由 Tool 节点自己拥有。每个部分有独立的 DOM 锚点用于恢复阅读位置；轮次导航使用原 Node key，落到它的第一个可见部分。展示模式切换以及为完整旧组补入更早成员时，保留组来源、成员父级及 key。原 Node Store 仍是唯一节点数据所有者，替换 Builder 时重新绑定按键订阅，不重挂载容器。模式变化保留尺寸观察器，并复用整轮状态选择器。
 
@@ -105,9 +107,9 @@ Chat 通过 `uiConversation.groups` 注册过程 Group Definition。React 通过
 
 过程组使用稳定的 `div` 布局盒子、滚动正文及不限高的内容盒子，后者报告正文内部的内容增长。业务样式必须适配组内及组边界间距，处理隐藏或空成员以及回答前的间距特例。CSS 变量不属于 Group Definition。
 
-运行中的分组标题、思考预览、工具与命令行、当前重试行以及底部运行状态使用共享的 [TextShimmer](../ui-primitives/README.zh.md#component-catalog)。每行的文字共用一道从左到右的高光，包括折叠的分组标题；图标和悬停箭头保留底色。工具和过程行之间相隔 6px；展开的分组标题与内容之间相隔 8px；Assistant 回复与相邻过程行之间相隔 12px；每轮完成／耗时控件周围保留 16px。隐藏行与空行（包括保留的空 slot 锚点）不产生间距。“深度求索”运行文字保留蓝色底色，并使用主题专用高光扫过文字。
+思考预览、工具与命令行、当前重试行以及运行状态的活动文字使用共享的 [TextShimmer](../ui-primitives/README.zh.md#component-catalog)。每行的文字共用一道从左到右的高光；图标和悬停箭头保留底色。运行中的组摘要改用转圈标记。工具和过程行之间相隔 6px。带摘要行的组是一张卡片，各行挂在一条细线上，与前面的内容相隔 10px；Assistant 回复与问答卡片与相邻行之间相隔 12px；每轮抬头周围保留 16px。隐藏行与空行（包括保留的空 slot 锚点）不产生间距。运行文字保留蓝色底色，并使用主题专用高光扫过文字；实时详情与时钟使用三级文字色。
 
-运行状态显示一只鲸鱼，其 APNG 遮罩继承文字颜色。启用减少动态效果或强制颜色模式、或浏览器不支持 alpha 遮罩时，CSS 选择静态 SVG。构建将图片嵌入插件样式表；React 不通过 DOM 样式传递图片数据。
+运行状态以三个文字颜色的圆点开头，依次闪烁。启用减少动态效果时保持静止，并对辅助技术隐藏；状态只播报这一轮正在工作，不播报每个活动。
 
 滚动边缘渐隐在 `ResizeObserver` 报告已展开组的布局后初始化；展开组时不会在 layout effect 中立即读取滚动尺寸。
 
@@ -170,8 +172,6 @@ Chat 会在历史前插与 renderer 重新挂载时恢复语义锚点，并且�
 ## 已知限制与暂缓事项
 
 <a id="known-limitations-and-deferred-work"></a>
-
-- **运行图标分辨率**——动态鲸鱼使用 28×28 图片，默认 CSS 尺寸为 14×14。较大的正文字号或大于 2 的设备像素比可能使位图描边变模糊；静态回退图标仍为矢量图。浏览器图片缓存管理动画时钟，因此重新挂载不保证从第一帧重新播放。
 
 - **工具变更展示** — `developer-message` Definition 与 `input-message` 共用上下文展示。仅包含工具变更的 developer 消息在单个工具新增或移除时直接显示工具名，不提供展开操作。多个变更显示新增、移除数量，展开后按变更类型分别以逗号分隔显示一行工具列表。混合内容使用通用上下文展示。
 

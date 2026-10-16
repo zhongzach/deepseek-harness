@@ -12,26 +12,31 @@ const t = makeTranslate(zh, commonZh)
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(5_000) })
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
-function statusHarness(startTime?: number) {
-  const view = render(<RunningStatus startTime={startTime} t={t} />)
+const THINKING = { label: '正在构思', detail: '' }
+
+function statusHarness(startTime?: number, activity = THINKING) {
+  const view = render(<RunningStatus startTime={startTime} activity={activity} t={t} />)
   return {
     ...view,
     content: () => view.container.querySelector('[data-chat-running] > :last-child'),
-    set: (nextStartTime?: number) => { view.rerender(<RunningStatus startTime={nextStartTime} t={t} />) },
+    set: (nextStartTime?: number, nextActivity = activity) => {
+      view.rerender(<RunningStatus startTime={nextStartTime} activity={nextActivity} t={t} />)
+    },
   }
 }
 
 describe('RunningStatus', () => {
   it('waits for an open Turn start before allocating its clock', () => {
     const view = statusHarness()
-    expect(view.content()?.textContent).toBe('正在深入思考')
+    expect(view.content()?.textContent).toBe('正在构思')
     expect(vi.getTimerCount()).toBe(0)
     view.set(1_000)
-    expect(view.content()?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(view.content()?.textContent).toMatch(/^正在构思\d+秒$/)
+    expect(view.content()?.querySelector('[data-chat-running-clock]')?.textContent).toBe('4秒')
     expect(view.content()?.querySelectorAll('[data-shimmer="true"]')).toHaveLength(1)
     expect(vi.getTimerCount()).toBe(1)
     view.set()
-    expect(view.content()?.textContent).toBe('正在深入思考')
+    expect(view.content()?.textContent).toBe('正在构思')
     expect(vi.getTimerCount()).toBe(0)
   })
 
@@ -41,15 +46,15 @@ describe('RunningStatus', () => {
     const status = view.getByRole('status')
     const initialText = content?.textContent
     act(() => { vi.advanceTimersByTime(2_000) })
-    expect(content?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(content?.textContent).toMatch(/^正在构思\d+秒$/)
     expect(content?.textContent).not.toBe(initialText)
     view.set(7_000)
     expect(view.content()).toBe(content)
-    expect(content?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(content?.textContent).toMatch(/^正在构思\d+秒$/)
     expect(vi.getTimerCount()).toBe(1)
     const nextTurnText = content?.textContent
     act(() => { vi.advanceTimersByTime(2_000) })
-    expect(content?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(content?.textContent).toMatch(/^正在构思\d+秒$/)
     expect(content?.textContent).not.toBe(nextTurnText)
     expect(view.getByRole('status')).toBe(status)
     expect(status.textContent).toBe('正在深入思考')
@@ -57,12 +62,22 @@ describe('RunningStatus', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
+  it('shows the live detail and holds each activity long enough to read', () => {
+    const view = statusHarness(4_000, { label: '正在读取文件', detail: '正文/全文.md' })
+    expect(view.content()?.textContent).toMatch(/^正在读取文件正文\/全文\.md\d+秒$/)
+    view.set(4_000, { label: '正在构思', detail: '' })
+    // A step that follows at once waits its turn instead of replacing the label mid-glance.
+    expect(view.content()?.textContent).toContain('正在读取文件')
+    act(() => { vi.advanceTimersByTime(600) })
+    expect(view.content()?.textContent).toMatch(/^正在构思\d+秒$/)
+  })
+
   it('keeps the duration nonnegative when the start is ahead of the local clock', () => {
     const view = statusHarness(6_000)
-    expect(view.content()?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(view.content()?.textContent).toMatch(/^正在构思\d+秒$/)
     expect(view.content()?.textContent).not.toContain('-')
     act(() => { vi.advanceTimersByTime(3_000) })
-    expect(view.content()?.textContent).toMatch(/^正在深入思考，用时 \d+秒 ···$/)
+    expect(view.content()?.textContent).toMatch(/^正在构思\d+秒$/)
     expect(view.content()?.textContent).not.toContain('-')
   })
 

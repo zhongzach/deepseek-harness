@@ -4,6 +4,7 @@ import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '../../contract/slots.ts'
 import { diffCardModel } from '../models/diff-card-model.ts'
 import { toolRowModel, toolTitleKey } from '../models/tool-call-model.ts'
+import { fileRowSummary } from '../models/file-label.ts'
 import { ToolRow } from '../components/ToolRow.tsx'
 import { PreparingToolRow } from '../components/PreparingToolRow.tsx'
 import { CONVERSATION_NS as NS } from '../../locale.ts'
@@ -27,7 +28,7 @@ function PreparingFileMutationRow({ toolName, useDisclosure, useToolCallArgument
     summary={t('tool.preparing.content', { kilobytes: Math.ceil(raw.length / 1024) })} />
 }
 
-function StartedFileMutationRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }: Exclude<FileMutationRowProps, { phase: 'preparing' }>) {
+function StartedFileMutationRow({ toolName, block, cwd, home, openFile, fileLabel, inspect, useDisclosure, t }: Exclude<FileMutationRowProps, { phase: 'preparing' }>) {
   const model = toolRowModel(toolName, block, cwd, home)
   const diff = diffCardModel(block)
   return (
@@ -38,7 +39,7 @@ function StartedFileMutationRow({ toolName, block, cwd, home, openFile, inspect,
       toolName={toolName}
       icon={FILE_MUTATION_ICON}
       title={t(model.titleKey)}
-      summary={model.summary}
+      summary={fileRowSummary(model.summary, model.filePath, cwd, fileLabel)}
       output={model.output}
       errorSummary={model.errorSummary}
       diff={diff}

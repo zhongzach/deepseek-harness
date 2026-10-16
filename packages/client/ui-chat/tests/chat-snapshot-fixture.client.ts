@@ -15,6 +15,10 @@ import {
 import { orderedVisibleChatNodes } from '../src/client/conversation-nodes/chat-snapshot-builder.ts'
 import { ChatTurnProcessProjector } from '../src/client/conversation-nodes/turn-process-presentation.ts'
 import { hasAssistantReplyContent } from '../src/client/contract/assistant-content.ts'
+import type { ProcessActivity } from '../src/client/contract/process-groups.ts'
+import {
+  processActivityKind, rankProcessActivity, readCallPath, skillCallName,
+} from '../src/client/conversation-nodes/process-activity.ts'
 import {
   isSubagentDelegationTool, sameTurnProcessSpec, TURN_PROCESS_INDEPENDENT_KINDS,
   type TurnProcessSpec,
@@ -73,6 +77,31 @@ function nodeSource(node: ChatConversationViewNode): unknown {
 
 function toolCallName(call: ToolCallBlock): string | null {
   return 'name' in call ? call.name : call.call?.name ?? null
+}
+
+function toolCallArguments(call: ToolCallBlock): string | undefined {
+  if ('name' in call) return 'argsRaw' in call ? call.argsRaw : undefined
+  return call.call?.argsRaw
+}
+
+/** Whole-Turn work as the turn-process Definition accumulates it from `tool/call` events. */
+function turnActivity(toolCalls: readonly ToolCallBlock[]): Pick<TurnProcessSpec, 'skills' | 'activity' | 'readPaths'> {
+  const skills: string[] = []
+  const readPaths: string[] = []
+  const counts = new Map<ProcessActivity, number>()
+  for (const call of toolCalls) {
+    const name = toolCallName(call)
+    if (name === null) continue
+    const kind = processActivityKind(name)
+    if (kind !== 'questions') counts.set(kind, (counts.get(kind) ?? 0) + 1)
+    const argsRaw = toolCallArguments(call)
+    if (argsRaw === undefined) continue
+    const skill = name === 'skill' ? skillCallName(argsRaw) : undefined
+    if (skill !== undefined && !skills.includes(skill)) skills.push(skill)
+    const path = kind === 'read' ? readCallPath(argsRaw) : undefined
+    if (path !== undefined && !readPaths.includes(path)) readPaths.push(path)
+  }
+  return { skills, activity: rankProcessActivity(counts), readPaths }
 }
 
 class FixtureSource<Value> {
@@ -433,6 +462,7 @@ export function chatSnapshotFixture(input: {
         const name = toolCallName(call)
         return name !== null && isSubagentDelegationTool(name)
       }).length,
+      ...turnActivity(toolCalls),
     }
     const previousSpec = dataStore.get('turn-process')
     const spec = previousSpec !== undefined && sameTurnProcessSpec(previousSpec, candidate)

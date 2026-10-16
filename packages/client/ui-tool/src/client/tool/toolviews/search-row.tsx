@@ -4,6 +4,7 @@ import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '../../contract/slots.ts'
 import { searchCardModel } from '../models/search-card-model.ts'
 import { toolRowModel } from '../models/tool-call-model.ts'
+import { globSummary } from '../models/file-label.ts'
 import { ToolRow } from '../components/ToolRow.tsx'
 import { CONVERSATION_NS as NS } from '../../locale.ts'
 
@@ -28,7 +29,7 @@ export function SearchRow({ toolName, block, inspect, useDisclosure, t }: Search
       title={t(toolName === 'grep'
         ? SEARCH_TITLE_KEYS.grep
         : toolName === 'glob' ? SEARCH_TITLE_KEYS.glob : model.titleKey)}
-      summary={model.summary}
+      summary={toolName === 'glob' ? globSummary(model.summary, t) : model.summary}
       // ToolRow ignores output when a structured card is present; otherwise it
       // preserves the generic fallback for errors and legacy results.
       output={model.output}

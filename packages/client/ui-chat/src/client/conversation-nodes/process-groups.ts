@@ -8,6 +8,7 @@ import type { ChatConversationViewNode, ChatNode } from '../contract/chat-nodes.
 import type { ProcessActivitySummary, ProcessGroupData } from '../contract/process-groups.ts'
 import { hasAssistantReplyContent } from '../contract/assistant-content.ts'
 import { isVisibleChatNode } from '../contract/chat-visibility.ts'
+import { isQuestionCall } from '../contract/turn-process.ts'
 import { processActivity } from './process-activity.ts'
 
 const INDEPENDENT = new Set(['user', 'steering', 'turn-trigger', 'model-retry', 'turn-error', 'turn-max-tokens', 'turn-tail'])
@@ -32,6 +33,8 @@ function sameSummary(left: ProcessActivitySummary, right: ProcessActivitySummary
     && left.preparing === right.preparing
     && left.counts.length === right.counts.length && left.counts.every((value, index) =>
     value.kind === right.counts[index]?.kind && value.count === right.counts[index].count)
+    && left.readPaths.length === right.readPaths.length
+    && left.readPaths.every((path, index) => path === right.readPaths[index])
 }
 
 function sameMembers(left: readonly NodeReference[], right: readonly NodeReference[]): boolean {
@@ -68,7 +71,7 @@ class ProcessGroup {
   snapshot: GroupSnapshot<ProcessGroupData>
 
   constructor(readonly key: GroupKey, readonly turn: number, readonly members: readonly NodeReference[]) {
-    this.snapshot = { key, members, data: { turn, closed: false, summary: { counts: [], running: undefined, runningDetail: '' } } }
+    this.snapshot = { key, members, data: { turn, closed: false, summary: { counts: [], readPaths: [], running: undefined, runningDetail: '' } } }
   }
 
   refresh(input: ProcessInput, closed: boolean): void {
@@ -76,7 +79,9 @@ class ProcessGroup {
     const unchanged = nodes.length === this.nodes.length && nodes.every((node, index) => node === this.nodes[index])
     const previous = this.snapshot.data
     const activity = unchanged && previous.closed === closed ? previous.summary : processActivity(nodes)
-    const summary = closed ? { counts: activity.counts, running: undefined, runningDetail: '' } : activity
+    const summary = closed
+      ? { counts: activity.counts, readPaths: activity.readPaths, running: undefined, runningDetail: '' }
+      : activity
     this.nodes = nodes
     if (previous.closed !== closed || !sameSummary(previous.summary, summary)) {
       this.snapshot = {
@@ -162,7 +167,8 @@ class TurnGroups {
       const node = readNode(input, key)
       // Both Definitions retain the same message id; only its question presentation renders.
       if (node.kind === 'turn-trigger' && replies.has(node.id)) continue
-      if (INDEPENDENT.has(node.kind)) {
+      // Questions to the reader stay in view, like replies: they end a group.
+      if (INDEPENDENT.has(node.kind) || isQuestionCall(node)) {
         flush(true)
         emit(key, { kind: 'node', key })
       } else if (node.kind === 'turn-process') {

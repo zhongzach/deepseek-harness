@@ -180,11 +180,11 @@ describe('AskQuestionRow', () => {
       },
     )} />)
 
-    expect(screen.getByText('2/3 已回答')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: PILL.reopen })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: PILL.review }))
-    expect(screen.getByRole('button', { expanded: true })).toBeTruthy()
+    // The submitted answers are already on the card; there is nothing to reopen or review.
+    expect(screen.getByRole('region', { name: '问了你 3 个问题' })).toBeTruthy()
     expect(screen.getByText('the web app')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: PILL.reopen })).toBeNull()
+    expect(screen.queryByRole('button', { name: PILL.review })).toBeNull()
     expect(reviewPanel).not.toHaveBeenCalled()
     expect(revealPanel).not.toHaveBeenCalled()
   })
@@ -199,7 +199,8 @@ describe('AskQuestionRow', () => {
     const view = render(<AskQuestionRow {...rowProps(block, {
       answerable: ['c1'], inbox: { 'next-step': [], 'next-turn': [queuedReply('c1', batch)] },
     })} />)
-    expect(screen.getByRole('button', { name: PILL.review })).toBeTruthy()
+    expect(screen.getByRole('region', { name: '问了你 3 个问题' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: PILL.reopen })).toBeNull()
 
     view.rerender(<AskQuestionRow {...rowProps(block, {
       answerable: ['c1'], inbox: { 'next-step': [], 'next-turn': [] },
@@ -284,7 +285,8 @@ describe('AskQuestionRow', () => {
     })
     render(<AskQuestionRow {...rowProps(repaired, { settled: { c1: batch }, reviewPanel })} />)
 
-    expect(screen.getByText('2/3 已回答')).toBeTruthy()
+    expect(screen.getByRole('region', { name: '问了你 3 个问题' })).toBeTruthy()
+    expect(screen.getByText('the web app')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: PILL.review }))
     expect(reviewPanel).toHaveBeenCalledWith('c1', expect.objectContaining({ answers: batch }))
   })
@@ -316,11 +318,10 @@ describe('AskQuestionRow', () => {
       { settled: { c1: answered }, reviewPanel },
     )} />)
 
-    expect(screen.getByText('2/3 已回答')).toBeTruthy()
+    expect(screen.getByRole('region', { name: '问了你 3 个问题' })).toBeTruthy()
     expect(screen.queryByText('已结束')).toBeNull()
     expect(screen.queryByRole('button', { name: PILL.reopen })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { expanded: false }))
     expect(screen.getByText('What do you want to accomplish?')).toBeTruthy()
     expect(screen.getByText('the web app')).toBeTruthy()
     expect(screen.getByText('未回答')).toBeTruthy()
@@ -381,15 +382,15 @@ describe('AskQuestionRow', () => {
     expect(screen.queryByText(/"pending"/)).toBeNull()
   })
 
-  it('expands a successful result as paired questions and readable answer lines', () => {
+  it('shows a successful result as paired questions and readable answers in view', () => {
     render(<AskQuestionRow {...rowProps(resultNode(READABLE_ARGS, answers([
       { id: 'scope', selected: ['deepseek-harness'] },
       { id: 'goal', selected: ['Develop a feature'], custom: 'Keep the API small' },
       { id: 'notes', selected: [] },
     ])))} />)
 
-    fireEvent.click(screen.getByRole('button', { expanded: false }))
-
+    expect(screen.getByRole('region', { name: '问了你 3 个问题' })).toBeTruthy()
+    expect(screen.queryByRole('button', { expanded: false })).toBeNull()
     expect(screen.getByText('What do you want to accomplish?')).toBeTruthy()
     expect(screen.getByText('Develop a feature')).toBeTruthy()
     expect(screen.getByText('Keep the API small')).toBeTruthy()
@@ -440,11 +441,10 @@ describe('AskQuestionRow', () => {
       { id: 'notes', selected: [] },
     ])))} />)
 
-    expect(screen.getByText('2/3 已回答')).toBeTruthy()
+    expect(screen.getByRole('region', { name: '问了你 3 个问题' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: PILL.review })).toBeNull()
     expect(screen.queryByRole('button', { name: PILL.reopen })).toBeNull()
     expect(view.container.querySelector('[class*="rowAction"]')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { expanded: false }))
     expect(screen.getByText('the web app')).toBeTruthy()
     expect(screen.getByText('未回答')).toBeTruthy()
   })
