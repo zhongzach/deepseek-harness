@@ -680,7 +680,7 @@ describe('ChatView', () => {
     if (outside === undefined || inside === undefined) throw new Error('expected two Nodes')
     const key = 'process' as GroupKey
     const groupStore = new ConversationGroupStore<ProcessGroupData>()
-    const record = { key, data: { turn: 1, closed: false, summary: { counts: [], running: undefined, runningDetail: '' } }, members: [inside] }
+    const record = { key, data: { turn: 1, closed: false, summary: { counts: [], readPaths: [], running: undefined, runningDetail: '' } }, members: [inside] }
     groupStore.prepareAndInstall({
       entries: [outside, { kind: 'group', key }],
       groups: { kind: 'replace', snapshots: [record] },
@@ -804,7 +804,7 @@ describe('ChatView', () => {
     const groups = new ConversationGroupStore<ProcessGroupData>()
     const group: GroupSnapshot<ProcessGroupData> = {
       key, members: [{ kind: 'node', key: snapshot.order[0] as NodeKey }],
-      data: { turn: 1, closed, summary: { counts: [], running: undefined, runningDetail: '' } },
+      data: { turn: 1, closed, summary: { counts: [], readPaths: [], running: undefined, runningDetail: '' } },
     }
     groups.prepareAndInstall({
       entries: [{ kind: 'group', key }],
@@ -970,7 +970,7 @@ describe('ChatView', () => {
     const groupStore = new ConversationGroupStore<ProcessGroupData>()
     groupStore.prepareAndInstall({
       entries: [{ kind: 'group', key }, { kind: 'node', key: nodeKey, groupPart: 'response' }],
-      groups: { kind: 'replace', snapshots: [{ key, data: { turn: 1, closed: false, summary: { counts: [], running: undefined, runningDetail: '' } }, members: [{ kind: 'node', key: nodeKey, groupPart: 'reasoning' }] }] },
+      groups: { kind: 'replace', snapshots: [{ key, data: { turn: 1, closed: false, summary: { counts: [], readPaths: [], running: undefined, runningDetail: '' } }, members: [{ kind: 'node', key: nodeKey, groupPart: 'reasoning' }] }] },
     }, id => snapshot.nodes.get(id))
     h.setGrouped(groupStore)
     h.setNodeRenderer(((slot: string, owner: object) => {
@@ -995,7 +995,7 @@ describe('ChatView', () => {
     const groups = new ConversationGroupStore<ProcessGroupData>()
     groups.prepareAndInstall({
       entries: [{ kind: 'group', key }],
-      groups: { kind: 'replace', snapshots: [{ key, data: { turn: 1, closed: false, summary: { counts: [], running: undefined, runningDetail: '' } }, members }] },
+      groups: { kind: 'replace', snapshots: [{ key, data: { turn: 1, closed: false, summary: { counts: [], readPaths: [], running: undefined, runningDetail: '' } }, members }] },
     }, id => snapshot.nodes.get(id))
     groups.publish()
     h.setGrouped(groups)

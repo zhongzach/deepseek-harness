@@ -149,6 +149,7 @@ describe('Definition-owned Chat process groups', () => {
       data: {
         turn: 1, controlAnchorSeq: 1, processStartSeq: 1, answerAnchorSeq: null,
         answerStep: null, inlineReasoning: false, messageCount: 0, toolCallCount: 1, subagentCount: 0,
+        skills: [], activity: [], readPaths: [],
       },
     }
     const h = harness([control, ...replyNodes(true), tool('after', 8)])
