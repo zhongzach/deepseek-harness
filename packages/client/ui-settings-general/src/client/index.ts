@@ -197,6 +197,13 @@ export function apply(ctx: ClientContext): void {
         } }
       },
     })
+    // A feature's link into its own page (the contract's 'ui-settings/open'):
+    // the same store action as the trigger, so focus, Escape and the launcher's
+    // settingsOpen edge behave as if the author had opened Settings there.
+    const disposeOpen = ctx.on('ui-settings/open', (section) => {
+      if (section === undefined) shellInstance.actions.open()
+      else shellInstance.actions.openSection(section)
+    })
 
     const disposeSlot = ctx.slots.register({
       name: 'sidebar.settings',
@@ -214,7 +221,7 @@ export function apply(ctx: ClientContext): void {
       },
       inject: shellInjected,
     }, SettingsRoot)
-    return () => { disposeCommand(); disposeSlot() }
+    return () => { disposeOpen(); disposeCommand(); disposeSlot() }
   })
 
   ctx.slots.inject('settings.trigger', () =>

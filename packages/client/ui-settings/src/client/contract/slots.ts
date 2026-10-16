@@ -98,6 +98,21 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'settings.general.item': { kind: 'list'; scope: 'root'; owner: SettingsGeneralItemOwnerProps }
   }
 }
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Ask the settings shell to open — the same panel the trigger opens — on
+     * one registered section when `section` names it: a feature's link into
+     * its own settings page from elsewhere in the app. An id no section
+     * registered opens on the first section, as the navigation does; with no
+     * shell mounted nothing happens.
+     * @mode emit
+     * @param section - a `settings.section` id; omitted keeps the usual first page.
+     */
+    'ui-settings/open'(section?: string): void
+  }
+}
+
 /** Owner share of a General preference row (the section supplies nothing). */
 export interface SettingsGeneralItemOwnerProps {
   /** Marker field: item owner props are intentionally empty. */

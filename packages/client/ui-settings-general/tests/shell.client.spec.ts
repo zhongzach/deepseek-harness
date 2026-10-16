@@ -11,6 +11,7 @@ import { createClientTest, type TestClient, webApp } from '@deepseek-ai/dsh-clie
 import { inject } from '../src/client/index.ts'
 import type { SettingsRootInjected } from '../src/client/shell-contract.ts'
 import { SettingsRoot } from '../src/client/SettingsRoot.tsx'
+import type { createSettingsShellStore } from '../src/client/shell-store.ts'
 import type { DesktopUpdatePresentation } from '../src/types.ts'
 
 const SELF = '@deepseek-ai/dsh-client-ui-settings-general'
@@ -157,6 +158,23 @@ describe('ui-settings-general shell', () => {
     await Promise.resolve()
     expect(listener).toHaveBeenCalledOnce()
     off()
+  })
+
+  it('opens on request, on the section a feature names, until the shell unloads', async ({ start }) => {
+    const c = await start()
+    const settings = (c.ctx.slots.entries('sidebar.settings')[0]!.store as ReturnType<typeof createSettingsShellStore>).create()
+    expect(settings.getSnapshot()).toEqual({ open: false, activeId: undefined })
+    c.ctx.emit('ui-settings/open', 'models')
+    expect(settings.getSnapshot()).toEqual({ open: true, activeId: 'models' })
+    settings.actions.close()
+    // No section: the panel opens as the trigger opens it.
+    c.ctx.emit('ui-settings/open')
+    expect(settings.getSnapshot()).toEqual({ open: true, activeId: undefined })
+    settings.actions.close()
+    await c.unload(SELF)
+    await c.flush()
+    c.ctx.emit('ui-settings/open', 'models')
+    expect(settings.getSnapshot().open).toBe(false)
   })
 
   it('re-registers after the declarer reloads: the cascade removes the shell, the rebuilt declaration takes it back', async ({ start }) => {

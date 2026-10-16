@@ -39,7 +39,7 @@ A page that edits a namespace another plugin owns registers through `ctx.configF
 
 ### Filling the settings slots
 
-A settings surface registers into the slot types this package declares. The shell (`sidebar.settings` occupant, navigation, chrome) lives in ui-settings-general; feature pages register `settings.section` contributions; the Plugins section hosts `settings.plugins.tab` pages; onboarding steps register `settings.onboarding`. Cross-namespace surfaces (schema introspection, the served-namespace directory, `hasDocument`) read the same mirror through `ctx.configForms.describe()`.
+A settings surface registers into the slot types this package declares. The shell (`sidebar.settings` occupant, navigation, chrome) lives in ui-settings-general; feature pages register `settings.section` contributions; the Plugins section hosts `settings.plugins.tab` pages; onboarding steps register `settings.onboarding`. A feature that leads the user to its page from elsewhere in the app emits `ui-settings/open` with its section id, and the shell opens on that section; an id no section registered opens on the first one, and no id opens the panel as the trigger does. Cross-namespace surfaces (schema introspection, the served-namespace directory, `hasDocument`) read the same mirror through `ctx.configForms.describe()`.
 
 ### Observable success and failures
 
