@@ -14,17 +14,24 @@ import type {
 // into every program that sees this contract.
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 // Type-only: pulls the settings slot declarations the shell renders into.
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SettingsGeneralPage } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsStore } from '@deepseek-ai/dsh-client-store'
 import type { createSettingsShellStore } from './shell-store.ts'
 import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { DesktopUpdateView } from '../types.ts'
 
-/** One nav row projected from a settings.section registration's options. */
+/**
+ * One nav row projected from a settings.section registration's options, or from
+ * a General page of the composition's `ui-settings/layout`.
+ */
 export interface SettingsSectionRow {
   id: string
   order: number
   label: string
+  /** The General page this row opens; absent for a registered section. */
+  page?: SettingsGeneralPage
+  /** A divider is drawn above this row (a navigation group starts here). */
+  divider?: boolean
 }
 
 /** One ordered onboarding step projected from a slot registration. */

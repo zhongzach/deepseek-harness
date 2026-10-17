@@ -237,6 +237,67 @@
   overflow-y: auto;
 }
 
+/* A laid-out panel (a composition answered `ui-settings/layout`): wider, with a filled
+   navigation column whose groups are divided. The default panel above is untouched. */
+.panel.composed {
+  width: 960px;
+  height: min(680px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top, 24px))));
+}
+
+.composed .nav {
+  gap: 14px;
+  width: 200px;
+  padding: 18px 12px 12px;
+  background: var(--dsw-alias-markdown-code-block);
+  border-right: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.composed .navTitle {
+  padding: 2px 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.composed .navList {
+  gap: 2px;
+}
+
+.composed .navCell {
+  gap: 10px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--dsw-radius-md);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.composed .navCell:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.composed .navCell.active {
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+  box-shadow: 0 0 0 0.5px var(--dsw-alias-border-l2), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* The line above the first row of a navigation group. */
+.navDivider {
+  flex: none;
+  height: 0.5px;
+  margin: 6px 10px;
+  background: var(--dsw-alias-border-l1);
+}
+
+.composed .header {
+  height: 44px;
+  padding: 14px 14px 2px 10px;
+}
+
+.composed .options {
+  padding: 0 36px 28px;
+}
+
 /* Visually-hidden text seat (close button accessible name from slot content). */
 .hiddenLabel {
   position: absolute;

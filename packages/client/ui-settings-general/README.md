@@ -43,6 +43,8 @@ Settings visibility and section selection live in the shell owner store. The she
 
 The current release version appears at the bottom of General Settings in Web and Desktop, using the build’s `DSH_CLIENT_VERSION` metadata and the active language. Partial builds without version metadata omit the row.
 
+When a composition answers `ui-settings/layout` ([ui-settings](../ui-settings/README.md#use-this-package)), each of its pages replaces the General entry in the navigation at the page’s own order, and the panel takes its composed look: 960×680, a navigation column with dividers between the groups the layout names. A page renders the General section with that page: its title and description, then each group as a card under an optional label, holding the group’s rows in order. Each row sits in a `[data-setting-item]` wrapper carrying its id, so a composition can style the rows of its pages without their owners knowing about pages; a row that draws nothing takes no room and no separator. The answer is read again whenever the navigation is drawn, so a composition that loads after the shell still applies.
+
 The Coding Tools switch controls the shared `ui-settings.enabled` preference described by [ui-settings](../ui-settings/README.md#use-this-package). It is available in both Web and desktop, follows accepted changes immediately, and disables duplicate input while a write settles. A failed write displays localized retry guidance.
 
 The General section holds the built-in Coding Tools and Current version rows alongside rows registered into `settings.general.item` by feature packages. Each registrant owns its row copy and behavior. The Appearance row, for example, lives in ui-theme.

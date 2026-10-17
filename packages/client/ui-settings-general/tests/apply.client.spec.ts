@@ -109,6 +109,26 @@ describe('ui-settings-general apply', () => {
     expect(hooks.sections.getSnapshot().find(row => row.id === 'general')?.label).toBe('通用设置')
   }, COLD_BOOT_TIMEOUT_MS)
 
+  it('lays the navigation out by the composition answer, read again whenever the rows are drawn', async ({ mock, start }) => {
+    const { c } = await client(mock, start)
+    const root = c.ctx.slots.entries('sidebar.settings')[0]!
+    const { hooks } = (root.inject as unknown as () => SettingsRootInjected)()
+    const before = hooks.sections.getSnapshot()
+    expect(before.some(row => row.id === 'general')).toBe(true)
+    // Unchanged facts give back the very same rows (the observable contract).
+    expect(hooks.sections.getSnapshot()).toBe(before)
+    // A composition that loads later answers with two pages and a navigation group.
+    const page = { id: 'writing', order: 5, label: '写作', groups: [{ items: ['permission'] }] }
+    const off = c.ctx.on('ui-settings/layout', () => ({ pages: [page], dividers: ['writing'] }))
+    const after = hooks.sections.getSnapshot()
+    expect(after).not.toBe(before)
+    expect(after.some(row => row.id === 'general')).toBe(false)
+    expect(after.find(row => row.id === 'writing')).toMatchObject({ label: '写作', page })
+    expect(hooks.sections.getSnapshot()).toBe(after)
+    off()
+    expect(hooks.sections.getSnapshot().some(row => row.id === 'general')).toBe(true)
+  }, COLD_BOOT_TIMEOUT_MS)
+
   it('declares the services it uses', () => {
     expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'remote.settings', 'configForms', 'shortcuts'])
   })

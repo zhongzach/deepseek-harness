@@ -10,3 +10,66 @@
 .section > :global([data-slot='settings.general.item']) > :last-child {
   border-bottom: none;
 }
+
+/* A General page of a composition's layout (`ui-settings/layout`): a title, then groups
+ * of rows, each group a card. A row keeps its own internals; inside a card it gets side
+ * padding and the card draws one line between rows instead of the row's own separator.
+ * A row that draws nothing leaves its wrapper empty, and an empty wrapper takes no room
+ * and draws no line. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.pageHead {
+  padding-bottom: 4px;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.pageDescription {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.group {
+  margin-top: 16px;
+}
+
+.groupLabel {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.card {
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: var(--dsw-radius-xl);
+  background: var(--dsw-alias-markdown-code-block);
+}
+
+.item:has(> [data-slot]:empty) {
+  display: none;
+}
+
+.item:not(:has(> [data-slot]:empty)) ~ .item:not(:has(> [data-slot]:empty)) {
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+
+.item > :global([data-slot]) > * {
+  padding-left: 16px;
+  padding-right: 16px;
+  border-bottom: none;
+}

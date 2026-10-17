@@ -110,7 +110,51 @@ declare module '@deepseek-ai/cordis' {
      * @param section - a `settings.section` id; omitted keeps the usual first page.
      */
     'ui-settings/open'(section?: string): void
+    /**
+     * A composition's layout for the settings panel: split the single General page
+     * into several pages of grouped rows, and divide the navigation into groups.
+     * Nobody answering keeps one General page and an undivided navigation. Read
+     * whenever the navigation is drawn, so a later-loading composition still applies.
+     * @mode bail
+     * @returns the layout, or undefined for the default panel.
+     */
+    'ui-settings/layout'(): SettingsLayout | undefined
   }
+}
+
+/** One group of General rows on a General page, drawn as a card. */
+export interface SettingsGeneralGroup {
+  /** Small heading above the card; absent draws the card alone. */
+  label?: string
+  /** `settings.general.item` ids in drawing order; an id nothing registered draws nothing. */
+  items: readonly string[]
+}
+
+/**
+ * A settings page assembled from General rows. It appears in the navigation like
+ * any `settings.section` (same `order` scale; its `id` is what `ui-settings/open`
+ * and `settings.section.icon` use) and draws a title, an optional line under it,
+ * and its groups of rows.
+ */
+export interface SettingsGeneralPage {
+  /** Navigation key; a page reusing `general` replaces the General page's entry. */
+  id: string
+  /** Navigation position among the sections. */
+  order: number
+  /** Navigation label and page title, already localized. */
+  label: string
+  /** One line under the title, already localized. */
+  description?: string
+  /** Rows in groups; a row no page names is not shown while pages are laid out. */
+  groups: readonly SettingsGeneralGroup[]
+}
+
+/** How a composition lays out the settings panel (`ui-settings/layout`). */
+export interface SettingsLayout {
+  /** General pages that replace the single General page. */
+  pages?: readonly SettingsGeneralPage[]
+  /** Section or page ids that start a new navigation group: a divider is drawn above each. */
+  dividers?: readonly string[]
 }
 
 /** Owner share of a General preference row (the section supplies nothing). */
@@ -147,6 +191,11 @@ export interface SettingsHeaderOwnerProps {
 export interface SettingsSectionOwnerProps {
   /** Close the settings panel (the shell owns the open state). */
   close: () => void
+  /**
+   * Set when the shell draws the General section as one page of a composition's
+   * `ui-settings/layout`: the page to draw. Other sections never receive it.
+   */
+  page?: SettingsGeneralPage
 }
 
 /** Shell-owned size of a decorative settings navigation icon. */

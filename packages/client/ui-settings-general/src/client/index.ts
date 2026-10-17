@@ -32,6 +32,7 @@ import type { DesktopUpdateBridge } from '../types.ts'
 import { DesktopUpdateSource } from './desktop-update-source.ts'
 import { CloseLabel, HeaderContent, TriggerContent } from './chrome.tsx'
 import { GeneralSection } from './GeneralSection.tsx'
+import { layoutKey, layoutRows } from './layout-rows.ts'
 import { CurrentVersionRow } from './CurrentVersionRow.tsx'
 import { DeveloperToolsRow, type DeveloperToolsRowInjected } from './DeveloperToolsRow.tsx'
 import { SettingsDocumentAction } from './SettingsDocumentAction.tsx'
@@ -116,6 +117,7 @@ export function apply(ctx: ClientContext): void {
   // key includes the locale revision and subscribers ride both sources.
   let rowsVersion = -1
   let rowsRevision = -1
+  let rowsLayout = ''
   let rows: readonly SettingsSectionRow[] = []
   let onboardingVersion = -1
   let onboardingSteps: readonly SettingsOnboardingStep[] = []
@@ -130,20 +132,24 @@ export function apply(ctx: ClientContext): void {
         getSnapshot: () => {
           const version = ctx.slots.getVersion('settings.section')
           const revision = ctx.locale.getSnapshot().revision
-          if (version !== rowsVersion || revision !== rowsRevision) {
+          // The composition's layout is asked on every read: a composition that
+          // loads after the shell applies the next time the navigation is drawn.
+          const layout = ctx.bail(ctx, 'ui-settings/layout')
+          const key = layoutKey(layout)
+          if (version !== rowsVersion || revision !== rowsRevision || key !== rowsLayout) {
             rowsVersion = version
             rowsRevision = revision
+            rowsLayout = key
             // Shadowing winners, like the render outlet: a downstream entry that
             // shadows a section (same id, lower priority) replaces its nav row
             // rather than adding a second one.
-            rows = ctx.slots.entriesOfSlot('settings.section')
+            rows = layoutRows(ctx.slots.entriesOfSlot('settings.section')
               .map(e => ({
                 /* v8 ignore next -- list-slot registration requires id (SlotCore rejects an entry without one) */
                 id: e.options.id ?? '',
                 order: e.options.order ?? 0,
                 label: resolveSlotLabel(e.options.label) ?? '',
-              }))
-              .sort((a, b) => a.order - b.order)
+              })), layout)
           }
           return rows
         },

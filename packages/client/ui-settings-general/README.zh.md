@@ -43,6 +43,8 @@ Host 配置 `welcomeNotice` 默认为 true，并落为 `ui-settings-general` 命
 
 Web 与桌面端的通用设置底部显示当前发布版本，使用构建注入的 `DSH_CLIENT_VERSION` 元数据和当前语言。缺少版本元数据的局部构建不显示该行。
 
+组合方回答 `ui-settings/layout`（[ui-settings](../ui-settings/README.zh.md#use-this-package)）时，它的每一页按该页自己的顺序取代导航里的「通用」一项，面板换成编排后的样子：960×680，导航栏在布局指定的分组之间画分隔线。每一页用该页渲染「通用」分区：页标题和说明，然后每组是一张卡片（可带组标签），按顺序放这一组的行。每一行包在带其 id 的 `[data-setting-item]` 容器里，组合方因此能给自己页面上的行定样式，行的所有者不必知道有页面；什么都不画的行不占位置、也不留分隔线。每次绘制导航都会重新读取回答，所以晚于外壳加载的组合方同样生效。
+
 代码工作工具开关控制 [ui-settings](../ui-settings/README.zh.md#use-this-package) 定义的共享偏好 `ui-settings.enabled`。Web 和桌面端均提供此开关，立即跟随已接受的变更，并在写入完成前禁用重复输入。写入失败时显示本地化的重试提示。
 
 「通用」分区承载内置的代码工作工具行与当前版本行，以及功能包注册进 `settings.general.item` 的行。每个注册方拥有自己的行文案与行为。例如「外观」行位于 ui-theme。

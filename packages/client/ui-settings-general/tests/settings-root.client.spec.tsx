@@ -9,7 +9,7 @@ import { createSettingsShellStore } from '../src/client/shell-store.ts'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { SettingsRootComponentProps } from '../src/client/shell-contract.ts'
+import type { SettingsRootComponentProps, SettingsSectionRow } from '../src/client/shell-contract.ts'
 import { SettingsRoot } from '../src/client/SettingsRoot.tsx'
 import { en, zh } from '../src/client/locales.ts'
 import type { DesktopUpdateView } from '../src/types.ts'
@@ -24,7 +24,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-type Row = { id: string; order: number; label: string }
+type Row = SettingsSectionRow
 type Step = { id: string; order: number }
 
 /** Slot-content stand-ins: the shell renders whatever the seats contribute. */
@@ -187,6 +187,41 @@ describe('SettingsRoot trigger', () => {
     const glyph = (label: string) => screen.getByRole('button', { name: label }).querySelector('svg')!.innerHTML
     expect(glyph('Custom')).toBe(glyph('General'))
     expect(glyph('Models')).not.toBe(glyph('General'))
+  })
+
+  it('draws a layout page as the General section with that page, and divides the navigation', () => {
+    const page = { id: 'writing', order: 5, label: 'Writing', description: 'How the assistant works', groups: [{ label: 'Assistant', items: ['a', 'b'] }] }
+    const { renderSlot } = mount({ rows: [
+      { id: 'account', order: -10, label: 'Account' },
+      { id: 'writing', order: 5, label: 'Writing', page, divider: true },
+      { id: 'models', order: 10, label: 'Models' },
+    ] })
+    openPanel()
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.hasAttribute('data-settings-composed')).toBe(true)
+    // One divider, right above the row that starts the group.
+    const dividers = dialog.querySelectorAll('[data-settings-nav-divider]')
+    expect(dividers).toHaveLength(1)
+    expect(dividers[0]!.nextElementSibling?.textContent).toBe('Writing')
+    expect(screen.getByTestId('section-account')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Writing' }))
+    // The page is the General section drawn with that page; the page id itself is never a section.
+    expect(renderSlot).toHaveBeenCalledWith('settings.section', expect.objectContaining({ page }), { only: 'general' })
+    expect(screen.getByTestId('section-general')).toBeTruthy()
+    expect(renderSlot.mock.calls.some(call => call[0] === 'settings.section' && call[2]?.only === 'writing')).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Models' }))
+    // A section of its own is drawn as before: no page.
+    const models = renderSlot.mock.calls.filter(call => call[0] === 'settings.section').at(-1)
+    expect(models?.[2]).toEqual({ only: 'models' })
+    expect(models?.[1]).not.toHaveProperty('page')
+  })
+
+  it('keeps the default panel when nobody lays it out', () => {
+    mount()
+    openPanel()
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.hasAttribute('data-settings-composed')).toBe(false)
+    expect(dialog.querySelectorAll('[data-settings-nav-divider]')).toHaveLength(0)
   })
 
   it('shows installation instead of expected backend reconnection and restores connection feedback after failure', () => {

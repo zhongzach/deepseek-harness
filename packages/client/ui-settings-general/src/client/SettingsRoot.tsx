@@ -11,7 +11,7 @@
  * sessions-derived empty-Hero fact is active. Visible dialog chrome belongs
  * to the step, so a mounted-but-deciding step paints nothing here.
  */
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import {
@@ -23,6 +23,7 @@ import type { ConnectionIndicatorState } from '@deepseek-ai/dsh-client-ui-primit
 import type { SettingsRootComponentProps, SettingsSectionRow } from './shell-contract.ts'
 import css from './SettingsRoot.module.css'
 import { DesktopUpdateIndicator } from './DesktopUpdateIndicator.tsx'
+import { GENERAL_SECTION_ID } from './layout-rows.ts'
 
 const RECOVERY_CONFIRMATION_MS = 2_000
 
@@ -55,7 +56,10 @@ type PanelProps = {
 function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelProps) {
   // Entries can unmount underneath the requested id, so the render-time
   // projection falls back to the first row when the id is gone.
-  const active = rows.find(r => r.id === activeId)?.id ?? rows[0]?.id
+  const activeRow = rows.find(r => r.id === activeId) ?? rows[0]
+  const active = activeRow?.id
+  // A composition that lays out the panel (pages or nav groups) gets the laid-out look.
+  const composed = rows.some(row => row.page !== undefined || row.divider === true)
   const titleId = useId()
 
   const panel = useRef<HTMLDivElement>(null)
@@ -68,25 +72,28 @@ function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelP
   return createPortal((
     <div className={css.overlay} role="presentation">
       <div className={css.mask} aria-hidden="true" onClick={onClose} />
-      <div ref={panel} tabIndex={-1} data-shortcut-modal="settings" className={css.panel} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div ref={panel} tabIndex={-1} data-shortcut-modal="settings" className={clsx(css.panel, composed && css.composed)}
+        role="dialog" aria-modal="true" aria-labelledby={titleId} data-settings-composed={composed ? '' : undefined}>
         <nav className={css.nav}>
           <div className={css.navTitle} id={titleId} tabIndex={-1}
             data-modal-autofocus={active === undefined ? '' : undefined}>{renderSlot('settings.header', {})}</div>
           <div className={css.navList}>
             {rows.map(row => (
-              <button
-                key={row.id}
-                type="button"
-                className={clsx(css.navCell, row.id === active && css.active)}
-                aria-current={row.id === active ? 'true' : undefined}
-                data-modal-autofocus={row.id === active ? '' : undefined}
-                onClick={() => { onSelect(row.id) }}
-              >
-                <span className={css.navIcon} aria-hidden="true" data-settings-nav-icon={row.id}>
-                  {renderSlot('settings.section.icon', { size: 16 }, { entryKey: row.id, fallback: navIcon(row.id) })}
-                </span>
-                <span className={css.navLabel}>{row.label}</span>
-              </button>
+              <Fragment key={row.id}>
+                {row.divider === true && <div className={css.navDivider} aria-hidden="true" data-settings-nav-divider="" />}
+                <button
+                  type="button"
+                  className={clsx(css.navCell, row.id === active && css.active)}
+                  aria-current={row.id === active ? 'true' : undefined}
+                  data-modal-autofocus={row.id === active ? '' : undefined}
+                  onClick={() => { onSelect(row.id) }}
+                >
+                  <span className={css.navIcon} aria-hidden="true" data-settings-nav-icon={row.id}>
+                    {renderSlot('settings.section.icon', { size: 16 }, { entryKey: row.id, fallback: navIcon(row.id) })}
+                  </span>
+                  <span className={css.navLabel}>{row.label}</span>
+                </button>
+              </Fragment>
             ))}
           </div>
         </nav>
@@ -99,7 +106,10 @@ function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelP
             </button>
           </div>
           <div className={css.options}>
-            {active !== undefined && renderSlot('settings.section', { close: onClose }, { only: active })}
+            {/* A General page is the General section drawn with that page's rows. */}
+            {activeRow !== undefined && (activeRow.page === undefined
+              ? renderSlot('settings.section', { close: onClose }, { only: activeRow.id })
+              : renderSlot('settings.section', { close: onClose, page: activeRow.page }, { only: GENERAL_SECTION_ID }))}
           </div>
         </div>
       </div>

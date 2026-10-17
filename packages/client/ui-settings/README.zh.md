@@ -39,7 +39,7 @@ kind: "package-reference"
 
 ### 填充设置 slot
 
-设置界面会注册进本包声明的 slot 类型。外壳（`sidebar.settings` 占位方、导航、界面框架）位于 ui-settings-general；功能页面注册 `settings.section` 贡献；「插件」分区承载 `settings.plugins.tab` 页面；首次使用引导步骤注册 `settings.onboarding`。要从应用别处把用户带到自己的页面，功能发出 `ui-settings/open` 并带上自己的分区 id，外壳就在该分区打开；没有分区注册过的 id 打开第一个分区，不带 id 则与触发控件一样打开面板。跨命名空间的表面（schema 内省、已服务命名空间目录、`hasDocument`）通过 `ctx.configForms.describe()` 读同一面镜像。
+设置界面会注册进本包声明的 slot 类型。外壳（`sidebar.settings` 占位方、导航、界面框架）位于 ui-settings-general；功能页面注册 `settings.section` 贡献；「插件」分区承载 `settings.plugins.tab` 页面；首次使用引导步骤注册 `settings.onboarding`。要从应用别处把用户带到自己的页面，功能发出 `ui-settings/open` 并带上自己的分区 id，外壳就在该分区打开；没有分区注册过的 id 打开第一个分区，不带 id 则与触发控件一样打开面板。组合方要按自己的方式编排面板时回答 `ui-settings/layout`（bail）：把通用设置的行分成若干带标题的页——每页在导航里单独一项，页内各组按顺序列出 `settings.general.item` 的 id——并指定在哪些导航项前画分隔线。没有被任何一页放进去的行不显示；没人回答时面板仍是单独的「通用」一页。跨命名空间的表面（schema 内省、已服务命名空间目录、`hasDocument`）通过 `ctx.configForms.describe()` 读同一面镜像。
 
 ### 可观察的成功与失败
 

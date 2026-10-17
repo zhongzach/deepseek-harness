@@ -113,11 +113,13 @@ describe('chrome content', () => {
 })
 
 describe('GeneralSection', () => {
-  function mount() {
+  function mount(page?: GeneralSectionComponentProps['page']) {
     const renderSlot = vi.fn(
-      ((key: string) => <div data-testid={`slot-${key}`} />) as GeneralSectionComponentProps['renderSlot'],
+      ((key: string, _owner: unknown, opts?: { only?: string }) => opts?.only === 'hidden'
+        ? null
+        : <div data-testid={`slot-${key}${opts?.only === undefined ? '' : `-${opts.only}`}`} />) as GeneralSectionComponentProps['renderSlot'],
     )
-    const props: GeneralSectionComponentProps = { ...kit, renderSlot, close: vi.fn() }
+    const props: GeneralSectionComponentProps = { ...kit, renderSlot, close: vi.fn(), ...page === undefined ? {} : { page } }
     const view = render(<GeneralSection {...props} />)
     return { view, renderSlot }
   }
@@ -126,6 +128,28 @@ describe('GeneralSection', () => {
     const { renderSlot } = mount()
     expect(renderSlot).toHaveBeenCalledWith('settings.general.item', {})
     expect(screen.getByTestId('slot-settings.general.item')).toBeTruthy()
+  })
+
+  it('draws a layout page: its title and line, then each group as a card of the named rows in order', () => {
+    const { view, renderSlot } = mount({ id: 'writing', order: 5, label: '写作', description: '写作助手怎么干活',
+      groups: [{ label: '写作助手', items: ['workflow', 'permission'] }, { items: ['library'] }] })
+    expect(screen.getByRole('heading', { name: '写作', level: 2 })).toBeTruthy()
+    expect(screen.getByText('写作助手怎么干活')).toBeTruthy()
+    // A labelled group is a named region with its heading; an unlabelled one is just the card.
+    const assistant = screen.getByRole('region', { name: '写作助手' })
+    expect(assistant.querySelector('h3')?.textContent).toBe('写作助手')
+    const ids = [...view.container.querySelectorAll('[data-setting-item]')].map(item => item.getAttribute('data-setting-item'))
+    expect(ids).toEqual(['workflow', 'permission', 'library'])
+    for (const id of ids) expect(renderSlot).toHaveBeenCalledWith('settings.general.item', {}, { only: id })
+    expect(renderSlot).not.toHaveBeenCalledWith('settings.general.item', {})
+    expect(view.container.querySelectorAll('[data-settings-group]')).toHaveLength(2)
+    expect(view.container.querySelector('[data-settings-page="writing"]')).toBeTruthy()
+  })
+
+  it('draws no line under the title when the page has none', () => {
+    const { view } = mount({ id: 'look', order: 6, label: '外观', groups: [{ items: ['appearance'] }] })
+    expect(view.container.querySelector('p')).toBeNull()
+    expect(screen.queryByRole('region')).toBeNull()
   })
 })
 
