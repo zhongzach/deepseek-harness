@@ -9,13 +9,16 @@
  * writes CRLF on Windows, so exact text assertions normalize line endings.
  */
 
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { PwshLocalExecutor, ENCODING_PREAMBLE, candidatePwshPaths, resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
+import {
+  PwshLocalExecutor, ENCODING_PREAMBLE, NATIVE_ARGUMENT_SCRIPT, candidatePwshPaths, commandPreamble, isWindowsPowerShell,
+  nativeArgumentScriptFile, resolvePwshPath,
+} from '@deepseek-ai/dsh-pwsh-local'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import SubprocessRuntime from '@deepseek-ai/dsh-subprocess'
 import type { SubprocessHandle, SubprocessOutcome, SubprocessOutputReader, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
@@ -238,9 +241,36 @@ describe('spawn construction (pure, every platform)', () => {
     expect(subprocess.specs).toHaveLength(1)
     const { argv } = subprocess.specs[0]!
     expect(argv.slice(0, 5)).toEqual([expect.any(String), '-NoLogo', '-NoProfile', '-NonInteractive', '-Command'])
-    expect(argv[5]).toBe(`${ENCODING_PREAMBLE}Write-Output 你好`)
+    expect(argv[5]).toBe(`${commandPreamble(argv[0]!, ENCODING_PREAMBLE)}Write-Output 你好`)
+    expect(argv[5]!.startsWith(ENCODING_PREAMBLE)).toBe(true)
     expect(ENCODING_PREAMBLE).toContain('[Console]::OutputEncoding')
     expect(ENCODING_PREAMBLE).toContain('$OutputEncoding')
+  })
+
+  it('loads the native-argument script in one short statement under Windows PowerShell only', async () => {
+    const ctx = createContext()
+    const subprocess = new CapturingSubprocessRuntime(ctx)
+    await ctx.plugin(PwshLocalExecutor, { pwshPath: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' })
+    await run(ctx.shell, ctx.shell.resolve({ command: 'node -v' }))
+    const command = subprocess.specs[0]!.argv[5]!
+    const file = nativeArgumentScriptFile()!
+    expect(command).toBe(`${ENCODING_PREAMBLE}try { . ([scriptblock]::Create([IO.File]::ReadAllText('${file.replaceAll("'", "''")}'))) } catch {}; node -v`)
+    expect(readFileSync(file, 'utf8')).toBe(NATIVE_ARGUMENT_SCRIPT)
+    // Security software may hold up every program a long PowerShell command line starts.
+    expect(command.length - ENCODING_PREAMBLE.length - 'node -v'.length).toBeLessThan(400)
+    expect(isWindowsPowerShell('C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\PowerShell.EXE')).toBe(true)
+    for (const pwsh of ['C:\\Program Files\\PowerShell\\7\\pwsh.exe', '/usr/bin/pwsh', 'pwsh']) {
+      expect(commandPreamble(pwsh, ENCODING_PREAMBLE)).toBe(ENCODING_PREAMBLE)
+    }
+  })
+
+  it('writes the native-argument script again after a temp cleaner removed it', () => {
+    const first = nativeArgumentScriptFile()!
+    rmSync(dirname(first), { recursive: true, force: true })
+    const second = nativeArgumentScriptFile()!
+    expect(second).not.toBe(first)
+    expect(readFileSync(second, 'utf8')).toBe(NATIVE_ARGUMENT_SCRIPT)
+    expect(nativeArgumentScriptFile()).toBe(second)
   })
 
   it('reports both unread stderr and an asynchronous provider rejection exactly once', async () => {
@@ -561,6 +591,87 @@ describe.skipIf(!hasPwsh)('PwshLocalExecutor.run', () => {
     expect('stdin' in spec).toBe(false)
     expect('env' in spec).toBe(false)
     expect('dshEnv' in spec).toBe(false)
+  })
+})
+
+const windowsPowerShell = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+const hasWindowsPowerShell = process.platform === 'win32' && existsSync(windowsPowerShell)
+
+describe.skipIf(!hasWindowsPowerShell)('Windows PowerShell 5.1 native-program arguments', () => {
+  const quote = (text: string) => `'${text.replaceAll("'", "''")}'`
+  const node = `& ${quote(process.execPath)}`
+  /** A Node script printing the arguments it received, and any piped stdin, as one JSON line. */
+  function echo(): string {
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-pwsh-argv-'))
+    tempDirs.push(dir)
+    const script = join(dir, 'argv.cjs')
+    writeFileSync(script, [
+      "let input = ''",
+      "try { if (!process.stdin.isTTY) input = require('node:fs').readFileSync(0, 'utf8') } catch {}",
+      'console.log(JSON.stringify({ argv: process.argv.slice(2), stdin: input.trim() }))',
+    ].join('\n'))
+    return `${node} ${quote(script)}`
+  }
+  async function lines(command: string): Promise<string[]> {
+    const { bash } = await setup({ pwshPath: windowsPowerShell })
+    const result = await run(bash, bash.resolve({ command }))
+    expect(result.stderr.text).toBe('')
+    return lf(result.stdout.text).trim().split('\n')
+  }
+  const argvOf = (line: string): unknown => (JSON.parse(line) as { argv: unknown }).argv
+
+  it('hands quotes, spaces, empty strings and trailing backslashes over intact', { timeout: 30_000 }, async () => {
+    const argv = echo()
+    const out = await lines([
+      `${argv} '{"a":1,"b":"two words"}'`,
+      `${argv} 'console.log("hi there")' '' 'C:\\some dir\\'`,
+      `$payload = '{"k":"v w"}'; ${argv} $payload`,
+      `$list = 'a b', 'c"d'; ${argv} $list`,
+      `${argv} '中文 "引号"'`,
+      `${node} -e 'console.log(JSON.stringify({ say: "hello, world" }))'`,
+    ].join('; '))
+    expect(out.slice(0, 5).map(argvOf)).toEqual([
+      ['{"a":1,"b":"two words"}'],
+      ['console.log("hi there")', '', 'C:\\some dir\\'],
+      ['{"k":"v w"}'],
+      ['a b', 'c"d'],
+      ['中文 "引号"'],
+    ])
+    expect(out[5]).toBe('{"say":"hello, world"}')
+  })
+
+  it('keeps what 5.1 already passed: escaped quotes, -name:value tokens, a command\'s own --%', { timeout: 30_000 }, async () => {
+    const argv = echo()
+    const out = await lines([
+      `${argv} '{\\"a\\":\\"b c\\"}' 'console.log(\\"hi\\")'`,
+      `${argv} -x:"a b" -p:Configuration=Release`,
+      `$env:PWSH_ARGV_TEST = 'expanded'; ${argv} --% "raw \\"x\\"" %PWSH_ARGV_TEST%`,
+    ].join('\n'))
+    expect(out.map(argvOf)).toEqual([
+      ['{"a":"b c"}', 'console.log("hi")'],
+      ['-x:a b', '-p:Configuration=Release'],
+      ['raw "x"', 'expanded'],
+    ])
+  })
+
+  it('keeps pipeline input, $LASTEXITCODE and $? as a direct call does', { timeout: 30_000 }, async () => {
+    const argv = echo()
+    const out = await lines([
+      `'piped "text"' | ${argv} x`,
+      `${node} -e 'process.exit(3)'; "exit=$LASTEXITCODE ok=$?"`,
+      `${node} -e 'process.exit(0)'; "exit=$LASTEXITCODE ok=$?"`,
+      `${node} -e 'process.exit(1)'; if ($?) { 'chained' } else { 'stopped' }`,
+    ].join('; '))
+    expect(JSON.parse(out[0]!)).toEqual({ argv: ['x'], stdin: 'piped "text"' })
+    expect(out.slice(1)).toEqual(['exit=3 ok=False', 'exit=0 ok=True', 'stopped'])
+  })
+
+  it('leaves cmd.exe and script-block arguments on the old rules', { timeout: 30_000 }, async () => {
+    const out = await lines([
+      'cmd /c echo "hi there"',
+      "powershell -NoProfile -NonInteractive -Command { 'block ok' }",
+    ].join('; '))
+    expect(out).toEqual(['"hi there"', 'block ok'])
   })
 })
 

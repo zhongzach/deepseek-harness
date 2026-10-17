@@ -23,6 +23,7 @@ import type { CollectedOutput, ShellExecRequest, ShellExecSpec, ShellExecution, 
 import type { SubprocessCollect, SubprocessHandle, SubprocessOutputReader, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import { clampTimeout, deadline, MAX_TIMER_DELAY_MS, timeoutOf } from '@deepseek-ai/dsh-timeout'
 /* jscpd:ignore-end */
+import { commandPreamble } from './native-arguments.ts'
 import { resolvePwshPath } from './resolve.ts'
 
 /* jscpd:ignore-start -- deliberate call-for-call mirror of dsh-bash-local (Agent Note: pwsh-tool-and-executor). */
@@ -80,6 +81,7 @@ export interface Config {
 // Resolution lives in its own dependency-free module so the repository's
 // coverage-gate probe shares the exact definition the suites use.
 export { candidatePwshPaths, resolvePwshPath } from './resolve.ts'
+export { commandPreamble, isWindowsPowerShell, NATIVE_ARGUMENT_SCRIPT, nativeArgumentScriptFile } from './native-arguments.ts'
 
 /** Project a settled collect-mode reader into the final CollectedOutput shape. */
 function finalOutput(reader: SubprocessOutputReader): CollectedOutput {
@@ -191,7 +193,8 @@ export class PwshLocalExecutor extends ShellExecutor {
    * `@deepseek-ai/dsh-pwsh-sandbox`).
    */
   protected argv(spec: ShellExecSpec): string[] {
-    return [this.pwshPath, '-NoLogo', '-NoProfile', '-NonInteractive', '-Command', `${ENCODING_PREAMBLE}${spec.command}`]
+    const pwsh = this.pwshPath
+    return [pwsh, '-NoLogo', '-NoProfile', '-NonInteractive', '-Command', `${commandPreamble(pwsh, ENCODING_PREAMBLE)}${spec.command}`]
   }
 
   /** Map one resolved spec plus its argv onto a fully-specified subprocess spawn. */
