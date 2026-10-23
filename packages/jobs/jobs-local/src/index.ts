@@ -82,6 +82,7 @@ interface TrackedJob {
   owner: Agent | undefined
   cancel: (reason?: string) => void
   status: JobStatus
+  workStopped: boolean | undefined
   ring: OutputRing
   /** The model's consuming cursor; {@link JobRegistry.readAt} never moves it. */
   modelCursor: number
@@ -248,6 +249,7 @@ export class LocalJobRegistry extends JobRegistry {
       owner,
       cancel: hooks.cancel.bind(hooks),
       status: 'running',
+      workStopped: undefined,
       ring,
       modelCursor: 0,
       resultDelivered: false,
@@ -282,7 +284,7 @@ export class LocalJobRegistry extends JobRegistry {
       (error: unknown): JobOutcome => {
         // Contain a producer contract violation (`done` rejected) so cleanup and waiters cannot hang.
         this.selfCtx.logger.warn(`jobs: job ${job.id} producer done promise rejected (producer contract violation): ${String(error)}`)
-        return { status: 'failed', detail: String(error) }
+        return { status: 'failed', detail: String(error), workStopped: false }
       },
     )
     if (spec.output !== undefined && spec.output.length > 0) {
@@ -420,6 +422,7 @@ export class LocalJobRegistry extends JobRegistry {
       ...owner !== undefined ? { owner } : {},
       ...job.outputLimitBytes !== undefined ? { outputLimitBytes: job.outputLimitBytes } : {},
       status: job.status,
+      ...job.workStopped !== undefined ? { workStopped: job.workStopped } : {},
       ...job.state.progress !== undefined ? { progress: job.state.progress } : {},
       ...job.detail !== undefined ? { detail: job.detail } : {},
       startedAt: job.startedAt,
@@ -577,6 +580,7 @@ export class LocalJobRegistry extends JobRegistry {
   private settle(job: TrackedJob, outcome: JobOutcome, cause: JobSettleCause): void {
     if (isTerminal(job.status)) return
     job.status = outcome.status
+    job.workStopped = outcome.workStopped
     // A killed settlement carries the recorded kill reason in its detail:
     // producer facts first (`signal: SIGTERM; cancelled by the user`). A job
     // that outran its kill request (settled `completed`/`failed`) keeps the
@@ -678,7 +682,7 @@ export class LocalJobRegistry extends JobRegistry {
       } catch (error: unknown) {
         const detail = `cancel threw during teardown; work may be orphaned: ${String(error)}`
         this.selfCtx.logger.warn(`jobs: cancel of ${job.id} threw during teardown; job record forced failed and work may be orphaned: ${String(error)}`)
-        this.settle(job, { status: 'failed', detail }, 'teardown')
+        this.settle(job, { status: 'failed', detail, workStopped: false }, 'teardown')
       }
     }
   }

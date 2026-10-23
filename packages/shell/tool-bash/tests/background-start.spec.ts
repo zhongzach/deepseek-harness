@@ -43,7 +43,7 @@ describe('background job ownership during asynchronous shell startup', () => {
     child.process.status = 'completed'
     child.process.exitCode = 5
     child.exited.resolve(undefined)
-    expect(await hooks.done).toEqual({ status: 'completed', detail: 'exit code: 5' })
+    expect(await hooks.done).toEqual({ status: 'completed', detail: 'exit code: 5', workStopped: true })
   })
 
   it('aborts pending preparation through the job-owned signal', async () => {
@@ -58,7 +58,7 @@ describe('background job ownership during asynchronous shell startup', () => {
     hooks.cancel('cancel pending confinement')
     hooks.cancel('later cancellation')
     expect(received?.reason).toBe('cancel pending confinement')
-    expect(await hooks.done).toEqual({ status: 'killed', detail: 'cancel pending confinement' })
+    expect(await hooks.done).toEqual({ status: 'killed', detail: 'cancel pending confinement', workStopped: true })
   })
 
   it('kills a process that materializes after cancellation and awaits its exit', async () => {
@@ -73,7 +73,7 @@ describe('background job ownership during asynchronous shell startup', () => {
     expect(child.kill).toHaveBeenCalledOnce()
     expect(settled).toBe(false)
     child.exited.resolve(undefined)
-    expect(await hooks.done).toEqual({ status: 'killed', detail: 'signal: SIGTERM' })
+    expect(await hooks.done).toEqual({ status: 'killed', detail: 'signal: SIGTERM', workStopped: true })
   })
 
   it('cancels a published process once and keeps done pending until exit', async () => {
@@ -88,7 +88,7 @@ describe('background job ownership during asynchronous shell startup', () => {
     expect(child.kill).toHaveBeenCalledOnce()
     expect(settled).toBe(false)
     child.exited.resolve(undefined)
-    expect((await hooks.done).status).toBe('killed')
+    expect(await hooks.done).toMatchObject({ status: 'killed', workStopped: true })
   })
 
   it('joins a late process even when its termination request throws', async () => {
@@ -104,13 +104,13 @@ describe('background job ownership during asynchronous shell startup', () => {
     await attempted.promise
     expect(settled).toBe(false)
     child.exited.resolve(undefined)
-    expect(await hooks.done).toEqual({ status: 'failed', detail: 'termination failed' })
+    expect(await hooks.done).toEqual({ status: 'failed', detail: 'termination failed', workStopped: true })
   })
 
   it('reports a startup failure through job completion without publishing output', async () => {
     const render = vi.fn(processOutcome)
     const hooks = processJob(async () => { throw new Error('remote sandbox unavailable') }, render)
-    expect(await hooks.done).toEqual({ status: 'failed', detail: 'remote sandbox unavailable' })
+    expect(await hooks.done).toEqual({ status: 'failed', detail: 'remote sandbox unavailable', workStopped: true })
     expect(render).not.toHaveBeenCalled()
   })
 
@@ -118,6 +118,23 @@ describe('background job ownership during asynchronous shell startup', () => {
     const upstream = new AbortController()
     upstream.abort('upstream preparation stopped')
     const hooks = processJob(async () => { upstream.signal.throwIfAborted(); throw new Error('unreachable') }, processOutcome)
-    expect(await hooks.done).toEqual({ status: 'failed', detail: 'upstream preparation stopped' })
+    expect(await hooks.done).toEqual({ status: 'failed', detail: 'upstream preparation stopped', workStopped: true })
+  })
+
+  it('keeps work cessation unknown when the published process cannot confirm its exit', async () => {
+    const child = processHandle()
+    const render = vi.fn(processOutcome)
+    const hooks = processJob(async () => child.process, render)
+    await Promise.resolve()
+    child.exited.reject(new Error('exit observation lost'))
+    expect(await hooks.done).toEqual({ status: 'failed', detail: 'exit observation lost', workStopped: false })
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('retains confirmed cessation when projecting the terminal outcome throws', async () => {
+    const child = processHandle()
+    const hooks = processJob(async () => child.process, () => { throw new Error('outcome unavailable') })
+    child.exited.resolve(undefined)
+    expect(await hooks.done).toEqual({ status: 'failed', detail: 'outcome unavailable', workStopped: true })
   })
 })

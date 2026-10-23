@@ -101,6 +101,11 @@ kind: "package-reference"
 
 工具在 `ctx.shell.resolve()` 运行前解析 workdir：显式的相对 `workdir` 相对会话 cwd 解析，沙箱策略的规范化 workspace root 优先，使约束与启动使用同一身份。沙箱策略通过 `ctx.sandboxPolicy` 按调用解析；升权请求在任何执行前经由 `ctx.approval`，若执行器会约束命令却没有挂载策略服务，工具在加载时失败。
 
+<a id="stopped-work-evidence"></a>
+### 工作停止证据
+
+准备过程在返回进程句柄前拒绝，或句柄的 `done` 兑现时，`processJob` 报告 `workStopped: true`。后续结果渲染失败，或停止延迟返回的句柄时出错，都不会在 `done` 兑现后抹掉这项证据。`done` 拒绝时报告 `workStopped: false`。任务状态与这项执行证据彼此独立；[任务注册表](../../jobs/jobs/README.zh.md#what-a-background-job-gives-you)定义消费方如何使用它。
+
 ### 渲染故事
 
 结果文本为 stdout，然后是带标记的 `[stderr]` 区段，再是条件标记：截断通知、沙箱拒绝（组合声明升权时附带同轮次升权提示）、超时、信号与退出码——每个占一行。退出标记同时充当 UI 卡片的退出状态 pill：`dsh-shell` 共享的 `parseExitStatus` 会从输出体中消费它，因此回放显示 pill 而不重复标记。

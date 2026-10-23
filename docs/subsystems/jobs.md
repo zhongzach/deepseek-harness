@@ -95,7 +95,7 @@ interface JobHandle {
 }
 ```
 
-`JobHooks.done` resolves after the producer releases its resources, not merely when work finishes. A job whose result is a value rather than a stream — a subagent's report, a workflow's rendered result — returns it as `JobOutcome.result`; the model's first read after settlement carries it once.
+`JobHooks.done` resolves after the producer releases its resources, not merely when work finishes; if release cannot be confirmed, it resolves `failed` without claiming stopped work. A job whose result is a value rather than a stream — a subagent's report, a workflow's rendered result — returns it as `JobOutcome.result`; the model's first read after settlement carries it once.
 
 ```ts type-equiv
 /** Hooks through which the runtime controls and observes producer work. */
@@ -107,9 +107,11 @@ interface JobHooks {
   cancel(reason?: string): void
   /**
    * Resolves after the producer releases its resources, not merely when work
-   * finishes. Must not reject; the runtime converts a rejection to `failed`.
+   * finishes. If release cannot be confirmed, resolves `failed` without
+   * claiming stopped work. Must not reject; the runtime converts a rejection to `failed`.
    * If teardown cancellation throws, the runtime may force-fail only the
-   * registry record without claiming that the work stopped.
+   * registry record without claiming that the work stopped. Producers may
+   * expose confirmed cessation through {@link JobOutcome.workStopped}.
    */
   done: Promise<JobOutcome>
 }
@@ -120,6 +122,12 @@ interface JobHooks {
 interface JobOutcome {
   /** How the job ended: finished (`completed`), cancelled (`killed`), or broke (`failed`). */
   status: 'completed' | 'killed' | 'failed'
+  /**
+   * True only when the producer confirms that its work cannot execute further,
+   * including preparation that ended before work started. False or omission
+   * leaves this unknown; terminal status alone does not confirm cessation.
+   */
+  workStopped?: boolean
   /**
    * Terminal reason rendered into status lines (`exit code: 3`, `max-tokens`).
    * When the job settles `killed` after a {@link JobRegistry.kill} with a
@@ -209,9 +217,12 @@ interface JobOutputRead {
 }
 ```
 
+<a id="consumer-views"></a>
 ## Consumer views
 
 `JobView` is the one projection every reader consumes: the model tools, the browser roster, and the observation stream. `owner` carries the session id that fences access; the registry resolves the live `Agent` behind it for lifecycle cleanup and never hands the object out. `progress` is the producer's live line and is cleared at settlement; `detail` is the terminal reason, with a recorded kill reason merged in.
+
+`workStopped === true` carries the producer's evidence that its work cannot execute further; `false` or omission leaves that unknown regardless of terminal status. This optional field is process-local execution evidence exposed through live job views, not a persisted Session fact, and cannot establish stopped work after a restart.
 
 ```ts type-equiv
 /**
@@ -236,6 +247,11 @@ interface JobView {
   readonly outputLimitBytes?: number
   /** Current lifecycle state. */
   readonly status: JobStatus
+  /**
+   * True only when the producer confirmed that its work cannot execute further.
+   * False or omission leaves this unknown, including forced registry failure.
+   */
+  readonly workStopped?: boolean
   /** The producer's live progress line (`3/10`, the current phase); cleared at settlement. */
   readonly progress?: string
   /** Terminal reason (`exit code: 3`); a recorded kill reason is merged in. */

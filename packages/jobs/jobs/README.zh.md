@@ -27,11 +27,14 @@ kind: "package-reference"
 
 在组合后台任务能力或编写注册长时间工作的生产方时使用本包。本包本身定义约定；组合通过加载 `dsh-jobs-local` 这样的实现，以及模型侧的 `dsh-tool-jobs`，获得该功能。
 
+<a id="what-a-background-job-gives-you"></a>
 ### 后台任务提供什么
 
 生产方以 kind 和一行标签注册工作；注册表返回 `<kind>-N` id，例如 `bash-1`。拥有任务的任何一方都可以读取输出、列出任务、带超时等待结算或请求取消——每次调用都返回任务状态的全新投影，从 `running`、`stopping` 到终止态的 `completed`、`killed` 或 `failed`。任务结算时，注册表的事件流宣布它，`dsh-tool-jobs` 把结算变成会话内通知，因此无需轮询。生产方可以附加一个可选的字节上限，让每次完整的模型侧读取或通知保持有界。
 
 生产方通过在 spec 上声明拉取源——由注册表按自己的节奏泵送的非消耗偏移读取器——或经 starter 收到的 `JobHandle` 推送块来流式输出；二者都落入该 job 的有界环，其中 `stdout` 与 `stderr` 块到达模型，`log` 块只到达观察者。观察者按绝对字节偏移读取保留块并在推进时收到信号；结束 job 的结算同时封流，在此之前 `updateProgress` 把实时进度行发布进每个投影。观测对模型不可见：`readAt` 不消耗任何东西，也从不触碰通知状态。
+
+终态会结算注册表记录，但不能证实生产方的工作已经停止。需要这项证据的消费方必须检查 `workStopped === true`；`false` 或字段缺失都表示尚不确定。生产方提供这项可选证据，注册表将其传入[消费方视图](../../../docs/subsystems/jobs.zh.md#consumer-views)。
 
 ### 归属边界
 

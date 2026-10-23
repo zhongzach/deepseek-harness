@@ -149,6 +149,10 @@ describe('job-registry invariants', () => {
       read(RUNNING)
       emit({ type: 'settled', job: DONE, cause: 'producer', awaited: false })
     }, /announces completed at 20 while the registry reads running at undefined/],
+    ['settled with cessation evidence the registry does not read', ({ emit, read }) => {
+      read({ ...DONE, workStopped: false })
+      emit({ type: 'settled', job: { ...DONE, workStopped: true }, cause: 'producer', awaited: false })
+    }, /announces workStopped true while the registry reads false/],
     ['removed before settlement', ({ emit, read }) => {
       read(RUNNING)
       emit({ type: 'registered', job: RUNNING })

@@ -17,6 +17,12 @@ export interface JobOutcome {
   /** How the job ended: finished (`completed`), cancelled (`killed`), or broke (`failed`). */
   status: 'completed' | 'killed' | 'failed'
   /**
+   * True only when the producer confirms that its work cannot execute further,
+   * including preparation that ended before work started. False or omission
+   * leaves this unknown; terminal status alone does not confirm cessation.
+   */
+  workStopped?: boolean
+  /**
    * Terminal reason rendered into status lines (`exit code: 3`, `max-tokens`).
    * When the job settles `killed` after a {@link JobRegistry.kill} with a
    * reason, the registry appends that reason.
@@ -110,9 +116,11 @@ export interface JobHooks {
   cancel(reason?: string): void
   /**
    * Resolves after the producer releases its resources, not merely when work
-   * finishes. Must not reject; the runtime converts a rejection to `failed`.
+   * finishes. If release cannot be confirmed, resolves `failed` without
+   * claiming stopped work. Must not reject; the runtime converts a rejection to `failed`.
    * If teardown cancellation throws, the runtime may force-fail only the
-   * registry record without claiming that the work stopped.
+   * registry record without claiming that the work stopped. Producers may
+   * expose confirmed cessation through {@link JobOutcome.workStopped}.
    */
   done: Promise<JobOutcome>
 }

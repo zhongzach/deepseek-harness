@@ -56,6 +56,8 @@ The limit counts the exact owner's `running` and `stopping` records; all unowned
 
 Jobs belong to their owner and backend, not to the producer tool, so producer or controller reloads do not stop them. When an agent that owns jobs is disposed, its jobs are cancelled, their producers awaited, and their snapshots removed; service disposal does the same for every remaining job. A cancellation that throws during teardown force-fails the record and warns that the work may be orphaned, so teardown never deadlocks.
 
+Settlement forwards the producer's optional `workStopped` evidence unchanged into every view and lifecycle event. A rejected producer `done` or a throwing teardown cancellation records `workStopped: false`; neither failure confirms that execution stopped. Consumers follow the [registry's stopped-work rule](../jobs/README.md#what-a-background-job-gives-you).
+
 ### What can go wrong
 
 Starting work fails without a controller that serves the owner — loading `dsh-tool-jobs` attaches one, and `start()` otherwise refuses with a message naming it. A producer cancel that returns without settling `done` stays indistinguishable from a slow stop and can stall teardown while holding one capacity slot. Every record disappears when the harness process exits.

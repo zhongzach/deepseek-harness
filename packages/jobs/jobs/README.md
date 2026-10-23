@@ -27,11 +27,14 @@ English | [中文](README.zh.md)
 
 Use this package when you are composing a background-job capability or writing a producer that registers long work. The package itself defines the contract; a composition gets the feature by loading an implementation such as `dsh-jobs-local` and, for the model side, `dsh-tool-jobs`.
 
+<a id="what-a-background-job-gives-you"></a>
 ### What a background job gives you
 
 A producer registers work with a kind and a one-line label; the registry returns a `<kind>-N` id such as `bash-1`. Anyone who owns the job can read output, list jobs, wait up to a timeout for settlement, and request cancellation — each call returns a fresh projection of the job's status, from `running` and `stopping` to the terminal `completed`, `killed`, or `failed`. When a job settles, the registry's event stream announces it and `dsh-tool-jobs` turns the settlement into an in-session notice, so no polling is needed. A producer may attach an optional byte cap so each complete model-facing read or notice stays bounded.
 
 A producer streams output by naming pull sources on its spec — non-consuming offset readers the registry pumps at its own cadence — or by pushing chunks through the `JobHandle` its starter receives; both land in the job's bounded ring, where `stdout` and `stderr` chunks reach the model and `log` chunks reach observers only. Observers read retained chunks at absolute byte offsets and are signaled on advancement; the settlement that ends the job also ends the stream, and `updateProgress` publishes a live progress line into every projection until then. Observation is invisible to the model: `readAt` consumes nothing and never touches notice state.
+
+A terminal status settles the registry record but does not establish that the producer's work stopped. Consumers that need that evidence must check `workStopped === true`; `false` or an absent field leaves it unknown. The producer supplies this optional evidence, and the registry carries it into the [consumer view](../../../docs/subsystems/jobs.md#consumer-views).
 
 ### The ownership boundary
 

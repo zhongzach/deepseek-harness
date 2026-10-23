@@ -95,7 +95,7 @@ interface JobHandle {
 }
 ```
 
-`JobHooks.done` 会在生产方释放其资源后 resolve，而不是仅在工作完成时 resolve。结果是一个值而非流的 job——subagent 的报告、workflow 渲染出的结果——把它作为 `JobOutcome.result` 返回；模型在结算后的第一次读取携带它一次。
+`JobHooks.done` 会在生产方释放其资源后 resolve，而不是仅在工作完成时 resolve；如果无法确认资源已释放，则 resolve 为 `failed`，并且不声称工作已停止。结果是一个值而非流的 job——subagent 的报告、workflow 渲染出的结果——把它作为 `JobOutcome.result` 返回；模型在结算后的第一次读取携带它一次。
 
 ```ts type-equiv
 /** Hooks through which the runtime controls and observes producer work. */
@@ -107,9 +107,11 @@ interface JobHooks {
   cancel(reason?: string): void
   /**
    * Resolves after the producer releases its resources, not merely when work
-   * finishes. Must not reject; the runtime converts a rejection to `failed`.
+   * finishes. If release cannot be confirmed, resolves `failed` without
+   * claiming stopped work. Must not reject; the runtime converts a rejection to `failed`.
    * If teardown cancellation throws, the runtime may force-fail only the
-   * registry record without claiming that the work stopped.
+   * registry record without claiming that the work stopped. Producers may
+   * expose confirmed cessation through {@link JobOutcome.workStopped}.
    */
   done: Promise<JobOutcome>
 }
@@ -120,6 +122,12 @@ interface JobHooks {
 interface JobOutcome {
   /** How the job ended: finished (`completed`), cancelled (`killed`), or broke (`failed`). */
   status: 'completed' | 'killed' | 'failed'
+  /**
+   * True only when the producer confirms that its work cannot execute further,
+   * including preparation that ended before work started. False or omission
+   * leaves this unknown; terminal status alone does not confirm cessation.
+   */
+  workStopped?: boolean
   /**
    * Terminal reason rendered into status lines (`exit code: 3`, `max-tokens`).
    * When the job settles `killed` after a {@link JobRegistry.kill} with a
@@ -209,9 +217,12 @@ interface JobOutputRead {
 }
 ```
 
+<a id="consumer-views"></a>
 ## 消费方视图
 
 `JobView` 是每个读者都消费的唯一投影：模型工具、浏览器名册与观测流。`owner` 携带划定访问边界的会话 id；注册表为生命周期清理解析其背后的活体 `Agent`，从不把该对象交出去。`progress` 是生产方的实时行，结算时清除；`detail` 是终态原因，合并了记录下来的 kill 原因。
+
+`workStopped === true` 携带生产方确认其工作无法继续执行的证据；无论终态是什么，`false` 或缺失都表示尚不确定。这个可选字段是通过实时任务视图公开的进程本地执行证据，不是持久化的 Session 事实，也不能在重启后证实工作已停止。
 
 ```ts type-equiv
 /**
@@ -236,6 +247,11 @@ interface JobView {
   readonly outputLimitBytes?: number
   /** Current lifecycle state. */
   readonly status: JobStatus
+  /**
+   * True only when the producer confirmed that its work cannot execute further.
+   * False or omission leaves this unknown, including forced registry failure.
+   */
+  readonly workStopped?: boolean
   /** The producer's live progress line (`3/10`, the current phase); cleared at settlement. */
   readonly progress?: string
   /** Terminal reason (`exit code: 3`); a recorded kill reason is merged in. */

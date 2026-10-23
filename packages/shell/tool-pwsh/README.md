@@ -94,6 +94,8 @@ This section explains the design decisions behind the tool and points at the cod
 
 ### Rendering and exit markers
 
+The process-to-job adapter follows the Bash tool's [stopped-work evidence rules](../tool-bash/README.md#stopped-work-evidence), including preparation failure, rejected process completion, and errors after confirmed exit.
+
 The renderer shares the bash tool's structure and the `parseExitStatus` marker contract from `dsh-shell`: a clean exit (0, no signal) produces no marker; the UI card consumes the exit marker as its exit-status pill. Windows forced termination settles as exit 1 without a signal, so `[killed by signal: …]` is POSIX-only there. The `tool:pwsh` prompt section (first-party order 1010) teaches the exit-marker convention and the Windows exit-1-after-interruption reading.
 
 </details>

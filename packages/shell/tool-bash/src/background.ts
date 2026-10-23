@@ -92,6 +92,7 @@ export function ringDelta(chunks: readonly JobChunk[]): string {
 
 /**
  * Adapt asynchronous shell preparation after job admission without exposing a partial process.
+ * Confirms stopped work only after preparation fails without a process or process exit fulfills.
  * @param start - starts the process with job-owned cancellation.
  * @param outcome - projects the settled process into the job outcome.
  * @returns synchronous job hooks whose completion includes preparation and process settlement.
@@ -103,17 +104,20 @@ export function processJob(
   const controller = new AbortController()
   let process: ShellProcess | undefined
   const done: Promise<JobOutcome> = (async () => {
+    let workStopped = false
     try {
       process = await start(controller.signal)
       try {
         if (controller.signal.aborted) process.kill()
       } finally {
         await process.done
+        workStopped = true
       }
-      return outcome(process)
+      return { ...outcome(process), workStopped: true }
     } catch (error: unknown) {
       return {
         status: controller.signal.aborted && process === undefined ? 'killed' : 'failed',
+        workStopped: process === undefined || workStopped,
         detail: error instanceof Error ? error.message : String(error),
       }
     }

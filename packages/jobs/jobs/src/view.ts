@@ -79,6 +79,11 @@ export interface JobView {
   readonly outputLimitBytes?: number
   /** Current lifecycle state. */
   readonly status: JobStatus
+  /**
+   * True only when the producer confirmed that its work cannot execute further.
+   * False or omission leaves this unknown, including forced registry failure.
+   */
+  readonly workStopped?: boolean
   /** The producer's live progress line (`3/10`, the current phase); cleared at settlement. */
   readonly progress?: string
   /** Terminal reason (`exit code: 3`); a recorded kill reason is merged in. */

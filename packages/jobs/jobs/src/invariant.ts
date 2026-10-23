@@ -99,6 +99,10 @@ const install: InvariantInstaller = Object.assign((ctx: Context, fail: Invariant
     const read = readBack(ctx, job.id, job.owner)
     if (read === undefined) fail(`${event.type} announced for job ${id} that the registry does not return`)
     checkAnnounced(read, job, event.type, fail)
+    if (event.type === 'settled' && read.workStopped !== job.workStopped) {
+      fail(`settled job ${id} announces workStopped ${String(job.workStopped)}`
+        + ` while the registry reads ${String(read.workStopped)}`)
+    }
     if (event.type === 'settled' && (read.status !== job.status || read.finishedAt !== job.finishedAt)) {
       fail(`settled job ${id} announces ${job.status} at ${String(job.finishedAt)}`
         + ` while the registry reads ${read.status} at ${String(read.finishedAt)}`)

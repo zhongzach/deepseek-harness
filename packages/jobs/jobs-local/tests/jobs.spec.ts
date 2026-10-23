@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it, vi } from 'vitest'
+import { describe, expect, expectTypeOf, it, onTestFinished, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
@@ -320,6 +320,26 @@ describe('LocalJobRegistry.start', () => {
 })
 
 describe('LocalJobRegistry reads and settlement', () => {
+  it.each([true, false, undefined])('preserves explicit work cessation evidence: %s', async (workStopped) => {
+    const ctx = await harness()
+    const p = producer()
+    const id = ctx.jobs.start(p.spec)
+    onTestFinished(async () => {
+      p.settle({ status: 'completed' })
+      await ctx.fiber.dispose()
+    })
+    const seen = collect(ctx, { owners: 'all' }, ['settled', 'removed'])
+    expect(ctx.jobs.get(id).workStopped).toBeUndefined()
+    p.settle({ status: 'failed', ...workStopped !== undefined ? { workStopped } : {} })
+    const settled = await ctx.jobs.wait(id, 10_000)
+    expect(settled.workStopped).toBe(workStopped)
+    expect(ctx.jobs.read(id).job.workStopped).toBe(workStopped)
+    expect(ctx.jobs.list()[0]?.workStopped).toBe(workStopped)
+    ctx.jobs.remove(id)
+    expect(seen.map(event => event.type === 'output' ? undefined : event.job.workStopped))
+      .toEqual([workStopped, workStopped])
+  })
+
   it('read consumes the ring from the model cursor and advances it; readAt never moves it', async () => {
     const ctx = await harness()
     const p = producer()
@@ -403,7 +423,7 @@ describe('LocalJobRegistry reads and settlement', () => {
     p.reject(new Error('transport exploded'))
     await tick()
 
-    expect(ctx.jobs.get(id)).toMatchObject({ status: 'failed', detail: 'Error: transport exploded' })
+    expect(ctx.jobs.get(id)).toMatchObject({ status: 'failed', detail: 'Error: transport exploded', workStopped: false })
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('producer contract violation'))
   })
 
@@ -935,7 +955,7 @@ describe('LocalJobRegistry owner cleanup', () => {
     expect(drainedWithoutProducerDone).toBe(true)
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('work may be orphaned'))
     expect(seen).toHaveLength(1)
-    expect(seen[0]).toMatchObject({ cause: 'teardown', job: { status: 'failed' } })
+    expect(seen[0]).toMatchObject({ cause: 'teardown', job: { status: 'failed', workStopped: false } })
     expect((seen[0] as { job: JobView }).job.detail).toContain('cancel threw during teardown')
     expect(ctx.jobs.list(owner.id)).toEqual([])
   })
@@ -1006,7 +1026,7 @@ describe('LocalJobRegistry disposal', () => {
 
     expect(disposedWithoutProducerDone).toBe(true)
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('work may be orphaned'))
-    expect(seen).toMatchObject([{ type: 'settled', cause: 'teardown', job: { status: 'failed' } }])
+    expect(seen).toMatchObject([{ type: 'settled', cause: 'teardown', job: { status: 'failed', workStopped: false } }])
   })
 
   it('detaches owner effects from still-live agent scopes when the service unloads', async () => {
